@@ -1,0 +1,40 @@
+name: Phase 1 CI
+
+on:
+  push:
+    branches:
+      - main
+      - "phase-1/**"
+  pull_request:
+
+concurrency:
+  group: phase-1-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  intelligence-core:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install --no-audit --no-fund --ignore-scripts
+      - run: npm run ci
+
+  database-migrations:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - name: Start local Supabase
+        run: supabase start
+      - name: Rebuild database from migrations
+        run: supabase db reset --local
+      - name: Stop local Supabase
+        if: always()
+        run: supabase stop --no-backup

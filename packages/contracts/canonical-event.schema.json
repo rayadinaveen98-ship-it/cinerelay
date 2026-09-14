@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cinerelay.dev/schemas/canonical-event.v1.json",
+  "title": "CineRelay Canonical Event v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "primaryEntityId",
+    "eventType",
+    "eventSchemaVersion",
+    "detectedAt",
+    "verificationState",
+    "priorityBand",
+    "headline",
+    "status",
+    "evidence"
+  ],
+  "properties": {
+    "id": {"type":"string","format":"uuid"},
+    "primaryEntityId": {"type":"string","format":"uuid"},
+    "eventType": {"type":"string","minLength":1},
+    "eventSchemaVersion": {"type":"integer","minimum":1},
+    "occurredAt": {"type":["string","null"],"format":"date-time"},
+    "announcedAt": {"type":["string","null"],"format":"date-time"},
+    "detectedAt": {"type":"string","format":"date-time"},
+    "verificationState": {
+      "type":"string",
+      "enum":["OFFICIAL","CONFIRMED","RELIABLE_REPORT","DEVELOPING","RUMOR"]
+    },
+    "verificationConfidence": {"type":["number","null"],"minimum":0,"maximum":1},
+    "priorityScore": {"type":"number"},
+    "priorityBand": {
+      "type":"string",
+      "enum":["CRITICAL","HIGH","NORMAL","LOW","SUPPRESSED"]
+    },
+    "headline": {"type":"string","minLength":1},
+    "summary": {"type":["string","null"]},
+    "structuredData": {"type":"object"},
+    "status": {
+      "type":"string",
+      "enum":["ACTIVE","SUPERSEDED","RETRACTED","SUPPRESSED","NEEDS_REVIEW"]
+    },
+    "supersedesEventId": {"type":["string","null"],"format":"uuid"},
+    "classifierVersion": {"type":"string"},
+    "evidence": {
+      "type":"array",
+      "minItems":1,
+      "items": {
+        "type":"object",
+        "additionalProperties":false,
+        "required":["rawItemId","role","sourceUrl"],
+        "properties": {
+          "rawItemId":{"type":"string","format":"uuid"},
+          "claimId":{"type":["string","null"],"format":"uuid"},
+          "role":{"type":"string","enum":["PRIMARY","CORROBORATING","CONFLICTING","REPEAT"]},
+          "sourceUrl":{"type":"string","format":"uri"},
+          "sourceName":{"type":["string","null"]},
+          "publishedAt":{"type":["string","null"],"format":"date-time"}
+        }
+      }
+    }
+  }
+}

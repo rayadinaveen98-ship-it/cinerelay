@@ -1,0 +1,56 @@
+{
+  "version": 1,
+  "events": [
+    {"code":"PROJECT_ANNOUNCED","family":"project","importance":"high"},
+    {"code":"TITLE_ANNOUNCED","family":"project","importance":"high"},
+    {"code":"TITLE_CHANGED","family":"project","importance":"high"},
+    {"code":"SEQUEL_OR_SPINOFF_ANNOUNCED","family":"project","importance":"high"},
+    {"code":"SEASON_RENEWED","family":"project","importance":"high"},
+    {"code":"PROJECT_ON_HOLD","family":"project","importance":"high"},
+    {"code":"PROJECT_CANCELLED","family":"project","importance":"critical"},
+
+    {"code":"CAST_ANNOUNCED","family":"people","importance":"normal"},
+    {"code":"CREW_ANNOUNCED","family":"people","importance":"normal"},
+    {"code":"CAST_EXIT_REPORTED","family":"people","importance":"high"},
+    {"code":"CREW_EXIT_REPORTED","family":"people","importance":"high"},
+
+    {"code":"PRODUCTION_LAUNCHED","family":"production","importance":"high"},
+    {"code":"SHOOT_STARTED","family":"production","importance":"high"},
+    {"code":"SHOOT_SCHEDULE_UPDATE","family":"production","importance":"normal"},
+    {"code":"SHOOT_WRAPPED","family":"production","importance":"high"},
+    {"code":"BTS_RELEASED","family":"production","importance":"normal"},
+    {"code":"MAKING_VIDEO_RELEASED","family":"production","importance":"normal"},
+
+    {"code":"FIRST_LOOK_RELEASED","family":"marketing","importance":"high"},
+    {"code":"POSTER_RELEASED","family":"marketing","importance":"normal"},
+    {"code":"GLIMPSE_RELEASED","family":"video","importance":"high"},
+    {"code":"TEASER_ANNOUNCED","family":"video","importance":"high"},
+    {"code":"TEASER_RELEASED","family":"video","importance":"high"},
+    {"code":"TRAILER_ANNOUNCED","family":"video","importance":"high"},
+    {"code":"TRAILER_RELEASED","family":"video","importance":"critical"},
+    {"code":"PROMO_RELEASED","family":"video","importance":"normal"},
+
+    {"code":"SONG_ANNOUNCED","family":"music","importance":"normal"},
+    {"code":"SONG_RELEASED","family":"music","importance":"high"},
+    {"code":"ALBUM_UPDATE","family":"music","importance":"normal"},
+
+    {"code":"INTERVIEW_RELEASED","family":"publicity","importance":"normal"},
+    {"code":"PRESS_MEET_ANNOUNCED","family":"publicity","importance":"normal"},
+    {"code":"PRESS_MEET_STARTED_OR_RELEASED","family":"publicity","importance":"normal"},
+    {"code":"PRE_RELEASE_EVENT_ANNOUNCED","family":"publicity","importance":"high"},
+    {"code":"PRE_RELEASE_EVENT_STARTED_OR_RELEASED","family":"publicity","importance":"high"},
+    {"code":"PREMIERE_OR_SCREENING_ANNOUNCED","family":"publicity","importance":"normal"},
+
+    {"code":"THEATRICAL_DATE_ANNOUNCED","family":"release","importance":"critical"},
+    {"code":"THEATRICAL_DATE_CHANGED","family":"release","importance":"critical"},
+    {"code":"THEATRICAL_RELEASED","family":"release","importance":"high"},
+    {"code":"OTT_PLATFORM_ANNOUNCED","family":"release","importance":"high"},
+    {"code":"OTT_DATE_ANNOUNCED","family":"release","importance":"critical"},
+    {"code":"OTT_DATE_CHANGED","family":"release","importance":"critical"},
+    {"code":"OTT_RELEASED","family":"release","importance":"high"},
+    {"code":"DELAY_OR_POSTPONEMENT","family":"release","importance":"critical"},
+
+    {"code":"CERTIFICATION_UPDATED","family":"metadata","importance":"normal"},
+    {"code":"RUNTIME_UPDATED","family":"metadata","importance":"normal"}
+  ]
+}

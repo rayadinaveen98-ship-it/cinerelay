@@ -1,0 +1,42 @@
+# OS / editors
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.iml
+
+# Node / web
+node_modules/
+.pnpm-store/
+dist/
+coverage/
+.vite/
+.env
+.env.*
+!.env.example
+
+# Supabase local
+.supabase/
+supabase/.branches/
+supabase/.temp/
+
+# Android / Gradle
+.gradle/
+**/build/
+local.properties
+captures/
+.externalNativeBuild/
+.cxx/
+*.apk
+*.aab
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# Secrets / credentials
+*.jks
+*.keystore
+service-account*.json
+firebase-admin*.json
