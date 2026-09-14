@@ -49,7 +49,32 @@ jobs:
         run: deno check --config supabase/functions/youtube-source-admin/deno.json supabase/functions/youtube-source-admin/index.ts
       - name: Type-check youtube-maintenance-worker
         run: deno check --config supabase/functions/youtube-maintenance-worker/deno.json supabase/functions/youtube-maintenance-worker/index.ts
-      - name: Upload verified Edge deployment bundle
+      - name: Build deployment-native Edge bundles
+        shell: bash
+        run: |
+          set -euo pipefail
+          functions=(
+            youtube-websub
+            youtube-source-admin
+            youtube-subscription-admin
+            youtube-enrichment-worker
+            process-raw-item-worker
+            youtube-fallback-worker
+            youtube-maintenance-worker
+          )
+          for fn in "${functions[@]}"; do
+            mkdir -p ".edge-deploy/${fn}"
+            npx --yes esbuild@0.25.9 "supabase/functions/${fn}/index.ts" \
+              --bundle \
+              --format=esm \
+              --platform=neutral \
+              --target=es2022 \
+              --minify \
+              --external:@supabase/supabase-js \
+              --outfile=".edge-deploy/${fn}/index.js"
+            cp "supabase/functions/${fn}/deno.json" ".edge-deploy/${fn}/deno.json"
+          done
+      - name: Upload verified Edge source bundle
         uses: actions/upload-artifact@v4
         with:
           name: cinerelay-edge-bundle
@@ -57,6 +82,13 @@ jobs:
             supabase/functions
             packages/domain/dist
             packages/youtube-connector/dist
+          if-no-files-found: error
+          retention-days: 7
+      - name: Upload deployment-native Edge bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: cinerelay-edge-deploy-bundle
+          path: .edge-deploy
           if-no-files-found: error
           retention-days: 7
 
