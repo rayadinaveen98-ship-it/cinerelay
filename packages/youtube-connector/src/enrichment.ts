@@ -1,4 +1,24 @@
-import { sha256Hex, youtubeWatchUrl, type YouTubeVideoSnapshot } from './index.js';
+import { sha256Hex, youtubeWatchUrl } from './index.js';
+
+// Self-contained structural type for the emitted declaration graph used by Deno.
+// Keep this aligned with the public YouTubeVideoSnapshot contract in index.ts.
+type VideoSnapshotShape = {
+  videoId: string;
+  channelId: string;
+  title: string;
+  description: string;
+  publishedAt?: string;
+  liveBroadcastContent?: string;
+  duration?: string;
+  privacyStatus?: string;
+  embeddable?: boolean;
+  license?: string;
+  thumbnailUrl?: string;
+  scheduledStartTime?: string;
+  actualStartTime?: string;
+  actualEndTime?: string;
+  concurrentViewers?: string;
+};
 
 function stableValue(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(stableValue);
@@ -11,11 +31,11 @@ export function stableJson(value: unknown): string {
   return JSON.stringify(stableValue(value));
 }
 
-export async function videoSnapshotFingerprint(snapshot: YouTubeVideoSnapshot): Promise<string> {
+export async function videoSnapshotFingerprint(snapshot: VideoSnapshotShape): Promise<string> {
   return sha256Hex(stableJson(snapshot));
 }
 
-export async function projectVideoSnapshotToRawItem(snapshot: YouTubeVideoSnapshot): Promise<{
+export async function projectVideoSnapshotToRawItem(snapshot: VideoSnapshotShape): Promise<{
   platformItemId: string;
   canonicalUrl: string;
   publishedAt: string | null;
