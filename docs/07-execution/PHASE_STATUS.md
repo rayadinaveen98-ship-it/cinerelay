@@ -4,154 +4,134 @@ Date: 2026-09-14
 
 ## Current status
 
-**Phase 0 — Product Foundation: COMPLETE (baseline v0.1)**  
+**Phase 0 — Product Foundation: COMPLETE**  
 **Phase 1 — Intelligence Core Skeleton: COMPLETE + merged to `main`**  
-**Phase 2 — YouTube Production Connector: IMPLEMENTATION COMPLETE / HOSTED PILOT ACTIVE / FINAL LIVE PUSH + RENEWAL EVIDENCE PENDING**  
-**Phase 3 — Internal Web Intelligence Console: BLOCKED until Phase-2 exit gates pass**
+**Phase 2 — YouTube Production Connector: IMPLEMENTATION COMPLETE / HOSTED PILOT ACTIVE / ONE FINAL LIVE PUSH GATE PENDING**  
+**Phase 3 — Internal Web Intelligence Console: BLOCKED until Phase-2 Gate A passes and PR #2 merges**
 
-CineRelay is no longer only a specification or local intelligence prototype. A dedicated hosted Supabase backend is active, four Tier-A official YouTube sources are subscribed, recurring workers run unattended, real YouTube items have passed through the intelligence pipeline, and a real canonical cinema event has been produced.
+CineRelay now has a real hosted backend, unattended recurring workers, official YouTube ingestion, bounded fallback recovery, canonical intelligence processing, production source health, and a production-proven zero-gap WebSub renewal lifecycle.
 
-## Locked product baseline
+## Phase 2 branch
 
-CineRelay remains:
-
-- official-source-first;
-- event-first, not article-first;
-- India-first for rollout but global in domain design;
-- evidence-backed and deduplicated;
-- free-first for infrastructure;
-- one shared backend for future web + native Android clients;
-- designed so AI is assistive and replaceable rather than a source of truth.
-
-The frozen foundation is under `docs/00-foundation` through `docs/06-roadmap`.
-
-## Phase 0 — COMPLETE
-
-The repository contains the product charter, locked decisions, market positioning, source strategy, system architecture, engine contracts, canonical data model, design philosophy, free-first stack/cost rules, verification contract, test strategy, roadmap and Definition of Done.
-
-## Phase 1 — COMPLETE
-
-Phase 1 established and CI-verified:
-
-- monorepo/tooling boundaries;
-- Supabase/Postgres schema;
-- entities + aliases;
-- sources + identities + health;
-- raw items + revisions;
-- jobs;
-- entity-resolution results;
-- claims/evidence;
-- canonical events/evidence;
-- deterministic normalize -> resolve -> classify -> verify -> dedupe pipeline;
-- benchmark/contract CI.
-
-Phase 1 is merged to `main` at the intelligence-core baseline.
-
-## Phase 2 — CURRENT ACTIVE PHASE
-
-Working branch: `phase-2/youtube-connector`  
-Draft PR: `#2`
-
-Implemented and hosted:
-
-- YouTube channel/source registration;
-- WebSub subscribe/challenge/unsubscribe/renewal lifecycle;
-- generation-specific callback/HMAC credentials;
-- targeted YouTube Data API enrichment;
-- raw-item revision persistence;
-- uploads-playlist safety fallback;
-- quota accounting + reserve guards;
-- scoped entity resolution;
-- deterministic event classification;
-- canonical event/evidence dedupe;
-- source health;
-- maintenance worker;
-- Vault-backed hosted scheduler;
-- recurring enrichment, raw processing, maintenance and fallback workers;
-- eight active Edge Functions;
-- PostgreSQL-17 migration/test parity and DB lint.
-
-Current hosted project:
-
-- project: `CineRelay`
+- branch: `phase-2/youtube-connector`
+- draft PR: `#2`
+- hosted project: `CineRelay`
 - Supabase ref: `dnqaejljfzwhsainpdxb`
 - region: `ap-south-1`
-- recurring infrastructure cost currently: **₹0/month**
+- recurring infrastructure cost: **₹0/month**
 
-Current pilot channels:
+## Pilot sources
 
 1. Mythri Movie Makers
 2. Sithara Entertainments
 3. Haarika & Hassine Creations
 4. Geetha Arts
 
-## Real hosted evidence already proven
+Geetha Arts is now on a verified generation-2 WebSub lease. The other three remain on generation 1.
 
-### Canonical intelligence canary
+## Production evidence already proven
 
-A real Mythri Movie Makers upload (`rfP-ArN8nds`) was enriched, resolved to **Family Pack** at `0.98`, classified as `PROJECT_ANNOUNCED`, verified `OFFICIAL`, marked `HIGH`, attached to primary evidence, and deduplicated to exactly one canonical event.
+### Canonical intelligence
 
-### Real fallback safety incident
+Mythri Movie Makers video `rfP-ArN8nds`:
 
-Three Geetha Arts uploads published after the generation-1 WebSub lease became active were not observed through the accepted WebSub receipt path. CineRelay's uploads-playlist fallback recovered all three and the normal enrichment + raw-processing workers completed successfully.
+- resolved to **Family Pack** at `0.98`;
+- classified `PROJECT_ANNOUNCED`;
+- verification `OFFICIAL`;
+- priority `HIGH`;
+- primary evidence attached;
+- replay deduped to exactly one canonical event.
 
-This incident proved the safety path while exposing two issues before merge:
+### Real fallback safety
 
-1. callback rejection diagnostics were too quiet;
-2. quiet channels were being incorrectly treated as WebSub-stale.
+Three Geetha Arts uploads published after subscription verification were not observed through accepted WebSub delivery. The uploads-playlist fallback recovered all three with no bounded-window gap; enrichment and raw processing completed successfully and the resolver did not invent entity matches.
 
-Both were fixed. Hosted `youtube-websub` and `youtube-fallback-worker` are now version 8, deployed from the exact artifact produced by green CI run **#115**.
+### Source-health ownership hardening
 
-Current source-health expectation:
+A production regression showed successful enrichment could accidentally erase a WebSub delivery failure from the shared source-health row.
 
-- Geetha Arts: `DEGRADED / WEBSUB_MISSED_DELIVERY` until a successful real push proves recovery;
-- Mythri Movie Makers: `HEALTHY`;
-- Sithara Entertainments: `HEALTHY`;
-- Haarika & Hassine Creations: `HEALTHY`.
+Fixed with atomic `record_youtube_enrichment_success(...)` behavior:
 
-See:
+- enrichment can clear only enrichment-owned failures;
+- WebSub/fallback/subscription failures remain authoritative;
+- `WEBSUB_MISSED_DELIVERY` is cleared only by a successful real WebSub delivery.
 
-- `docs/07-execution/PHASE2_STATUS.md`
-- `docs/07-execution/PHASE2_HOSTED_PILOT_WATCH.md`
-- `docs/07-execution/PHASE2_PILOT_INCIDENT_2026-09-14.md`
+Hosted `youtube-enrichment-worker` is now v8.
 
-## Current quality gate
+### Gate B — zero-gap renewal: PASS
 
-Latest verified incident-hardening CI baseline:
+On 2026-09-14, Geetha Arts was intentionally made renewal-due during incident recovery and the normal production maintenance path executed a real renewal through Google's hub.
 
-- **13/13** intelligence benchmarks;
-- **13/13** YouTube connector canaries;
-- **12/12** planning/enrichment/fallback canaries;
-- all **8** Edge Functions type-check;
-- deployment-native Edge bundle builds;
-- clean PostgreSQL-17 migration startup;
-- **36 pgTAP assertions**;
-- DB lint: no schema errors.
+Observed:
 
-## Phase-2 exit gates still required
+- maintenance HTTP `200`;
+- renewal due `1`;
+- renewed `1`;
+- failures `0`;
+- generation 2 requested `14:13:03.525049 UTC`;
+- generation 2 verified `14:13:05.490 UTC`;
+- generation 2 became `ACTIVE`;
+- generation 1 became `SUPERSEDED` only after replacement verification;
+- no usable-lease gap occurred.
 
-Phase 2 must remain open until both are observed in production:
+This was an incident-driven early renewal rather than the naturally scheduled September 22 tick, but the zero-gap generation replacement property is now production-proven.
 
-### A. Natural valid WebSub push
+See `docs/07-execution/PHASE2_GATE_B_RENEWAL_PROOF_2026-09-14.md`.
 
-A genuinely new post-version-8 official upload must arrive through WebSub, produce an accepted receipt and flow automatically through enrichment/intelligence. A fallback-only discovery does not pass this gate.
+## Current quality baseline
 
-If the callback rejects/ignores the next delivery, the new version-8 persisted diagnostic must identify the precise failure before the gate can pass.
+Health-ownership repair baseline:
 
-### B. Real zero-gap lease renewal
+- branch head: `2eb955f4071743e6d3477739715e234255f8a2dc`
+- CineRelay CI `#122`: PASS
+- 13/13 intelligence benchmarks
+- 13/13 YouTube connector canaries
+- 12/12 planning/enrichment/fallback canaries
+- all 8 Edge Functions type-check
+- deployment-native bundle generation
+- fresh PostgreSQL-17 migration startup
+- **40 pgTAP tests / PASS**
+- DB lint: no schema errors
 
-A real generation-2 renewal must be requested, verified and activated while generation 1 remains usable until superseded.
+## Current hosted incident state
 
-Current expected renewal eligibility is approximately `2026-09-22 11:04 UTC`; current generation-1 expiry is approximately `2026-09-24 11:04 UTC`.
+Geetha Arts remains correctly:
+
+- `DEGRADED`
+- `WEBSUB_MISSED_DELIVERY`
+- `last_websub_at = null`
+- `consecutive_websub_events = 0`
+
+Lease renewal success did not erase the separate delivery failure, which is the intended behavior.
+
+## Only remaining Phase-2 exit gate
+
+### Gate A — accepted natural WebSub delivery
+
+A genuinely new upload must:
+
+1. arrive through the hardened WebSub callback;
+2. produce an accepted `YOUTUBE_WEBSUB` receipt;
+3. enqueue targeted enrichment automatically;
+4. persist raw item + revision;
+5. complete downstream intelligence processing;
+6. preserve truthful entity resolution;
+7. produce exactly one canonical event/evidence row when the content maps to a supported event;
+8. record provider-receipt-to-canonical latency;
+9. be discovered by WebSub before fallback.
+
+A fallback-only discovery does not pass this gate.
+
+If the next callback is rejected or ignored, v8 diagnostic receipts must be used to identify the exact failure rather than guessing.
 
 ## Next phase
 
-**Phase 3 — Internal Web Intelligence Console** begins only after both Phase-2 gates pass and PR #2 is merged.
+**Phase 3 — Internal Web Intelligence Console** starts only after Gate A passes and PR #2 is merged.
 
 Planned Phase-3 scope remains:
 
 - authentication;
-- Live feed;
+- live feed;
 - event detail + evidence;
 - title timeline;
 - source registry;
@@ -161,6 +141,14 @@ Planned Phase-3 scope remains:
 - filters/search;
 - benchmark diagnostics.
 
-Do not begin broad Android UI, X/Instagram ingestion, mass source onboarding or broad scraping before the Phase-2 production gate closes.
+Do not begin broad Android UI, X/Instagram ingestion, mass source onboarding, or broad scraping before Phase 2 closes.
+
+## Authoritative Phase-2 docs
+
+- `docs/07-execution/PHASE2_STATUS.md`
+- `docs/07-execution/PHASE2_HOSTED_PILOT_WATCH.md`
+- `docs/07-execution/PHASE2_PILOT_INCIDENT_2026-09-14.md`
+- `docs/07-execution/PHASE2_GATE_B_RENEWAL_PROOF_2026-09-14.md`
+- `docs/07-execution/PHASE2_YOUTUBE_OPERATIONS.md`
 
 _Last updated: 2026-09-14_
