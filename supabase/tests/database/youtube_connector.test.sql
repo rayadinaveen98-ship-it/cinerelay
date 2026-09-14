@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(23);
+select plan(27);
 
 select has_table('public', 'connector_subscriptions', 'connector_subscriptions exists');
 select has_table('public', 'youtube_channel_state', 'youtube_channel_state exists');
@@ -192,6 +192,49 @@ select results_eq(
   array['OFFICIAL'::text],
   'stronger official evidence upgrades canonical verification state'
 );
+
+select lives_ok(
+  $$select public.record_youtube_enrichment_success(
+    '30000000-0000-4000-8000-000000000001',
+    '2026-09-14T13:50:00Z'::timestamptz,
+    '2026-09-14T13:45:00Z'::timestamptz
+  )$$,
+  'successful enrichment records freshness without clearing another worker health signal'
+);
+
+select results_eq(
+  $$select health_state || ':' || coalesce(last_error_code, '') from public.source_health where source_identity_id = '30000000-0000-4000-8000-000000000001'$$,
+  array['DEGRADED:WEBSUB_MISSED_DELIVERY'::text],
+  'successful enrichment preserves missed WebSub degradation'
+);
+
+update public.source_health
+set health_state = 'DEGRADED',
+    last_error_code = 'ENRICHMENT_FAILED',
+    last_error_message = 'transient enrichment failure',
+    consecutive_failures = 1
+where source_identity_id = '30000000-0000-4000-8000-000000000001';
+
+select lives_ok(
+  $$select public.record_youtube_enrichment_success(
+    '30000000-0000-4000-8000-000000000001',
+    '2026-09-14T13:55:00Z'::timestamptz,
+    '2026-09-14T13:45:00Z'::timestamptz
+  )$$,
+  'successful enrichment can clear an enrichment-owned failure'
+);
+
+select results_eq(
+  $$select health_state || ':' || coalesce(last_error_code, '') || ':' || consecutive_failures::text from public.source_health where source_identity_id = '30000000-0000-4000-8000-000000000001'$$,
+  array['HEALTHY::0'::text],
+  'successful enrichment clears only its own failure state'
+);
+
+update public.source_health
+set health_state = 'DEGRADED',
+    last_error_code = 'WEBSUB_MISSED_DELIVERY',
+    last_error_message = 'Fallback recovered an upload that WebSub missed'
+where source_identity_id = '30000000-0000-4000-8000-000000000001';
 
 select lives_ok(
   $$select public.record_youtube_websub_delivery(
