@@ -32,13 +32,24 @@ Hosted lease times observed on 2026-09-14:
 
 The maintenance worker runs every 10 minutes, so a due renewal should be requested shortly after `renew_after` becomes eligible.
 
+## Current live incident state
+
+Three post-subscription Geetha Arts uploads were recovered by the uploads-playlist fallback with no prior WebSub receipt. They are documented in `PHASE2_PILOT_INCIDENT_2026-09-14.md`.
+
+Current health expectation:
+
+- Geetha Arts: `DEGRADED / WEBSUB_MISSED_DELIVERY` until a successful WebSub push proves recovery;
+- the other three pilot channels: `HEALTHY` unless a real miss/error is observed.
+
+`youtube-websub` and `youtube-fallback-worker` are now hosted version 8. The callback persists minimal `REJECTED` / `IGNORED` diagnostics after a valid callback token resolves, so the next real upload can distinguish a missing hub POST from a callback-level rejection.
+
 ## Exit gate A — natural signed WebSub upload
 
-A pass requires a genuinely new upload published after the subscription was established, delivered by the WebSub hub rather than manually replayed or discovered only by fallback.
+A pass requires a genuinely new upload published after the subscription was established, delivered by the WebSub hub rather than manually replayed or discovered first by fallback.
 
 Evidence required for one pilot upload:
 
-1. a new `connector_receipts` row for provider `YOUTUBE_WEBSUB`;
+1. a new accepted `connector_receipts` row for provider `YOUTUBE_WEBSUB`;
 2. signed callback accepted and receipt status progresses successfully;
 3. `YOUTUBE_ENRICH_VIDEO` job created from the WebSub notification;
 4. targeted `videos.list` enrichment succeeds;
@@ -49,7 +60,9 @@ Evidence required for one pilot upload:
 9. repeated evidence/retries do not create duplicate canonical feed events;
 10. provider-delivery-to-canonical-event latency is recorded.
 
-A fallback-only discovery does **not** satisfy the WebSub push exit gate, although it still proves safety recovery.
+A fallback-only discovery does **not** satisfy the WebSub push exit gate, although it proves safety recovery.
+
+If the next callback is rejected/ignored, version 8 should persist a diagnostic receipt. That diagnostic is evidence for investigation, but it does not satisfy Exit Gate A.
 
 ## Exit gate B — zero-gap lease renewal
 
@@ -87,7 +100,7 @@ where cs.provider = 'YOUTUBE_WEBSUB'
 order by s.display_name, cs.generation desc;
 ```
 
-### 2. Latest real WebSub receipts
+### 2. Latest real WebSub receipts and diagnostics
 
 ```sql
 select
@@ -97,7 +110,8 @@ select
   cr.status,
   cr.received_at,
   cr.processed_at,
-  cr.error_message
+  cr.error_message,
+  cr.metadata
 from public.connector_receipts cr
 join public.source_identities si on si.id = cr.source_identity_id
 join public.sources s on s.id = si.source_id
@@ -105,6 +119,14 @@ where cr.provider = 'YOUTUBE_WEBSUB'
 order by cr.received_at desc
 limit 50;
 ```
+
+Interpretation:
+
+- normal video external key + `QUEUED`/processed progression = accepted WebSub path;
+- `diagnostic:rejected:*` = callback token resolved but the payload/signature/Atom validation was rejected;
+- `diagnostic:ignored:*` = callback token and signature path reached parsing but no matching accepted channel entry was queued.
+
+Do not treat diagnostic rows as successful push delivery.
 
 ### 3. Recent ingestion jobs
 
@@ -115,7 +137,7 @@ select
   state,
   attempt_count,
   created_at,
-  available_at,
+  run_after,
   completed_at,
   last_error,
   payload
@@ -191,8 +213,6 @@ limit 50;
 
 ### 7. Duplicate-event guard
 
-For a candidate event, compare its `dedupe_key` and count matching rows:
-
 ```sql
 select dedupe_key, count(*)
 from public.events
@@ -225,6 +245,13 @@ left join public.youtube_channel_state ycs on ycs.source_identity_id = si.id
 where si.platform = 'YOUTUBE'
 order by s.display_name;
 ```
+
+Health interpretation relevant to the pilot:
+
+- `HEALTHY`: no proven connector failure;
+- `WEBSUB_MISSED_DELIVERY`: fallback recovered at least one upload that WebSub had not surfaced; this should persist until a real successful WebSub delivery clears it;
+- `FALLBACK_WINDOW_GAP`: previous known upload fell outside the bounded latest-50 safety window;
+- quiet channel + `last_websub_at is null` is **not by itself a failure**.
 
 ### 9. Cron execution health
 
@@ -264,11 +291,15 @@ For the natural WebSub canary, record at minimum:
 
 - `connector_receipts.received_at`
 - `raw_items.created_at`
-- `events.detected_at`
+- `events.detected_at` when a canonical event is produced
 
-Primary metric:
+Primary metric for a meaningful classified event:
 
 `canonical_event_latency = events.detected_at - connector_receipts.received_at`
+
+For an item that is correctly ignored/unresolved and produces no event, also record:
+
+`raw_ingest_latency = raw_items.created_at - connector_receipts.received_at`
 
 The Phase-0 target for push-capable Tier-A sources is p50 < 2 minutes and p95 < 5 minutes after provider notification availability. One canary cannot establish a percentile distribution, but it can verify that the architecture is within the intended order of magnitude.
 
@@ -278,20 +309,23 @@ Investigate immediately if any of the following occurs:
 
 - WebSub receipt is accepted but no enrichment job appears;
 - WebSub receipt remains unprocessed after the minute worker cadence;
-- a new upload is found by fallback but no prior WebSub receipt exists;
+- a new upload is found by fallback but no prior accepted WebSub receipt exists;
+- a `diagnostic:rejected:*` or `diagnostic:ignored:*` receipt appears;
 - any job reaches `DEAD_LETTER`;
-- source health becomes `AUTH_REQUIRED`, `PARSER_BROKEN`, `BUDGET_EXHAUSTED`, or remains `DEGRADED` unexpectedly;
+- source health becomes `AUTH_REQUIRED`, `PARSER_BROKEN`, `BUDGET_EXHAUSTED`, or remains unexpectedly degraded;
 - duplicate `dedupe_key` rows appear in `events`;
 - generation 1 expires before generation 2 becomes active;
 - repeated maintenance cycles create multiple simultaneous renewal generations.
 
+`DEGRADED / WEBSUB_MISSED_DELIVERY` is currently expected for Geetha Arts because a real miss has already been proven; it should not be manually cleared. A later accepted WebSub push should clear it through `record_youtube_websub_delivery`.
+
 ## Phase-2 completion rule
 
-Do not merge PR #2 merely because the implementation and hosted scheduler are green.
+Do not merge PR #2 merely because the implementation, fallback recovery and hosted scheduler are green.
 
 Phase 2 can be marked production-verified only after both:
 
-- Exit gate A: one natural signed WebSub upload is observed end to end; and
+- Exit gate A: one natural valid signed WebSub upload is observed end to end; and
 - Exit gate B: one real zero-gap WebSub lease renewal is observed.
 
 Until then the correct state is:
