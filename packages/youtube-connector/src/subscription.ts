@@ -2,11 +2,14 @@ import {
   buildWebSubRequest,
   deriveWebSubCredential,
   sha256Hex,
-  type WebSubMode,
 } from './index.js';
 
+// Keep this declaration self-contained. Deno type-checks the compiled Edge Function
+// graph and must not depend on a type-only export erased from index.js at runtime.
+type SubscriptionWebSubMode = 'subscribe' | 'unsubscribe';
+
 export type SubscriptionPlan = {
-  mode: WebSubMode;
+  mode: SubscriptionWebSubMode;
   generation: number;
   state: 'PENDING' | 'RENEWING' | 'UNSUBSCRIBING';
   callbackUrl: string;
