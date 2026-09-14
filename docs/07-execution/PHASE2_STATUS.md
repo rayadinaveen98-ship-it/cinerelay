@@ -4,9 +4,9 @@ Date: 2026-09-14
 
 ## Overall state
 
-**Phase 2: IMPLEMENTATION ACTIVE**
+**Phase 2: IMPLEMENTATION COMPLETE / HOSTED PILOT PENDING**
 
-The production connector code path is substantially implemented locally/CI-first. Phase 2 is **not yet production-verified** because the hosted WebSub canary pilot has not been provisioned or observed.
+The production YouTube connector is complete at the repository, migration, local-database, CI and Edge-Function type-check layers. Phase 2 is **not yet production-verified** because the dedicated hosted CineRelay Supabase environment and real-channel WebSub canary evidence have not yet been provisioned/observed.
 
 ## Completed implementation slices
 
@@ -39,13 +39,14 @@ The production connector code path is substantially implemented locally/CI-first
 - idempotent subscribe/renew/unsubscribe behavior;
 - duplicate in-flight renewal prevention;
 - verification timeout detection;
-- lease-expiry detection.
+- lease-expiry detection;
+- WebSub-specific health recovery after a replacement lease verifies.
 
 ### P2.4 Targeted enrichment — COMPLETE
 
 - batched `videos.list` enrichment;
 - quota reserve guard;
-- quota ledger;
+- quota ledger using the YouTube Pacific-time day;
 - unavailable-video handling;
 - revision-safe raw-item persistence;
 - meaningful-change fingerprinting;
@@ -70,6 +71,7 @@ The production connector code path is substantially implemented locally/CI-first
 - no historical flood when establishing a baseline;
 - missed uploads recovered oldest-first;
 - fallback window gaps surfaced as source-health degradation;
+- WebSub delivery streak reset when fallback proves missed delivery;
 - healthy/degraded adaptive next-check intervals;
 - quota accounting and reserve protection.
 
@@ -81,13 +83,18 @@ The production connector code path is substantially implemented locally/CI-first
 - re-registration updates the existing graph rather than creating duplicates;
 - candidate scope replace operation validates all requested entities;
 - source disable path;
-- optional idempotent WebSub subscribe after registration.
+- optional idempotent WebSub subscribe after registration;
+- primary-key conflict targets avoid PL/pgSQL output-variable ambiguity.
 
-### P2.8 Runtime gateway policy — COMPLETE
+### P2.8 Runtime gateway and database-access policy — COMPLETE
 
 - WebSub callback explicitly permits provider access without a user JWT;
 - internal functions explicitly use independent internal-key authentication;
-- function gateway behavior is version-controlled in `supabase/config.toml`.
+- function gateway behavior is version-controlled in `supabase/config.toml`;
+- Phase-2 Data API objects are explicitly available to `service_role`;
+- `anon` and `authenticated` receive no Phase-2 internal table/queue-RPC access;
+- RLS remains enabled on internal tables;
+- local Supabase database target is PostgreSQL 17 to match new hosted-project parity.
 
 ### P2.9 Maintenance worker — COMPLETE
 
@@ -98,20 +105,20 @@ The production connector code path is substantially implemented locally/CI-first
 - visible source-health degradation;
 - renewal calls delegated through the same idempotent subscription-admin path.
 
-### P2.10 CI / test hardening — ACTIVE
+### P2.10 CI / test hardening — COMPLETE
 
-Implemented:
+Current merge gate includes:
+
 - strict TypeScript compilation;
 - Phase-1 intelligence benchmark retained;
 - YouTube connector/planning/fallback canaries;
-- Deno type-checks for every current Edge Function;
-- clean local Supabase rebuild;
-- pgTAP connector invariants;
-- pgTAP source-registration idempotency tests;
+- Deno type-checks for all seven current Edge Functions;
+- clean PostgreSQL 17 Supabase migration startup;
+- **25 pgTAP database assertions** covering connector behavior, unresolved resolution, idempotent queueing, canonical-event dedupe/evidence, transactional source registration and server-only Data API privileges;
 - Postgres `db lint --level error` gate;
 - duplicate branch/PR workflow runs removed.
 
-The latest-head CI must be green before the implementation slice is considered merge-ready.
+The hosting-parity hardening run is green across all three CI jobs.
 
 ## Current Edge Functions
 
@@ -125,13 +132,13 @@ The latest-head CI must be green before the implementation slice is considered m
 
 ## Current recurring cost
 
-**₹0/month during local/CI development.**
+**₹0/month during repository/local/CI implementation.**
 
-No paid X reads, hosted CineRelay Supabase project, or other paid ingestion service has been introduced by this phase implementation.
+No dedicated hosted CineRelay Supabase project, paid X reads, or other paid ingestion service has been created by Phase 2 so far.
 
-## Hosted pilot — still required
+## Hosted pilot — next milestone
 
-A hosted project is intentionally deferred until the code/CI implementation gate is green.
+The repository implementation gate is complete. The next milestone is a dedicated hosted CineRelay environment followed by a deliberately small 3–5-channel canary pilot.
 
 Pilot sequence is defined in `PHASE2_YOUTUBE_OPERATIONS.md`.
 
@@ -147,9 +154,23 @@ Required evidence before Phase 2 can be marked fully complete:
 - source-health states are observable;
 - latency and quota usage are measured.
 
+## Hosted prerequisites
+
+Before the pilot can run:
+
+1. provision a dedicated CineRelay Supabase project in the explicitly selected Supabase organization;
+2. configure `CINERELAY_WEBSUB_MASTER_SECRET`;
+3. configure `CINERELAY_INTERNAL_ADMIN_SECRET`;
+4. configure a restricted `YOUTUBE_API_KEY` with YouTube Data API v3 enabled;
+5. apply the committed migrations and deploy the seven Edge Functions;
+6. configure the bounded worker schedules;
+7. seed only the small title/entity scope needed for the canary channels.
+
+No existing Movie Newsroom or FrameByNavin Creator OS project should be repurposed implicitly.
+
 ## Do not start yet
 
-Until the Phase-2 code gate and hosted canary evidence are complete, do not jump ahead to:
+Until the hosted canary evidence is complete, do not jump ahead to:
 
 - polished internal web console;
 - large 25–50 channel onboarding;
