@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(15);
+select plan(21);
 
 select has_table('public', 'connector_subscriptions', 'connector_subscriptions exists');
 select has_table('public', 'youtube_channel_state', 'youtube_channel_state exists');
@@ -169,6 +169,44 @@ select results_eq(
   $$select verification_state from public.events where dedupe_key = 'test:example-film:trailer'$$,
   array['OFFICIAL'::text],
   'stronger official evidence upgrades canonical verification state'
+);
+
+select ok(
+  has_table_privilege('service_role', 'public.raw_items', 'SELECT'),
+  'service_role can read internal raw items through the Data API'
+);
+
+select ok(
+  has_table_privilege('service_role', 'public.raw_items', 'INSERT'),
+  'service_role can persist internal raw items through the Data API'
+);
+
+select ok(
+  has_table_privilege('service_role', 'public.connector_quota_usage', 'INSERT'),
+  'service_role can append connector quota usage'
+);
+
+select ok(
+  has_function_privilege(
+    'service_role',
+    to_regprocedure('public.enqueue_job(text,text,jsonb,integer,timestamp with time zone)'),
+    'EXECUTE'
+  ),
+  'service_role can invoke internal queue RPCs'
+);
+
+select ok(
+  not has_table_privilege('anon', 'public.raw_items', 'SELECT'),
+  'anonymous clients cannot read internal raw items'
+);
+
+select ok(
+  not has_function_privilege(
+    'authenticated',
+    to_regprocedure('public.enqueue_job(text,text,jsonb,integer,timestamp with time zone)'),
+    'EXECUTE'
+  ),
+  'authenticated clients cannot invoke internal queue RPCs'
 );
 
 select * from finish();
