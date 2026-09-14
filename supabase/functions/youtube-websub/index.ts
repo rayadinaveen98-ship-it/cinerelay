@@ -46,6 +46,36 @@ async function channelForSource(sourceIdentityId: string) {
   return data;
 }
 
+async function recordDiagnosticReceipt(input: {
+  sourceIdentityId: string;
+  generation: number;
+  payloadSha256: string;
+  status: 'REJECTED' | 'IGNORED';
+  reason: string;
+  request: Request;
+  notificationCount?: number;
+}): Promise<void> {
+  const externalKey = `diagnostic:${input.status.toLowerCase()}:${input.generation}:${input.payloadSha256}`;
+  const { error } = await supabase.from('connector_receipts').upsert({
+    provider: YOUTUBE_WEBSUB_PROVIDER,
+    source_identity_id: input.sourceIdentityId,
+    external_key: externalKey,
+    payload_sha256: input.payloadSha256,
+    processed_at: new Date().toISOString(),
+    status: input.status,
+    error_message: input.reason,
+    metadata: {
+      reason: input.reason,
+      generation: input.generation,
+      contentType: input.request.headers.get('content-type'),
+      contentLength: input.request.headers.get('content-length'),
+      signaturePresent: Boolean(input.request.headers.get('x-hub-signature')),
+      ...(input.notificationCount === undefined ? {} : { notificationCount: input.notificationCount }),
+    },
+  }, { onConflict: 'provider,external_key', ignoreDuplicates: true });
+  if (error) console.warn('youtube-websub diagnostic receipt failure', error);
+}
+
 async function handleVerification(requestUrl: URL, subscription: Record<string, unknown>): Promise<Response> {
   let verification;
   try {
@@ -95,18 +125,38 @@ async function handleNotification(request: Request, subscription: Record<string,
   try { assertNotificationBodySize(body.byteLength); } catch { return json(413, { error: 'payload_too_large' }); }
   const sourceIdentityId = String(subscription.source_identity_id);
   const generation = Number(subscription.generation);
+  const payloadSha256 = await sha256Hex(body);
   const hubSecret = await deriveWebSubCredential(webSubMasterSecret!, sourceIdentityId, generation, 'hub-secret');
   const signatureRequired = subscription.signature_required !== false;
   if (signatureRequired && !(await verifyHubSignature(body, request.headers.get('x-hub-signature'), hubSecret))) {
+    await recordDiagnosticReceipt({
+      sourceIdentityId,
+      generation,
+      payloadSha256,
+      status: 'REJECTED',
+      reason: 'invalid_hub_signature',
+      request,
+    });
     return new Response(null, { status: 202, headers: { 'cache-control': 'no-store' } });
   }
   const xml = new TextDecoder().decode(body);
   let notifications;
-  try { notifications = parseYouTubeAtomFeed(xml); } catch { return json(400, { error: 'invalid_youtube_atom' }); }
+  try {
+    notifications = parseYouTubeAtomFeed(xml);
+  } catch {
+    await recordDiagnosticReceipt({
+      sourceIdentityId,
+      generation,
+      payloadSha256,
+      status: 'REJECTED',
+      reason: 'invalid_youtube_atom',
+      request,
+    });
+    return json(400, { error: 'invalid_youtube_atom' });
+  }
   const channel = await channelForSource(sourceIdentityId);
   if (!channel) return json(409, { error: 'youtube_channel_state_missing' });
   const expectedChannelId = String(channel.channel_id);
-  const payloadSha256 = await sha256Hex(body);
   let accepted = 0;
   let latestVideoId: string | null = null;
   for (const notification of notifications) {
@@ -127,6 +177,16 @@ async function handleNotification(request: Request, subscription: Record<string,
       p_received_at: new Date().toISOString(),
     });
     if (error) throw error;
+  } else {
+    await recordDiagnosticReceipt({
+      sourceIdentityId,
+      generation,
+      payloadSha256,
+      status: 'IGNORED',
+      reason: notifications.length === 0 ? 'no_atom_entries' : 'channel_mismatch',
+      request,
+      notificationCount: notifications.length,
+    });
   }
   return new Response(null, { status: 204, headers: { 'cache-control': 'no-store' } });
 }
