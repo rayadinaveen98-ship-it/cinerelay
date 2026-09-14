@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(21);
+select plan(23);
 
 select has_table('public', 'connector_subscriptions', 'connector_subscriptions exists');
 select has_table('public', 'youtube_channel_state', 'youtube_channel_state exists');
@@ -32,6 +32,28 @@ values (
   'UCaaaaaaaaaaaaaaaaaaaaaa',
   'https://www.youtube.com/channel/UCaaaaaaaaaaaaaaaaaaaaaa',
   'YOUTUBE_WEBSUB', 'PUSH', 'WEBHOOK', true
+);
+
+insert into public.youtube_channel_state (
+  source_identity_id, channel_id, uploads_playlist_id, consecutive_websub_events, fallback_gap_count
+)
+values (
+  '30000000-0000-4000-8000-000000000001',
+  'UCaaaaaaaaaaaaaaaaaaaaaa',
+  'UUaaaaaaaaaaaaaaaaaaaaaa',
+  0,
+  0
+);
+
+insert into public.source_health (
+  source_identity_id, health_state, consecutive_failures, last_error_code, last_error_message
+)
+values (
+  '30000000-0000-4000-8000-000000000001',
+  'DEGRADED',
+  0,
+  'WEBSUB_MISSED_DELIVERY',
+  'Fallback recovered an upload that WebSub missed'
 );
 
 insert into public.raw_items (
@@ -169,6 +191,25 @@ select results_eq(
   $$select verification_state from public.events where dedupe_key = 'test:example-film:trailer'$$,
   array['OFFICIAL'::text],
   'stronger official evidence upgrades canonical verification state'
+);
+
+select lives_ok(
+  $$select public.record_youtube_websub_delivery(
+    '30000000-0000-4000-8000-000000000001',
+    'vidAAA12345',
+    1,
+    '2026-09-14T14:00:00Z'::timestamptz
+  )$$,
+  'successful WebSub delivery updates channel state and recovers WebSub-specific health'
+);
+
+select results_eq(
+  $$select y.consecutive_websub_events::text || ':' || sh.health_state || ':' || coalesce(sh.last_error_code, '')
+    from public.youtube_channel_state y
+    join public.source_health sh using (source_identity_id)
+    where y.source_identity_id = '30000000-0000-4000-8000-000000000001'$$,
+  array['1:HEALTHY:'::text],
+  'successful WebSub delivery clears missed-delivery degradation without manual repair'
 );
 
 select ok(
