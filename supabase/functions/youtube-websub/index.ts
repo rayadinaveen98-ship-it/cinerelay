@@ -27,7 +27,7 @@ async function subscriptionForToken(token: string) {
   const tokenHash = await sha256Hex(token);
   const { data, error } = await supabase
     .from('connector_subscriptions')
-    .select('id,source_identity_id,topic_url,generation,signature_required,state')
+    .select('id,source_identity_id,topic_url,generation,signature_required,state,expires_at')
     .eq('provider', YOUTUBE_WEBSUB_PROVIDER)
     .eq('callback_token_hash', tokenHash)
     .maybeSingle();
@@ -59,19 +59,33 @@ async function handleVerification(requestUrl: URL, subscription: Record<string, 
     if (!allowedStates.has(String(subscription.state)) || verification.leaseSeconds === undefined) return new Response('Not Found', { status: 404 });
     const now = new Date();
     const times = calculateSubscriptionTimes(now, verification.leaseSeconds);
-    const { error } = await supabase.from('connector_subscriptions').update({ state: 'ACTIVE', lease_seconds: verification.leaseSeconds, verified_at: now.toISOString(), expires_at: times.expiresAt, renew_after: times.renewAfter, denied_at: null, last_error: null }).eq('id', subscriptionId);
+    const { error } = await supabase.rpc('activate_connector_subscription', {
+      p_subscription_id: subscriptionId,
+      p_lease_seconds: verification.leaseSeconds,
+      p_verified_at: now.toISOString(),
+      p_expires_at: times.expiresAt,
+      p_renew_after: times.renewAfter,
+    });
     if (error) throw error;
   } else {
-    const allowedStates = new Set(['ACTIVE', 'RENEWING', 'UNSUBSCRIBING', 'INACTIVE']);
+    const allowedStates = new Set(['ACTIVE', 'RENEWING', 'SUPERSEDED', 'UNSUBSCRIBING', 'INACTIVE']);
     if (!allowedStates.has(String(subscription.state))) return new Response('Not Found', { status: 404 });
-    const { error } = await supabase.from('connector_subscriptions').update({ state: 'INACTIVE', lease_seconds: null, expires_at: null, renew_after: null }).eq('id', subscriptionId);
+    const { error } = await supabase.rpc('deactivate_connector_subscription', { p_subscription_id: subscriptionId });
     if (error) throw error;
   }
   return buildVerificationResponse(verification.challenge);
 }
 
+function subscriptionCanReceive(subscription: Record<string, unknown>): boolean {
+  const state = String(subscription.state);
+  if (state === 'ACTIVE') return true;
+  if (state !== 'SUPERSEDED') return false;
+  const expiresAt = typeof subscription.expires_at === 'string' ? Date.parse(subscription.expires_at) : Number.NaN;
+  return Number.isFinite(expiresAt) && expiresAt > Date.now();
+}
+
 async function handleNotification(request: Request, subscription: Record<string, unknown>): Promise<Response> {
-  if (String(subscription.state) !== 'ACTIVE') return new Response(null, { status: 410 });
+  if (!subscriptionCanReceive(subscription)) return new Response(null, { status: 410 });
   const contentLength = Number(request.headers.get('content-length') ?? '0');
   if (Number.isFinite(contentLength) && contentLength > 0) {
     try { assertNotificationBodySize(contentLength); } catch { return json(413, { error: 'payload_too_large' }); }
@@ -93,6 +107,7 @@ async function handleNotification(request: Request, subscription: Record<string,
   const expectedChannelId = String(channel.channel_id);
   const payloadSha256 = await sha256Hex(body);
   let accepted = 0;
+  let latestVideoId: string | null = null;
   for (const notification of notifications) {
     if (notification.channelId !== expectedChannelId) continue;
     const externalKey = notificationExternalKey(notification);
@@ -100,11 +115,11 @@ async function handleNotification(request: Request, subscription: Record<string,
     if (receiptError) throw receiptError;
     const { error: jobError } = await supabase.rpc('enqueue_job', { p_job_type: 'YOUTUBE_ENRICH_VIDEO', p_idempotency_key: `youtube:enrich:${externalKey}`, p_payload: { sourceIdentityId, subscriptionId: String(subscription.id), notification }, p_priority: 20 });
     if (jobError) throw jobError;
+    latestVideoId = notification.videoId;
     accepted += 1;
   }
   if (accepted > 0) {
-    const latest = notifications.find((item) => item.channelId === expectedChannelId);
-    const { error } = await supabase.from('youtube_channel_state').update({ last_websub_at: new Date().toISOString(), latest_known_video_id: latest?.videoId ?? null, consecutive_websub_events: accepted }).eq('source_identity_id', sourceIdentityId);
+    const { error } = await supabase.from('youtube_channel_state').update({ last_websub_at: new Date().toISOString(), latest_known_video_id: latestVideoId, consecutive_websub_events: accepted }).eq('source_identity_id', sourceIdentityId);
     if (error) throw error;
   }
   return new Response(null, { status: 204, headers: { 'cache-control': 'no-store' } });
