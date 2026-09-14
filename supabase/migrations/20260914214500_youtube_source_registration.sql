@@ -122,7 +122,7 @@ begin
     p_uploads_playlist_id,
     case when p_uploads_playlist_id is null then null else now_value end
   )
-  on conflict (source_identity_id) do update
+  on conflict on constraint youtube_channel_state_pkey do update
     set channel_id = excluded.channel_id,
         uploads_playlist_id = excluded.uploads_playlist_id,
         next_fallback_check_at = case
@@ -154,7 +154,7 @@ begin
     'youtube-v1',
     now_value
   )
-  on conflict (source_identity_id) do update
+  on conflict on constraint source_health_pkey do update
     set health_state = 'HEALTHY',
         last_attempt_at = excluded.last_attempt_at,
         last_success_at = excluded.last_success_at,
