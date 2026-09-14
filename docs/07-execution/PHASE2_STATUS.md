@@ -6,202 +6,217 @@ Date: 2026-09-14
 
 **Phase 2: IMPLEMENTATION COMPLETE / HOSTED PILOT ACTIVE / FINAL LIVE-UPLOAD + RENEWAL EVIDENCE PENDING**
 
-The production YouTube connector is complete at the repository, migration, hosted-database, CI and Edge-Function layers. The dedicated hosted CineRelay environment exists, the first real end-to-end official YouTube canary has produced a canonical CineRelay event successfully, and recurring hosted worker execution is now automated through Supabase Cron.
+The production YouTube connector is complete at repository, database, CI, Edge Function and hosted-scheduler layers. A dedicated CineRelay Supabase environment is running, four Tier-A official YouTube sources are subscribed, a real official-video canary has produced a canonical CineRelay event, and the recurring worker path now runs unattended.
 
-Phase 2 is **not yet marked production-complete** because two final naturally time-dependent hosted-pilot observations are still required: a signed post-subscription WebSub notification from a genuinely new upload and a real lease-renewal generation proving zero-gap renewal in production.
+Phase 2 is **not yet production-complete** because two naturally time-dependent observations remain:
 
-## Completed implementation slices
+1. one genuinely new post-subscription upload must arrive through signed WebSub and traverse the full automatic pipeline;
+2. one real hosted WebSub lease renewal must prove zero-gap generation supersession.
 
-### P2.1 YouTube connector contracts — COMPLETE
+The exact watch conditions and queries are in `PHASE2_HOSTED_PILOT_WATCH.md`.
 
-- canonical channel/video ID validation;
+## Completed implementation
+
+### P2.1 YouTube contracts — COMPLETE
+
+- canonical channel/video validation;
 - WebSub hub/topic/request contracts;
 - Atom notification parser;
-- channel/video Data API normalization;
-- current quota-policy representation;
+- channel/video API normalization;
+- quota policy;
 - livestream/upcoming metadata normalization.
 
-### P2.2 WebSub security and callback — COMPLETE
+### P2.2 WebSub security + callback — COMPLETE
 
 - public callback-token routing;
-- callback tokens stored only as hashes;
-- per-generation credentials derived from a server-side master secret;
-- HMAC notification validation;
-- challenge/topic validation;
+- callback tokens stored as hashes;
+- generation-specific credentials derived from the WebSub master secret;
+- HMAC validation;
+- challenge/topic/channel validation;
 - bounded payload size;
-- expected-channel validation;
 - idempotent receipt ledger;
 - enrichment job enqueue.
 
-### P2.3 Subscription generations / zero-gap renewal — IMPLEMENTED / LIVE RENEWAL OBSERVATION PENDING
+### P2.3 Subscription generations — IMPLEMENTED / LIVE RENEWAL OBSERVATION PENDING
 
 - monotonically increasing generations;
-- old active generation remains usable while renewal verifies;
-- new verified generation atomically supersedes older generations;
-- idempotent subscribe/renew/unsubscribe behavior;
-- duplicate in-flight renewal prevention;
+- old active generation remains usable during renewal;
+- verified replacement atomically supersedes older generations;
+- duplicate in-flight renewal suppression;
 - verification timeout detection;
 - lease-expiry detection;
-- WebSub-specific health recovery after a replacement lease verifies.
+- source-health degradation/recovery.
+
+All four current generation-1 leases are `ACTIVE`.
+
+Observed hosted timing:
+
+- `renew_after`: approximately **2026-09-22 11:04 UTC**;
+- `expires_at`: approximately **2026-09-24 11:04 UTC**.
 
 ### P2.4 Targeted enrichment — COMPLETE + HOSTED VERIFIED
 
 - batched `videos.list` enrichment;
-- quota reserve guard;
-- quota ledger using the YouTube Pacific-time day;
+- quota reserve guard + quota ledger;
 - unavailable-video handling;
-- revision-safe raw-item persistence;
+- raw-item/revision persistence;
 - meaningful-change fingerprinting;
-- downstream raw-item job enqueue;
+- downstream processing queue;
 - source-health updates.
 
-A real Mythri Movie Makers YouTube video was successfully fetched through `videos.list`, persisted into `raw_items` and `raw_item_revisions`, and passed to the raw-item intelligence worker.
+A real Mythri Movie Makers video was fetched through `videos.list`, persisted to `raw_items` + `raw_item_revisions`, and passed into intelligence processing.
 
 ### P2.5 Raw item -> canonical intelligence — COMPLETE + HOSTED VERIFIED
 
-- bounded `source_entity_candidates` scope;
-- aliases loaded only for relevant candidate titles;
-- resolved/ambiguous/unresolved outcomes persisted;
-- no forced match when the resolver is uncertain;
-- existing theatrical-date context supplied to the classifier;
-- canonical event dedupe;
-- actual raw-item evidence attachment;
-- stronger evidence can promote verification state;
-- project-announcement classification supports release windows without inventing exact dates;
-- nested structured data uses stable dedupe serialization.
+- bounded `source_entity_candidates` resolution scope;
+- aliases loaded only for relevant titles;
+- `RESOLVED` / `AMBIGUOUS` / `UNRESOLVED` persisted;
+- no forced entity match;
+- theatrical-date precondition support;
+- deterministic classification;
+- canonical-event dedupe;
+- real evidence attachment;
+- stronger evidence can promote verification;
+- project-announcement release-window support;
+- recursive stable structured-data serialization for dedupe.
 
 Hosted real-world canary:
 
 - source: **Mythri Movie Makers**;
-- YouTube video: `rfP-ArN8nds`;
-- canonical entity: **Family Pack**;
-- entity resolution: `RESOLVED`, score `0.98`;
+- video: `rfP-ArN8nds`;
+- entity: **Family Pack**;
+- resolution: `RESOLVED` at `0.98`;
 - event: `PROJECT_ANNOUNCED`;
 - verification: `OFFICIAL`;
 - priority: `HIGH`;
 - headline: `Family Pack project announced`;
-- structured release window: `FESTIVAL / Sankranthi / 2027`;
+- release window: `FESTIVAL / Sankranthi / 2027`;
 - classifier: `deterministic-domain-v1.1`;
-- evidence role: `PRIMARY`;
-- canonical event count for this entity/type after replay: exactly `1`.
+- evidence: `PRIMARY`;
+- duplicate event count after replay: exactly `1` canonical event.
 
-This proves the real hosted path:
+This proves the hosted path:
 
-`official YouTube source -> fallback baseline -> targeted videos.list enrichment -> raw item -> revision -> processing queue -> bounded entity resolution -> deterministic classification -> canonical event -> primary evidence`.
+`official source -> fallback/replay discovery -> videos.list -> raw item -> revision -> processing queue -> scoped resolution -> deterministic classification -> canonical event -> primary evidence`.
 
-### P2.6 Uploads-playlist safety fallback — COMPLETE + HOSTED VERIFIED
+### P2.6 Uploads-playlist fallback — COMPLETE + HOSTED VERIFIED
 
-- targeted `playlistItems.list` helper;
-- at most latest 50 uploads per check;
-- no historical flood when establishing a baseline;
-- missed uploads recovered oldest-first;
-- fallback window gaps surfaced as source-health degradation;
-- WebSub delivery streak reset when fallback proves missed delivery;
-- healthy/degraded adaptive next-check intervals;
-- quota accounting and reserve protection.
+- latest-50 bounded `playlistItems.list` checks;
+- baseline without historical flood;
+- missing uploads recovered oldest-first;
+- gap detection + `fallback_gap_count`;
+- health degradation/recovery;
+- adaptive per-source fallback cadence;
+- quota accounting.
 
-Hosted baseline succeeded for all four pilot channels with `fallback_gap_count = 0`.
+All four pilot baselines succeeded. A later hosted fallback smoke test checked all four sources with:
+
+- recovered uploads: `0`;
+- baseline sources: `0`;
+- gap sources: `0`.
 
 ### P2.7 Source administration — COMPLETE + HOSTED VERIFIED
 
-- YouTube channel validated before registration;
-- source/source-identity/channel-state/health/title-scope registration is atomic;
-- same-channel registration serialized with a Postgres transaction advisory lock;
-- re-registration updates the existing graph rather than creating duplicates;
-- candidate scope replace operation validates all requested entities;
+- targeted channel validation before registration;
+- atomic source/source-identity/channel-state/health/scope registration;
+- advisory locking for same-channel registration;
+- idempotent re-registration;
+- validated candidate-scope replacement;
 - source disable path;
-- optional idempotent WebSub subscribe after registration;
-- primary-key conflict targets avoid PL/pgSQL output-variable ambiguity.
+- optional WebSub subscribe;
+- named conflict targets to avoid PL/pgSQL ambiguity.
 
-Four Tier-A official pilot channels are registered:
+Current Tier-A pilot sources:
 
 1. Mythri Movie Makers
 2. Sithara Entertainments
 3. Haarika & Hassine Creations
 4. Geetha Arts
 
-All four source registrations are active and their WebSub challenge/lease setup succeeded.
+### P2.8 Security and database access — COMPLETE + HOSTED VERIFIED
 
-### P2.8 Runtime gateway and database-access policy — COMPLETE + HOSTED VERIFIED
+- public WebSub callback protected by derived callback token + HMAC;
+- internal worker/admin endpoints protected by independent internal key;
+- service-role-only Phase-2 Data API access;
+- no anon/authenticated access to internal tables/queue RPCs;
+- RLS enabled on internal tables;
+- PostgreSQL 17 hosted/local parity;
+- hardened function `search_path`;
+- `pg_trgm` moved to `extensions`;
+- hardened future default privileges.
 
-- WebSub callback explicitly permits provider access without a user JWT;
-- internal functions explicitly use independent internal-key authentication;
-- function gateway behavior is version-controlled in `supabase/config.toml`;
-- Phase-2 Data API objects are explicitly available to `service_role`;
-- `anon` and `authenticated` receive no Phase-2 internal table/queue-RPC access;
-- RLS remains enabled on internal tables;
-- hosted and local database target PostgreSQL 17;
-- function `search_path` hardened;
-- `pg_trgm` moved out of `public` into `extensions`;
-- default privileges hardened for future tables/functions/sequences.
+Security advisor after scheduler work shows only expected INFO-level `RLS enabled/no policy` notices for server-only tables.
 
 ### P2.9 Maintenance worker — COMPLETE / HOSTED RENEWAL OBSERVATION PENDING
 
 - due-renewal selection;
-- recent in-flight renewal suppression;
-- stale verification timeout -> `ERROR`;
-- expired active lease -> `EXPIRED`;
-- visible source-health degradation;
-- renewal calls delegated through the same idempotent subscription-admin path.
+- in-flight renewal suppression;
+- timeout -> `ERROR`;
+- expired lease -> `EXPIRED`;
+- source-health visibility;
+- renewals delegated to the same subscription-admin contract.
+
+Hosted maintenance smoke test returned HTTP `200` with no renewal due yet and no failures.
 
 ### P2.10 CI / test hardening — COMPLETE
 
 Current merge gate includes:
 
 - strict TypeScript compilation;
-- event-contract alignment across taxonomy/domain/migration;
-- **13/13 intelligence benchmark cases** passing, including the real-world project-announcement/release-window pattern and exact-date precedence;
-- **13/13 YouTube connector canaries** passing;
-- **8/8 YouTube planning/enrichment/fallback canaries** passing;
-- Deno type-checks for all **eight** current Edge Functions;
+- event-contract alignment;
+- **13/13 intelligence benchmark cases**;
+- **13/13 YouTube connector canaries**;
+- **8/8 YouTube planning/enrichment/fallback canaries**;
+- Deno type-checks for all **eight** Edge Functions;
 - deployment-native Edge bundle generation;
-- clean PostgreSQL 17 Supabase migration startup;
-- **34 pgTAP database assertions** passing, including Vault-backed scheduler authentication;
-- Postgres `db lint --level error` gate;
-- regression coverage for the real `upsert_raw_item_revision` PL/pgSQL ambiguity found by the hosted pilot.
+- clean PostgreSQL-17 migration startup;
+- **34 pgTAP assertions**, including Vault-backed scheduler authentication;
+- `db lint --level error`;
+- regression coverage for the hosted `upsert_raw_item_revision` ambiguity found during canary testing.
 
-CI run **#102** is green across all three jobs.
+Current branch head was verified fully green in **CI run #105** across intelligence/connectors, Edge functions, and database migrations/tests/lint.
 
-### P2.11 Recurring hosted worker scheduling — COMPLETE + HOSTED VERIFIED
+### P2.11 Recurring hosted scheduling — COMPLETE + HOSTED VERIFIED
 
-Scheduling is implemented with Supabase `pg_cron + pg_net + Vault` and a dedicated `cinerelay-scheduler-dispatch` Edge Function.
+Scheduling uses:
+
+`pg_cron -> pg_net -> cinerelay-scheduler-dispatch -> internal worker`
 
 Security properties:
 
-- scheduler token is generated inside Postgres;
-- encrypted token is stored only in Supabase Vault;
-- application schema stores only the SHA-256 token hash;
-- token value is never committed to GitHub or exposed to ChatGPT;
-- dispatcher accepts only four fixed actions;
-- dispatcher forwards to existing internal workers using the already-configured internal admin secret;
-- worker URLs and request bodies cannot be supplied by callers, preventing generic dispatch/SSRF behavior;
-- `anon` and `authenticated` cannot call the scheduler-token verification RPC.
+- scheduler token generated inside Postgres;
+- encrypted value stored in Supabase Vault;
+- only SHA-256 token hash stored in application schema;
+- token value never committed or exposed in chat;
+- dispatcher has a four-action allow-list;
+- arbitrary URLs/bodies are not accepted;
+- dispatcher forwards using the existing internal admin secret;
+- anon/authenticated cannot use the scheduler verification RPC.
 
 Hosted schedules:
 
-- `cinerelay-youtube-enrichment`: every minute;
-- `cinerelay-process-raw-item`: every minute;
-- `cinerelay-youtube-maintenance`: every 10 minutes;
-- `cinerelay-youtube-fallback`: every 15 minutes.
+- enrichment: every minute;
+- raw processing: every minute;
+- maintenance: every 10 minutes;
+- fallback: every 15 minutes.
 
 Hosted proof:
 
-- direct database-originated Vault -> `pg_net` -> dispatcher -> raw-worker call returned HTTP `200`;
-- first automatic enrichment cron run succeeded;
-- first automatic raw-processing cron run succeeded;
-- their Edge dispatcher responses returned HTTP `200` with zero pending jobs, proving unattended execution works.
+- database/Vault -> `pg_net` -> dispatcher -> raw worker returned HTTP `200`;
+- automatic enrichment and raw-processing cron runs succeeded at multiple consecutive minute ticks (`12:06`, `12:07`, `12:08` UTC observed);
+- dispatcher responses returned HTTP `200`;
+- maintenance smoke dispatch returned HTTP `200`;
+- fallback smoke dispatch returned HTTP `200` and checked all four pilot channels with no gaps.
 
-Manual PowerShell is no longer required for normal worker operation.
+**Manual PowerShell is no longer required for normal operation.**
 
 ## Current hosted environment
 
-Dedicated project:
-
-- name: `CineRelay`
+- project: `CineRelay`
 - ref: `dnqaejljfzwhsainpdxb`
 - region: `ap-south-1`
 - PostgreSQL: 17.6.x
-- current recurring cost: **₹0/month**
+- recurring cost: **₹0/month**
 
 Configured runtime secrets:
 
@@ -209,13 +224,12 @@ Configured runtime secrets:
 - `CINERELAY_INTERNAL_ADMIN_SECRET`
 - `YOUTUBE_API_KEY`
 
-Database-generated scheduler material:
+Vault scheduler material:
 
-- `cinerelay_scheduler_dispatch_token` stored encrypted in Vault;
-- `cinerelay_project_url` stored in Vault for hosted cron dispatch;
-- only scheduler token hash stored in `public.scheduler_credentials`.
+- `cinerelay_scheduler_dispatch_token`
+- `cinerelay_project_url`
 
-All eight Edge Functions are deployed and active:
+Eight active Edge Functions:
 
 - `youtube-websub`
 - `youtube-source-admin`
@@ -226,46 +240,43 @@ All eight Edge Functions are deployed and active:
 - `youtube-maintenance-worker`
 - `cinerelay-scheduler-dispatch`
 
-`process-raw-item-worker` is deployed with classifier `deterministic-domain-v1.1` from the CI-produced deployment bundle.
-
 ## Hosted pilot evidence captured
 
 Completed:
 
-- dedicated hosted CineRelay project provisioned;
-- committed migrations applied;
-- security hardening applied;
-- custom runtime secrets configured outside GitHub;
-- all eight Edge Functions deployed;
-- four official Telugu-film pilot channels registered;
-- WebSub challenge/lease verification succeeded for all four;
-- `channels.list` calls succeeded;
-- fallback `playlistItems.list` baseline succeeded for all four;
-- targeted `videos.list` enrichment succeeded;
-- raw item + revision persistence succeeded;
-- real entity resolution succeeded at 0.98 confidence;
-- real canonical event created with correct verification, priority, structured release window and primary evidence;
-- replay did not create duplicate canonical event spam;
-- quota ledger remained low-cost and observable;
-- hosted persistence bug discovered by the canary, fixed, regression-tested and kept green in CI;
-- recurring worker scheduling installed and automatic minute-level worker dispatch verified.
+- dedicated hosted project;
+- migrations + security hardening;
+- runtime secrets;
+- all eight Edge Functions;
+- four official pilot sources;
+- real WebSub lease challenge verification for all four;
+- `channels.list` validation;
+- fallback baseline;
+- targeted `videos.list` enrichment;
+- raw item + revision persistence;
+- real resolution at 0.98;
+- real canonical event + primary evidence;
+- replay dedupe proof;
+- quota visibility;
+- source-health visibility;
+- hosted bug discovery/fix/regression test;
+- Vault-backed recurring scheduler;
+- repeated unattended minute-worker execution;
+- maintenance/fallback scheduler smoke tests.
 
-Still required before Phase 2 can be marked fully complete:
+Still required before Phase 2 is fully complete:
 
-1. naturally occurring signed WebSub notification from a new post-subscription upload;
-2. verify that notification flows into enrichment and canonical intelligence without manual replay;
-3. observe one real renewal generation in hosted production and confirm zero-gap supersession;
-4. record latency from provider notification availability to canonical event for the real push path.
+1. one naturally occurring signed WebSub notification from a new post-subscription upload;
+2. that upload must flow automatically through enrichment/intelligence without manual replay;
+3. real push-path latency must be recorded;
+4. one real renewal generation must verify zero-gap supersession.
 
-## Do not start yet
+## Merge rule
 
-Until the remaining hosted canary evidence is complete, do not jump ahead to:
+PR #2 remains **draft** and must not merge until both natural hosted exit gates pass.
 
-- polished internal web console;
-- large 25–50 channel onboarding;
-- Android UI;
-- Instagram/X ingestion;
-- broad web scraping;
-- expensive AI enrichment.
+Do not begin broad Phase-3 product work, mass channel onboarding, Android UI, X/Instagram ingestion, or broad scraping before that evidence is recorded.
+
+See `PHASE2_HOSTED_PILOT_WATCH.md` for the exact watch/query pack.
 
 _Last updated: 2026-09-14_
