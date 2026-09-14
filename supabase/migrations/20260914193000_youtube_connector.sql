@@ -9,7 +9,7 @@ create table if not exists public.connector_subscriptions (
   callback_token_hash text not null check (callback_token_hash ~ '^[0-9a-f]{64}$'),
   generation integer not null default 1 check (generation > 0),
   signature_required boolean not null default true,
-  state text not null default 'PENDING' check (state in ('PENDING','ACTIVE','RENEWING','UNSUBSCRIBING','INACTIVE','EXPIRED','DENIED','ERROR')),
+  state text not null default 'PENDING' check (state in ('PENDING','ACTIVE','RENEWING','SUPERSEDED','UNSUBSCRIBING','INACTIVE','EXPIRED','DENIED','ERROR')),
   lease_seconds integer check (lease_seconds is null or lease_seconds > 0),
   requested_at timestamptz not null default now(),
   verified_at timestamptz,
@@ -19,14 +19,16 @@ create table if not exists public.connector_subscriptions (
   last_error text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
-  unique (provider, source_identity_id)
+  unique (provider, source_identity_id, generation)
 );
 
 create unique index if not exists connector_subscriptions_callback_uq
   on public.connector_subscriptions (provider, callback_token_hash);
+create index if not exists connector_subscriptions_source_idx
+  on public.connector_subscriptions (provider, source_identity_id, generation desc);
 create index if not exists connector_subscriptions_renew_idx
   on public.connector_subscriptions (provider, renew_after)
-  where state in ('ACTIVE','RENEWING');
+  where state = 'ACTIVE';
 
 create table if not exists public.youtube_channel_state (
   source_identity_id uuid primary key references public.source_identities(id) on delete cascade,
@@ -98,6 +100,140 @@ begin
 end;
 $$;
 
+create or replace function public.activate_connector_subscription(
+  p_subscription_id uuid,
+  p_lease_seconds integer,
+  p_verified_at timestamptz,
+  p_expires_at timestamptz,
+  p_renew_after timestamptz
+)
+returns void
+language plpgsql
+as $$
+declare
+  subscription_provider text;
+  subscription_source uuid;
+  subscription_generation integer;
+begin
+  if p_lease_seconds <= 0 or p_expires_at <= p_verified_at or p_renew_after >= p_expires_at then
+    raise exception 'invalid subscription lease';
+  end if;
+
+  select provider, source_identity_id, generation
+    into subscription_provider, subscription_source, subscription_generation
+  from public.connector_subscriptions
+  where id = p_subscription_id
+  for update;
+
+  if subscription_provider is null then
+    raise exception 'subscription not found';
+  end if;
+
+  update public.connector_subscriptions
+  set state = 'SUPERSEDED', renew_after = null
+  where provider = subscription_provider
+    and source_identity_id = subscription_source
+    and generation < subscription_generation
+    and state in ('ACTIVE','RENEWING');
+
+  update public.connector_subscriptions
+  set state = 'ACTIVE',
+      lease_seconds = p_lease_seconds,
+      verified_at = p_verified_at,
+      expires_at = p_expires_at,
+      renew_after = p_renew_after,
+      denied_at = null,
+      last_error = null
+  where id = p_subscription_id;
+end;
+$$;
+
+create or replace function public.deactivate_connector_subscription(p_subscription_id uuid)
+returns void
+language sql
+as $$
+  update public.connector_subscriptions
+  set state = 'INACTIVE', renew_after = null
+  where id = p_subscription_id;
+$$;
+
+create or replace function public.lease_jobs(
+  p_job_type text,
+  p_worker_id text,
+  p_limit integer default 10,
+  p_lease_seconds integer default 60
+)
+returns setof public.jobs
+language plpgsql
+as $$
+begin
+  if p_limit < 1 or p_limit > 100 or p_lease_seconds < 10 or p_lease_seconds > 3600 then
+    raise exception 'invalid lease parameters';
+  end if;
+
+  return query
+  with candidates as (
+    select id
+    from public.jobs
+    where job_type = p_job_type
+      and attempt_count < max_attempts
+      and (
+        (state in ('PENDING','RETRY_WAIT') and run_after <= now())
+        or (state = 'LEASED' and lease_expires_at < now())
+      )
+    order by priority asc, created_at asc
+    for update skip locked
+    limit p_limit
+  )
+  update public.jobs j
+  set state = 'LEASED',
+      lease_owner = p_worker_id,
+      lease_expires_at = now() + make_interval(secs => p_lease_seconds),
+      attempt_count = j.attempt_count + 1
+  from candidates c
+  where j.id = c.id
+  returning j.*;
+end;
+$$;
+
+create or replace function public.complete_job(p_job_id uuid, p_worker_id text)
+returns boolean
+language plpgsql
+as $$
+declare
+  changed integer;
+begin
+  update public.jobs
+  set state = 'SUCCEEDED', completed_at = now(), lease_owner = null, lease_expires_at = null, last_error = null
+  where id = p_job_id and state = 'LEASED' and lease_owner = p_worker_id;
+  get diagnostics changed = row_count;
+  return changed = 1;
+end;
+$$;
+
+create or replace function public.fail_job(p_job_id uuid, p_worker_id text, p_error text, p_retry_after_seconds integer default 60)
+returns boolean
+language plpgsql
+as $$
+declare
+  changed integer;
+begin
+  if p_retry_after_seconds < 1 or p_retry_after_seconds > 86400 then
+    raise exception 'invalid retry delay';
+  end if;
+
+  update public.jobs
+  set state = case when attempt_count >= max_attempts then 'DEAD_LETTER' else 'RETRY_WAIT' end,
+      run_after = case when attempt_count >= max_attempts then run_after else now() + make_interval(secs => p_retry_after_seconds) end,
+      lease_owner = null,
+      lease_expires_at = null,
+      last_error = left(p_error, 4000)
+  where id = p_job_id and state = 'LEASED' and lease_owner = p_worker_id;
+  get diagnostics changed = row_count;
+  return changed = 1;
+end;
+$$;
+
 create trigger connector_subscriptions_set_updated_at
 before update on public.connector_subscriptions
 for each row execute function public.set_updated_at();
@@ -111,9 +247,10 @@ alter table public.youtube_channel_state enable row level security;
 alter table public.connector_receipts enable row level security;
 alter table public.connector_quota_usage enable row level security;
 
-comment on table public.connector_subscriptions is 'Lease-based connector subscription state. Secrets are derived from a server-side master secret and are never stored in this table.';
+comment on table public.connector_subscriptions is 'Lease-based connector subscription generations. A verified renewal supersedes older generations atomically without creating a delivery gap.';
 comment on table public.youtube_channel_state is 'YouTube-specific operational state for a registered source identity.';
 comment on table public.connector_receipts is 'Idempotent receipt ledger for externally delivered connector events.';
 comment on table public.connector_quota_usage is 'Append-only provider quota accounting used for hard budget guards.';
+comment on function public.lease_jobs is 'Atomically leases due jobs using SKIP LOCKED so multiple workers cannot process the same job concurrently.';
 
 commit;
