@@ -1,150 +1,166 @@
 # Phase Status
 
+Date: 2026-09-14
+
 ## Current status
 
 **Phase 0 — Product Foundation: COMPLETE (baseline v0.1)**  
-**Phase 1 — Intelligence Core Skeleton: COMPLETE**  
-**Phase 2 — YouTube Production Connector: NEXT**
+**Phase 1 — Intelligence Core Skeleton: COMPLETE + merged to `main`**  
+**Phase 2 — YouTube Production Connector: IMPLEMENTATION COMPLETE / HOSTED PILOT ACTIVE / FINAL LIVE PUSH + RENEWAL EVIDENCE PENDING**  
+**Phase 3 — Internal Web Intelligence Console: BLOCKED until Phase-2 exit gates pass**
 
-Date: 2026-09-14
+CineRelay is no longer only a specification or local intelligence prototype. A dedicated hosted Supabase backend is active, four Tier-A official YouTube sources are subscribed, recurring workers run unattended, real YouTube items have passed through the intelligence pipeline, and a real canonical cinema event has been produced.
 
-CineRelay now has a frozen product/architecture baseline plus a CI-verified deterministic intelligence core.
+## Locked product baseline
 
-## Locked baseline
+CineRelay remains:
 
-CineRelay is:
-- an official-source-first cinema/series intelligence system;
+- official-source-first;
 - event-first, not article-first;
 - India-first for rollout but global in domain design;
+- evidence-backed and deduplicated;
 - free-first for infrastructure;
-- built around evidence, source authority, deduplication, timeline history and visible connector health;
-- one shared backend with web + native Android clients;
-- designed so AI is assistive and replaceable.
+- one shared backend for future web + native Android clients;
+- designed so AI is assistive and replaceable rather than a source of truth.
 
-## Phase 0 artifacts
+The frozen foundation is under `docs/00-foundation` through `docs/06-roadmap`.
 
-- `README.md`
-- `START_HERE.md`
-- `docs/00-foundation/PRODUCT_CHARTER.md`
-- `docs/00-foundation/LOCKED_DECISIONS.md`
-- `docs/00-foundation/MARKET_POSITIONING.md`
-- `docs/01-sources/SOURCE_STRATEGY.md`
-- `docs/02-architecture/SYSTEM_ARCHITECTURE.md`
-- `docs/02-architecture/ENGINE_CONTRACTS.md`
-- `docs/02-architecture/DATA_MODEL.md`
-- `docs/03-product/DESIGN_PHILOSOPHY.md`
-- `docs/04-platform/TECH_STACK_AND_COSTS.md`
-- `docs/05-quality/VERIFICATION_AND_RELIABILITY.md`
-- `docs/05-quality/TEST_STRATEGY.md`
-- `docs/06-roadmap/ROADMAP.md`
-- `docs/06-roadmap/DEFINITION_OF_DONE.md`
+## Phase 0 — COMPLETE
 
-## Phase 1 completion evidence
+The repository contains the product charter, locked decisions, market positioning, source strategy, system architecture, engine contracts, canonical data model, design philosophy, free-first stack/cost rules, verification contract, test strategy, roadmap and Definition of Done.
 
-### P1.1 Repository / CI skeleton — COMPLETE
+## Phase 1 — COMPLETE
 
-Created:
-- `apps/web`
-- `apps/android`
-- `supabase`
-- `packages/contracts`
-- `packages/domain`
-- `packages/source-fixtures`
-- `tests/benchmark`
-- `.github/workflows`
+Phase 1 established and CI-verified:
 
-Strict TypeScript and repository hygiene checks are enforced in CI.
-
-### P1.2 Supabase local foundation — COMPLETE
-
-- committed `supabase/config.toml`;
-- PostgreSQL 15 local baseline;
-- `pgcrypto` + `pg_trgm` migration extensions;
-- RLS enabled by default on core backend tables;
-- local Supabase startup and database rebuild execute in GitHub Actions.
-
-### P1.3 Database schema v0 — COMPLETE
-
-Implemented:
-- entities and aliases;
-- sources and source identities;
-- source health and connector runs;
-- raw items/revisions;
+- monorepo/tooling boundaries;
+- Supabase/Postgres schema;
+- entities + aliases;
+- sources + identities + health;
+- raw items + revisions;
 - jobs;
 - entity-resolution results;
 - claims/evidence;
 - canonical events/evidence;
-- audit actions.
+- deterministic normalize -> resolve -> classify -> verify -> dedupe pipeline;
+- benchmark/contract CI.
 
-### P1.4 Versioned contracts — COMPLETE
+Phase 1 is merged to `main` at the intelligence-core baseline.
 
-Defined:
-- event taxonomy v1;
-- normalized raw item JSON Schema;
-- canonical event JSON Schema;
-- verification states;
-- priority bands;
-- source authority representation.
+## Phase 2 — CURRENT ACTIVE PHASE
 
-CI verifies taxonomy ↔ domain ↔ database migration alignment.
+Working branch: `phase-2/youtube-connector`  
+Draft PR: `#2`
 
-### P1.5 Fixture pipeline — COMPLETE
+Implemented and hosted:
 
-Executable deterministic path:
+- YouTube channel/source registration;
+- WebSub subscribe/challenge/unsubscribe/renewal lifecycle;
+- generation-specific callback/HMAC credentials;
+- targeted YouTube Data API enrichment;
+- raw-item revision persistence;
+- uploads-playlist safety fallback;
+- quota accounting + reserve guards;
+- scoped entity resolution;
+- deterministic event classification;
+- canonical event/evidence dedupe;
+- source health;
+- maintenance worker;
+- Vault-backed hosted scheduler;
+- recurring enrichment, raw processing, maintenance and fallback workers;
+- eight active Edge Functions;
+- PostgreSQL-17 migration/test parity and DB lint.
 
-`fixture → normalize → entity resolve → classify → verify → dedupe → canonical event → notification decision`
+Current hosted project:
 
-The implementation is intentionally deterministic and AI-free at this stage.
+- project: `CineRelay`
+- Supabase ref: `dnqaejljfzwhsainpdxb`
+- region: `ap-south-1`
+- recurring infrastructure cost currently: **₹0/month**
 
-### P1.6 Benchmark v0 — COMPLETE
+Current pilot channels:
 
-11 synthetic/sanitized cases currently cover:
-- trailer release;
-- teaser announcement;
-- glimpse release;
-- song release;
-- poster release;
-- shooting schedule update;
-- theatrical date announcement;
-- theatrical date change;
-- duplicate repost clustering;
-- irrelevant source upload;
-- ambiguous title handling.
+1. Mythri Movie Makers
+2. Sithara Entertainments
+3. Haarika & Hassine Creations
+4. Geetha Arts
 
-Every benchmark case is run twice to prove deterministic event IDs/dedupe keys.
+## Real hosted evidence already proven
 
-## Phase 1 exit gate result
+### Canonical intelligence canary
 
-**PASS.**
+A real Mythri Movie Makers upload (`rfP-ArN8nds`) was enriched, resolved to **Family Pack** at `0.98`, classified as `PROJECT_ANNOUNCED`, verified `OFFICIAL`, marked `HIGH`, attached to primary evidence, and deduplicated to exactly one canonical event.
 
-GitHub Actions independently proved:
-1. strict TypeScript build succeeds;
-2. repository/contract checks succeed;
-3. all 11 benchmark cases succeed;
-4. local Supabase starts successfully;
-5. a fresh database rebuild from committed migrations succeeds;
-6. the local stack shuts down cleanly.
+### Real fallback safety incident
 
-No cloud Supabase project or paid API was required.
+Three Geetha Arts uploads published after the generation-1 WebSub lease became active were not observed through the accepted WebSub receipt path. CineRelay's uploads-playlist fallback recovered all three and the normal enrichment + raw-processing workers completed successfully.
+
+This incident proved the safety path while exposing two issues before merge:
+
+1. callback rejection diagnostics were too quiet;
+2. quiet channels were being incorrectly treated as WebSub-stale.
+
+Both were fixed. Hosted `youtube-websub` and `youtube-fallback-worker` are now version 8, deployed from the exact artifact produced by green CI run **#115**.
+
+Current source-health expectation:
+
+- Geetha Arts: `DEGRADED / WEBSUB_MISSED_DELIVERY` until a successful real push proves recovery;
+- Mythri Movie Makers: `HEALTHY`;
+- Sithara Entertainments: `HEALTHY`;
+- Haarika & Hassine Creations: `HEALTHY`.
+
+See:
+
+- `docs/07-execution/PHASE2_STATUS.md`
+- `docs/07-execution/PHASE2_HOSTED_PILOT_WATCH.md`
+- `docs/07-execution/PHASE2_PILOT_INCIDENT_2026-09-14.md`
+
+## Current quality gate
+
+Latest verified incident-hardening CI baseline:
+
+- **13/13** intelligence benchmarks;
+- **13/13** YouTube connector canaries;
+- **12/12** planning/enrichment/fallback canaries;
+- all **8** Edge Functions type-check;
+- deployment-native Edge bundle builds;
+- clean PostgreSQL-17 migration startup;
+- **36 pgTAP assertions**;
+- DB lint: no schema errors.
+
+## Phase-2 exit gates still required
+
+Phase 2 must remain open until both are observed in production:
+
+### A. Natural valid WebSub push
+
+A genuinely new post-version-8 official upload must arrive through WebSub, produce an accepted receipt and flow automatically through enrichment/intelligence. A fallback-only discovery does not pass this gate.
+
+If the callback rejects/ignores the next delivery, the new version-8 persisted diagnostic must identify the precise failure before the gate can pass.
+
+### B. Real zero-gap lease renewal
+
+A real generation-2 renewal must be requested, verified and activated while generation 1 remains usable until superseded.
+
+Current expected renewal eligibility is approximately `2026-09-22 11:04 UTC`; current generation-1 expiry is approximately `2026-09-24 11:04 UTC`.
 
 ## Next phase
 
-**Phase 2 — YouTube Production Connector**
+**Phase 3 — Internal Web Intelligence Console** begins only after both Phase-2 gates pass and PR #2 is merged.
 
-Build in this order:
-1. YouTube source registration contract;
-2. WebSub callback verification and notification parser;
-3. subscription/renewal state;
-4. targeted YouTube Data API enrichment;
-5. upload revision handling;
-6. livestream/upcoming metadata handling where supported;
-7. quota accounting and hard guards;
-8. source health/retry/fallback;
-9. canary fixtures;
-10. first measured official-channel pilot.
+Planned Phase-3 scope remains:
 
-## Cost baseline
+- authentication;
+- Live feed;
+- event detail + evidence;
+- title timeline;
+- source registry;
+- source-health dashboard;
+- review/correction queue;
+- merge/suppress/reclassify tools;
+- filters/search;
+- benchmark diagnostics.
 
-Expected recurring cost entering Phase 2: **₹0/month**, assuming free-tier limits are respected and paid X automation remains disabled.
+Do not begin broad Android UI, X/Instagram ingestion, mass source onboarding or broad scraping before the Phase-2 production gate closes.
 
 _Last updated: 2026-09-14_
