@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns:yt="http://www.youtube.com/xml/schemas/2015" xmlns="http://www.w3.org/2005/Atom">
+  <entry>
+    <yt:videoId>vidAAA12345</yt:videoId>
+    <yt:channelId>UCaaaaaaaaaaaaaaaaaaaaaa</yt:channelId>
+    <title><![CDATA[Example Film Trailer — Updated Title]]></title>
+    <link href="https://www.youtube.com/watch?v=vidAAA12345" rel="alternate"/>
+    <author><name>Example Studio</name></author>
+    <published>2026-09-14T05:00:00Z</published>
+    <updated>2026-09-14T05:20:00Z</updated>
+  </entry>
+  <entry>
+    <yt:videoId>vidBBB12345</yt:videoId>
+    <yt:channelId>UCaaaaaaaaaaaaaaaaaaaaaa</yt:channelId>
+    <title>Example Film Song</title>
+    <author><name>Example Studio</name></author>
+    <published>2026-09-14T05:15:00Z</published>
+    <updated>2026-09-14T05:15:00Z</updated>
+  </entry>
+</feed>

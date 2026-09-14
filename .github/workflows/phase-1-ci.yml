@@ -1,18 +1,19 @@
-name: Phase 1 CI
+name: CineRelay CI
 
 on:
   push:
     branches:
       - main
       - "phase-1/**"
+      - "phase-2/**"
   pull_request:
 
 concurrency:
-  group: phase-1-ci-${{ github.ref }}
+  group: cinerelay-ci-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  intelligence-core:
+  intelligence-and-connectors:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
