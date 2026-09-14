@@ -2,11 +2,13 @@
 
 ## Current status
 
-**Phase 0 — Product Foundation: COMPLETE (baseline v0.1)**
+**Phase 0 — Product Foundation: COMPLETE (baseline v0.1)**  
+**Phase 1 — Intelligence Core Skeleton: COMPLETE**  
+**Phase 2 — YouTube Production Connector: NEXT**
 
 Date: 2026-09-14
 
-The first frozen product/architecture package is now established in GitHub.
+CineRelay now has a frozen product/architecture baseline plus a CI-verified deterministic intelligence core.
 
 ## Locked baseline
 
@@ -37,15 +39,13 @@ CineRelay is:
 - `docs/06-roadmap/ROADMAP.md`
 - `docs/06-roadmap/DEFINITION_OF_DONE.md`
 
-## Next phase
+## Phase 1 completion evidence
 
-**Phase 1 — Intelligence Core Skeleton**
+### P1.1 Repository / CI skeleton — COMPLETE
 
-### P1.1 Repository / CI skeleton
-
-Create:
+Created:
 - `apps/web`
-- `apps/android` placeholder/Gradle boundary as appropriate
+- `apps/android`
 - `supabase`
 - `packages/contracts`
 - `packages/domain`
@@ -53,79 +53,98 @@ Create:
 - `tests/benchmark`
 - `.github/workflows`
 
-Add formatting, linting, TypeScript strict config and baseline CI.
+Strict TypeScript and repository hygiene checks are enforced in CI.
 
-### P1.2 Supabase local foundation
+### P1.2 Supabase local foundation — COMPLETE
 
-Create:
-- local Supabase config;
-- extension migrations (`pg_trgm`, optional future `vector` behind need);
-- enum/reference taxonomy strategy;
-- RLS baseline;
-- migration CI.
+- committed `supabase/config.toml`;
+- PostgreSQL 15 local baseline;
+- `pgcrypto` + `pg_trgm` migration extensions;
+- RLS enabled by default on core backend tables;
+- local Supabase startup and database rebuild execute in GitHub Actions.
 
-### P1.3 Database schema v0
+### P1.3 Database schema v0 — COMPLETE
 
-Implement the minimum end-to-end tables:
-- entities;
-- aliases;
-- sources;
-- source identities;
-- source health;
+Implemented:
+- entities and aliases;
+- sources and source identities;
+- source health and connector runs;
 - raw items/revisions;
 - jobs;
+- entity-resolution results;
 - claims/evidence;
-- events/event evidence;
+- canonical events/evidence;
 - audit actions.
 
-### P1.4 Versioned contracts
+### P1.4 Versioned contracts — COMPLETE
 
-Define:
+Defined:
 - event taxonomy v1;
+- normalized raw item JSON Schema;
+- canonical event JSON Schema;
 - verification states;
 - priority bands;
-- source authority/access modes;
-- normalized raw item schema;
-- canonical event DTO.
+- source authority representation.
 
-### P1.5 Fixture pipeline
+CI verifies taxonomy ↔ domain ↔ database migration alignment.
 
-Build the first deterministic pipeline:
+### P1.5 Fixture pipeline — COMPLETE
 
-`fixture → ingest → normalize → entity resolve → classify → verify → dedupe → event`
+Executable deterministic path:
 
-No live social connector is required to prove this slice.
+`fixture → normalize → entity resolve → classify → verify → dedupe → canonical event → notification decision`
 
-### P1.6 Benchmark v0
+The implementation is intentionally deterministic and AI-free at this stage.
 
-Create labeled cases for:
-- trailer;
-- teaser/glimpse;
-- song;
-- poster;
-- release-date announcement/change;
-- shooting update;
-- irrelevant upload;
-- duplicate repost cluster;
-- ambiguous title.
+### P1.6 Benchmark v0 — COMPLETE
 
-### Phase 1 exit gate
+11 synthetic/sanitized cases currently cover:
+- trailer release;
+- teaser announcement;
+- glimpse release;
+- song release;
+- poster release;
+- shooting schedule update;
+- theatrical date announcement;
+- theatrical date change;
+- duplicate repost clustering;
+- irrelevant source upload;
+- ambiguous title handling.
 
-A fresh clone must be able to start local backend, apply migrations, execute the fixture pipeline and prove idempotent expected events in CI.
+Every benchmark case is run twice to prove deterministic event IDs/dedupe keys.
 
-## Deferred until later phases
+## Phase 1 exit gate result
 
-Do not start yet:
-- large polished UI;
-- Android feature screens;
-- X paid integration;
-- bulk scraping;
-- broad 500-source onboarding;
-- expensive AI;
-- public consumer product features.
+**PASS.**
+
+GitHub Actions independently proved:
+1. strict TypeScript build succeeds;
+2. repository/contract checks succeed;
+3. all 11 benchmark cases succeed;
+4. local Supabase starts successfully;
+5. a fresh database rebuild from committed migrations succeeds;
+6. the local stack shuts down cleanly.
+
+No cloud Supabase project or paid API was required.
+
+## Next phase
+
+**Phase 2 — YouTube Production Connector**
+
+Build in this order:
+1. YouTube source registration contract;
+2. WebSub callback verification and notification parser;
+3. subscription/renewal state;
+4. targeted YouTube Data API enrichment;
+5. upload revision handling;
+6. livestream/upcoming metadata handling where supported;
+7. quota accounting and hard guards;
+8. source health/retry/fallback;
+9. canary fixtures;
+10. first measured official-channel pilot.
 
 ## Cost baseline
 
-Expected recurring cost through the early prototype: **₹0/month**, assuming free-tier limits are respected and X automated reads remain disabled.
+Expected recurring cost entering Phase 2: **₹0/month**, assuming free-tier limits are respected and paid X automation remains disabled.
 
 _Last updated: 2026-09-14_
