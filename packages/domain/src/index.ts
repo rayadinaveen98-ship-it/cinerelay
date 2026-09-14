@@ -1,6 +1,7 @@
 export type ResolutionState = 'RESOLVED' | 'AMBIGUOUS' | 'UNRESOLVED';
 export type VerificationState = 'OFFICIAL' | 'CONFIRMED' | 'RELIABLE_REPORT' | 'DEVELOPING' | 'RUMOR';
 export type PriorityBand = 'CRITICAL' | 'HIGH' | 'NORMAL' | 'LOW' | 'SUPPRESSED';
+export type ReleaseWindow = { kind: 'FESTIVAL' | 'SEASON'; label: string; year: number };
 
 export type SourceDescriptor = {
   authorityTier: number;
@@ -94,6 +95,15 @@ const EVENT_PRIORITY: Record<string, PriorityBand> = {
 export const EVENT_PRIORITIES = Object.freeze({ ...EVENT_PRIORITY });
 
 const MONTHS: Record<string, number> = { january: 1, february: 2, march: 3, april: 4, may: 5, june: 6, july: 7, august: 8, september: 9, october: 10, november: 11, december: 12 };
+const RELEASE_WINDOW_PATTERNS: Array<{ label: string; kind: ReleaseWindow['kind']; patterns: string[] }> = [
+  { label: 'Sankranthi', kind: 'FESTIVAL', patterns: ['sankranthi', 'sankranti'] },
+  { label: 'Pongal', kind: 'FESTIVAL', patterns: ['pongal'] },
+  { label: 'Summer', kind: 'SEASON', patterns: ['summer'] },
+  { label: 'Christmas', kind: 'FESTIVAL', patterns: ['christmas'] },
+  { label: 'Diwali', kind: 'FESTIVAL', patterns: ['diwali', 'deepavali'] },
+  { label: 'Dussehra', kind: 'FESTIVAL', patterns: ['dussehra', 'dasara'] },
+  { label: 'Ugadi', kind: 'FESTIVAL', patterns: ['ugadi'] },
+];
 
 export function normalizeText(value: string): string {
   return value.normalize('NFKC').toLocaleLowerCase('en-US').replace(/[#_\-–—|]+/g, ' ').replace(/[^\p{L}\p{N}:/\.\s]/gu, ' ').replace(/\s+/g, ' ').trim();
@@ -135,8 +145,35 @@ export function extractEnglishDate(text: string): string | undefined {
   return `${year.toString().padStart(4, '0')}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
 }
 
+export function extractReleaseWindow(text: string): ReleaseWindow | undefined {
+  const normalized = normalizeText(text);
+  const years = [...normalized.matchAll(/\b(20\d{2})\b/g)].map((match) => ({ year: Number(match[1]), index: match.index ?? -1 }));
+  if (years.length === 0) return undefined;
+  for (const window of RELEASE_WINDOW_PATTERNS) {
+    for (const pattern of window.patterns) {
+      let patternIndex = normalized.indexOf(pattern);
+      while (patternIndex >= 0) {
+        const patternEnd = patternIndex + pattern.length;
+        const nearest = years
+          .map((year) => ({ ...year, distance: Math.abs(year.index - patternEnd) }))
+          .filter((year) => year.index >= 0 && year.distance <= 40)
+          .sort((left, right) => left.distance - right.distance)[0];
+        if (nearest) return { kind: window.kind, label: window.label, year: nearest.year };
+        patternIndex = normalized.indexOf(pattern, patternIndex + pattern.length);
+      }
+    }
+  }
+  return undefined;
+}
+
 function containsAny(text: string, phrases: string[]): boolean { return phrases.some((phrase) => text.includes(phrase)); }
 function announcedRatherThanReleased(text: string): boolean { return containsAny(text, ['tomorrow', 'coming soon', 'on ', 'at ']) && !containsAny(text, ['out now', 'now out', 'is here', 'watch now', 'released', 'premieres now']); }
+function projectAnnouncementLanguage(item: NormalizedItem, context: PipelineContext): boolean {
+  if (!context.entity) return false;
+  const text = item.normalizedText;
+  if (containsAny(text, ['officially announce', 'proud to announce', 'thrilled to announce', 'happy to announce', 'announcing our next', 'announcing the next', 'new project', 'new film', 'next film', 'next venture', 'joins forces for', 'join forces for', 'teams up for', 'team up for'])) return true;
+  return item.source.authorityTier <= 1 && containsAny(text, ['combo is back', 'combination is back']);
+}
 
 export function classifyEvent(item: NormalizedItem, context: PipelineContext): ClassifiedEvent | undefined {
   const text = item.normalizedText; const date = extractEnglishDate(`${item.title} ${item.text}`); const theatricalLanguage = containsAny(text, ['cinema', 'cinemas', 'theatre', 'theater', 'theatrical', 'worldwide release', 'releases worldwide', 'release worldwide']);
@@ -156,13 +193,29 @@ export function classifyEvent(item: NormalizedItem, context: PipelineContext): C
   if (containsAny(text, ['press meet', 'press conference'])) return { eventType: announcedRatherThanReleased(text) ? 'PRESS_MEET_ANNOUNCED' : 'PRESS_MEET_STARTED_OR_RELEASED', structuredData: {}, headline: 'Press meet update' };
   if (containsAny(text, ['interview with', 'exclusive interview', 'full interview'])) return { eventType: 'INTERVIEW_RELEASED', structuredData: {}, headline: 'Interview released' };
   if (containsAny(text, ['promo', 'promotional video'])) return { eventType: 'PROMO_RELEASED', structuredData: {}, headline: 'Promo released' };
+  if (projectAnnouncementLanguage(item, context)) {
+    const releaseWindow = extractReleaseWindow(`${item.title} ${item.text}`);
+    return {
+      eventType: 'PROJECT_ANNOUNCED',
+      structuredData: releaseWindow ? { releaseWindowKind: releaseWindow.kind, releaseWindowLabel: releaseWindow.label, releaseWindowYear: releaseWindow.year } : {},
+      headline: `${context.entity!.canonicalName} project announced`,
+    };
+  }
   return undefined;
 }
 
 export function verificationForSource(source: SourceDescriptor): VerificationState { if (source.authorityTier <= 1) return 'OFFICIAL'; if (source.authorityTier === 2) return 'CONFIRMED'; if (source.authorityTier === 3) return 'RELIABLE_REPORT'; if (source.authorityTier === 4) return 'DEVELOPING'; return 'RUMOR'; }
 export function priorityForEvent(eventType: string): PriorityBand { return EVENT_PRIORITY[eventType] ?? 'LOW'; }
 function canonicalEntityId(entity: EntityDescriptor): string { return entity.id ?? deterministicUuid(`entity:${normalizeText(entity.canonicalName)}:${entity.year ?? ''}`); }
-function dedupeKey(entity: EntityDescriptor, classified: ClassifiedEvent): string { const structured = JSON.stringify(classified.structuredData, Object.keys(classified.structuredData).sort()); return `${canonicalEntityId(entity)}|${classified.eventType}|${structured}`; }
+function stableJson(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map((entry) => stableJson(entry)).join(',')}]`;
+  if (value && typeof value === 'object') {
+    const entries = Object.entries(value as Record<string, unknown>).sort(([left], [right]) => left.localeCompare(right));
+    return `{${entries.map(([key, entry]) => `${JSON.stringify(key)}:${stableJson(entry)}`).join(',')}}`;
+  }
+  return JSON.stringify(value);
+}
+function dedupeKey(entity: EntityDescriptor, classified: ClassifiedEvent): string { return `${canonicalEntityId(entity)}|${classified.eventType}|${stableJson(classified.structuredData)}`; }
 function shouldNotify(event: CanonicalEvent): boolean { return event.status === 'ACTIVE' && event.priorityBand !== 'LOW' && event.priorityBand !== 'SUPPRESSED'; }
 
 export function processBatch(items: Array<{ item: FixtureItem; source: SourceDescriptor }>, context: PipelineContext): PipelineBatchResult {
