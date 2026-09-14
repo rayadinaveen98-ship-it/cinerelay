@@ -167,4 +167,16 @@ $$;
 comment on function public.activate_connector_subscription is 'Activates a verified lease, supersedes older generations, and synchronizes WebSub-specific source health without hiding unrelated connector failures.';
 comment on function public.record_youtube_websub_delivery is 'Atomically advances YouTube WebSub operational state and consecutive delivery count.';
 
+-- Phase 2 is an internal backend surface. Fresh Supabase projects no longer
+-- guarantee automatic Data API grants, so make the server contract explicit
+-- and keep client roles closed until a dedicated public/read API is designed.
+revoke all privileges on all tables in schema public from anon, authenticated;
+revoke all privileges on all sequences in schema public from anon, authenticated;
+revoke execute on all functions in schema public from public, anon, authenticated;
+
+grant usage on schema public to service_role;
+grant select, insert, update, delete on all tables in schema public to service_role;
+grant usage, select on all sequences in schema public to service_role;
+grant execute on all functions in schema public to service_role;
+
 commit;
