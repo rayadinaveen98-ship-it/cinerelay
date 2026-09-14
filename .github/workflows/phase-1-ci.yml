@@ -64,6 +64,10 @@ jobs:
         run: supabase start
       - name: Rebuild database from migrations
         run: supabase db reset --local
+      - name: Run pgTAP database tests
+        run: supabase test db
+      - name: Lint database functions
+        run: supabase db lint --level error
       - name: Stop local Supabase
         if: always()
         run: supabase stop --no-backup
