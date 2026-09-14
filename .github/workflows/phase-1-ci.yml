@@ -63,7 +63,7 @@ jobs:
             youtube-maintenance-worker
           )
           for fn in "${functions[@]}"; do
-            mkdir -p ".edge-deploy/${fn}"
+            mkdir -p "edge-deploy/${fn}"
             npx --yes esbuild@0.25.9 "supabase/functions/${fn}/index.ts" \
               --bundle \
               --format=esm \
@@ -71,8 +71,8 @@ jobs:
               --target=es2022 \
               --minify \
               --external:@supabase/supabase-js \
-              --outfile=".edge-deploy/${fn}/index.js"
-            cp "supabase/functions/${fn}/deno.json" ".edge-deploy/${fn}/deno.json"
+              --outfile="edge-deploy/${fn}/index.js"
+            cp "supabase/functions/${fn}/deno.json" "edge-deploy/${fn}/deno.json"
           done
       - name: Upload verified Edge source bundle
         uses: actions/upload-artifact@v4
@@ -88,7 +88,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: cinerelay-edge-deploy-bundle
-          path: .edge-deploy
+          path: edge-deploy
           if-no-files-found: error
           retention-days: 7
 
