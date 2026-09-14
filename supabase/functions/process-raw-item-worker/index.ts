@@ -13,7 +13,7 @@ if (!supabaseUrl || !serviceRoleKey || !internalSecret) throw new Error('Missing
 
 const supabase = createClient(supabaseUrl, serviceRoleKey, { auth: { persistSession: false, autoRefreshToken: false } });
 const RESOLVER_VERSION = 'source-scope-resolver-v1';
-const CLASSIFIER_VERSION = 'deterministic-domain-v1';
+const CLASSIFIER_VERSION = 'deterministic-domain-v1.1';
 
 type EntityCandidate = {
   id: string;
