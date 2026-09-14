@@ -2,7 +2,7 @@ import { createClient } from '@supabase/supabase-js';
 // @deno-types="../../../packages/youtube-connector/dist/index.d.ts"
 import { YOUTUBE_QUOTA_POLICY_V1, decideQuota } from '../../../packages/youtube-connector/dist/index.js';
 // @deno-types="../../../packages/youtube-connector/dist/fallback.d.ts"
-import { buildUploadsPlaylistItemsUrl, normalizeUploadsPlaylistItemsResponse } from '../../../packages/youtube-connector/dist/fallback.js';
+import { buildUploadsPlaylistItemsUrl, decideFallbackHealth, normalizeUploadsPlaylistItemsResponse } from '../../../packages/youtube-connector/dist/fallback.js';
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL');
 const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
@@ -13,7 +13,6 @@ if (!supabaseUrl || !serviceRoleKey || !internalSecret || !youtubeApiKey) throw 
 const supabase = createClient(supabaseUrl, serviceRoleKey, { auth: { persistSession: false, autoRefreshToken: false } });
 const HEALTHY_INTERVAL_MS = 6 * 60 * 60 * 1000;
 const DEGRADED_INTERVAL_MS = 30 * 60 * 1000;
-const WEBHOOK_STALE_MS = 24 * 60 * 60 * 1000;
 const PLAYLIST_WINDOW = 50;
 
 function authorized(request: Request): boolean {
@@ -41,12 +40,6 @@ function nextCheck(now: Date, degraded: boolean): string {
   return new Date(now.getTime() + (degraded ? DEGRADED_INTERVAL_MS : HEALTHY_INTERVAL_MS)).toISOString();
 }
 
-function isWebhookStale(lastWebSubAt: unknown, now: Date): boolean {
-  if (typeof lastWebSubAt !== 'string') return true;
-  const timestamp = Date.parse(lastWebSubAt);
-  return !Number.isFinite(timestamp) || now.getTime() - timestamp > WEBHOOK_STALE_MS;
-}
-
 Deno.serve(async (request) => {
   try {
     if (request.method !== 'POST') return new Response(null, { status: 405, headers: { allow: 'POST' } });
@@ -58,7 +51,7 @@ Deno.serve(async (request) => {
 
     const { data: dueRows, error: dueError } = await supabase
       .from('youtube_channel_state')
-      .select('source_identity_id,channel_id,uploads_playlist_id,latest_known_video_id,last_websub_at,last_fallback_check_at,next_fallback_check_at,fallback_gap_count,consecutive_websub_events')
+      .select('source_identity_id,channel_id,uploads_playlist_id,latest_known_video_id,last_fallback_check_at,next_fallback_check_at,fallback_gap_count,consecutive_websub_events')
       .not('uploads_playlist_id', 'is', null)
       .or(`next_fallback_check_at.is.null,next_fallback_check_at.lte.${nowIso}`)
       .order('next_fallback_check_at', { ascending: true, nullsFirst: true })
@@ -70,6 +63,10 @@ Deno.serve(async (request) => {
     const { data: activeSources, error: activeError } = await supabase.from('source_identities').select('id').in('id', sourceIds).eq('active', true);
     if (activeError) throw activeError;
     const activeIds = new Set((activeSources ?? []).map((row: Record<string, unknown>) => String(row.id)));
+
+    const { data: healthRows, error: healthError } = await supabase.from('source_health').select('source_identity_id,last_error_code').in('source_identity_id', sourceIds);
+    if (healthError) throw healthError;
+    const healthErrors = new Map((healthRows ?? []).map((row: Record<string, unknown>) => [String(row.source_identity_id), typeof row.last_error_code === 'string' ? row.last_error_code : null]));
 
     const { data: quotaUsed, error: quotaError } = await supabase.rpc('connector_quota_used_today', { p_provider: 'YOUTUBE_DATA_API', p_quota_bucket: 'GENERAL_READ' });
     if (quotaError) throw quotaError;
@@ -85,6 +82,7 @@ Deno.serve(async (request) => {
       const playlistId = String(row.uploads_playlist_id ?? '');
       const channelId = String(row.channel_id ?? '');
       const previousKnownVideoId = typeof row.latest_known_video_id === 'string' ? row.latest_known_video_id : undefined;
+      const existingHealthError = healthErrors.get(sourceIdentityId) ?? null;
 
       const quota = decideQuota({
         usedUnits,
@@ -132,20 +130,36 @@ Deno.serve(async (request) => {
       const uploads = normalizeUploadsPlaylistItemsResponse(await apiResponse.json());
       checked += 1;
       if (uploads.length === 0) {
-        await supabase.from('youtube_channel_state').update({ last_fallback_check_at: nowIso, next_fallback_check_at: nextCheck(now, false) }).eq('source_identity_id', sourceIdentityId);
-        await updateSourceHealth(sourceIdentityId, { health_state: 'HEALTHY', last_attempt_at: nowIso, last_success_at: nowIso, last_http_status: 200, last_error_code: null, last_error_message: null });
+        const health = decideFallbackHealth({ gapExceededWindow: false, recoveredUploadCount: 0, existingErrorCode: existingHealthError });
+        await supabase.from('youtube_channel_state').update({ last_fallback_check_at: nowIso, next_fallback_check_at: nextCheck(now, health.degraded) }).eq('source_identity_id', sourceIdentityId);
+        await updateSourceHealth(sourceIdentityId, {
+          health_state: health.degraded ? 'DEGRADED' : 'HEALTHY',
+          last_attempt_at: nowIso,
+          last_success_at: nowIso,
+          last_http_status: 200,
+          last_error_code: health.errorCode ?? null,
+          last_error_message: health.errorMessage ?? null,
+        });
         continue;
       }
 
       const newest = uploads[0]!;
       if (!previousKnownVideoId) {
         baselineSources += 1;
+        const health = decideFallbackHealth({ gapExceededWindow: false, recoveredUploadCount: 0, existingErrorCode: existingHealthError });
         await supabase.from('youtube_channel_state').update({
           latest_known_video_id: newest.videoId,
           last_fallback_check_at: nowIso,
-          next_fallback_check_at: nextCheck(now, isWebhookStale(row.last_websub_at, now)),
+          next_fallback_check_at: nextCheck(now, health.degraded),
         }).eq('source_identity_id', sourceIdentityId);
-        await updateSourceHealth(sourceIdentityId, { health_state: isWebhookStale(row.last_websub_at, now) ? 'DEGRADED' : 'HEALTHY', last_attempt_at: nowIso, last_success_at: nowIso, last_http_status: 200, last_error_code: isWebhookStale(row.last_websub_at, now) ? 'WEBSUB_STALE' : null, last_error_message: isWebhookStale(row.last_websub_at, now) ? 'No recent WebSub delivery observed; fallback baseline established' : null });
+        await updateSourceHealth(sourceIdentityId, {
+          health_state: health.degraded ? 'DEGRADED' : 'HEALTHY',
+          last_attempt_at: nowIso,
+          last_success_at: nowIso,
+          last_http_status: 200,
+          last_error_code: health.errorCode ?? null,
+          last_error_message: health.errorMessage ?? null,
+        });
         continue;
       }
 
@@ -176,23 +190,26 @@ Deno.serve(async (request) => {
       }
 
       if (gapExceededWindow) gapSources += 1;
-      const webhookStale = isWebhookStale(row.last_websub_at, now);
-      const degraded = gapExceededWindow || webhookStale;
+      const health = decideFallbackHealth({
+        gapExceededWindow,
+        recoveredUploadCount: missing.length,
+        existingErrorCode: existingHealthError,
+      });
       const channelUpdate: Record<string, unknown> = {
         latest_known_video_id: newest.videoId,
         last_fallback_check_at: nowIso,
-        next_fallback_check_at: nextCheck(now, degraded),
+        next_fallback_check_at: nextCheck(now, health.degraded),
         fallback_gap_count: Number(row.fallback_gap_count ?? 0) + (gapExceededWindow ? 1 : 0),
       };
       if (missing.length > 0) channelUpdate.consecutive_websub_events = 0;
       await supabase.from('youtube_channel_state').update(channelUpdate).eq('source_identity_id', sourceIdentityId);
       await updateSourceHealth(sourceIdentityId, {
-        health_state: degraded ? 'DEGRADED' : 'HEALTHY',
+        health_state: health.degraded ? 'DEGRADED' : 'HEALTHY',
         last_attempt_at: nowIso,
         last_success_at: nowIso,
         last_http_status: 200,
-        last_error_code: gapExceededWindow ? 'FALLBACK_WINDOW_GAP' : webhookStale ? 'WEBSUB_STALE' : null,
-        last_error_message: gapExceededWindow ? `Previous upload was outside the latest ${PLAYLIST_WINDOW} uploads` : webhookStale ? 'Fallback succeeded but WebSub delivery appears stale' : null,
+        last_error_code: health.errorCode ?? null,
+        last_error_message: health.errorMessage ?? null,
       });
     }
 
