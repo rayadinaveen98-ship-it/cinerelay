@@ -1,0 +1,19 @@
+{
+  "name": "cinerelay",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "tsc -p packages/domain/tsconfig.json",
+    "lint": "node scripts/repo-hygiene.mjs",
+    "test:contracts": "npm run build && node scripts/validate-contracts.mjs",
+    "test:benchmark": "npm run build && node tests/benchmark/run-benchmark.mjs",
+    "ci": "npm run lint && npm run test:contracts && npm run test:benchmark"
+  },
+  "devDependencies": {
+    "typescript": "5.8.3"
+  }
+}

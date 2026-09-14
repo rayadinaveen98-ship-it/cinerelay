@@ -1,0 +1,1 @@
+-- Phase 1 intentionally has no seed rows. Benchmark fixtures live outside the database.
