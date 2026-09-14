@@ -30,3 +30,9 @@ enabled = false
 
 [functions.youtube-websub]
 verify_jwt = false
+
+[functions.youtube-subscription-admin]
+verify_jwt = false
+
+[functions.youtube-enrichment-worker]
+verify_jwt = false
