@@ -119,8 +119,13 @@ async function handleNotification(request: Request, subscription: Record<string,
     latestVideoId = notification.videoId;
     accepted += 1;
   }
-  if (accepted > 0) {
-    const { error } = await supabase.from('youtube_channel_state').update({ last_websub_at: new Date().toISOString(), latest_known_video_id: latestVideoId, consecutive_websub_events: accepted }).eq('source_identity_id', sourceIdentityId);
+  if (accepted > 0 && latestVideoId) {
+    const { error } = await supabase.rpc('record_youtube_websub_delivery', {
+      p_source_identity_id: sourceIdentityId,
+      p_latest_video_id: latestVideoId,
+      p_accepted_count: accepted,
+      p_received_at: new Date().toISOString(),
+    });
     if (error) throw error;
   }
   return new Response(null, { status: 204, headers: { 'cache-control': 'no-store' } });
