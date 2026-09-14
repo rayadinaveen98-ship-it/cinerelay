@@ -121,7 +121,12 @@ Deno.serve(async (request) => {
           if (queueError) throw queueError;
         }
         const now = new Date().toISOString();
-        await setSourceHealth(item.sourceIdentityId, 'HEALTHY', { last_attempt_at: now, last_success_at: now, last_item_at: snapshot.publishedAt ?? now, consecutive_failures: 0, last_http_status: 200, last_error_code: null, last_error_message: null, parser_version: 'youtube-v1' });
+        const { error: healthError } = await supabase.rpc('record_youtube_enrichment_success', {
+          p_source_identity_id: item.sourceIdentityId,
+          p_succeeded_at: now,
+          p_item_at: snapshot.publishedAt ?? now,
+        });
+        if (healthError) throw healthError;
         await supabase.from('youtube_channel_state').update({ last_enriched_at: now, latest_known_video_id: snapshot.videoId }).eq('source_identity_id', item.sourceIdentityId);
         if (item.externalKey) await supabase.from('connector_receipts').update({ status: 'PROCESSED', processed_at: now, error_message: null }).eq('provider', 'YOUTUBE_WEBSUB').eq('external_key', item.externalKey);
         await supabase.rpc('complete_job', { p_job_id: String(item.job.id), p_worker_id: workerId });
