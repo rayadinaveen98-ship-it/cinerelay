@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+// @deno-types="../../../packages/youtube-connector/dist/index.d.ts"
 import {
   YOUTUBE_QUOTA_POLICY_V1,
   YOUTUBE_WEBSUB_HUB_URL,
@@ -7,8 +8,9 @@ import {
   buildChannelsListUrl,
   decideQuota,
   normalizeChannelsListResponse,
-} from '../../../packages/youtube-connector/src/index.ts';
-import { planSubscription, planUnsubscription } from '../../../packages/youtube-connector/src/subscription.ts';
+} from '../../../packages/youtube-connector/dist/index.js';
+// @deno-types="../../../packages/youtube-connector/dist/subscription.d.ts"
+import { planSubscription, planUnsubscription } from '../../../packages/youtube-connector/dist/subscription.js';
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL');
 const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');

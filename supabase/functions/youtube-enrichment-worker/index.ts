@@ -1,12 +1,15 @@
 import { createClient } from '@supabase/supabase-js';
-import { normalizeText } from '../../../packages/domain/src/index.ts';
+// @deno-types="../../../packages/domain/dist/index.d.ts"
+import { normalizeText } from '../../../packages/domain/dist/index.js';
+// @deno-types="../../../packages/youtube-connector/dist/index.d.ts"
 import {
   YOUTUBE_QUOTA_POLICY_V1,
   buildVideosListUrl,
   decideQuota,
   normalizeVideosListResponse,
-} from '../../../packages/youtube-connector/src/index.ts';
-import { projectVideoSnapshotToRawItem } from '../../../packages/youtube-connector/src/enrichment.ts';
+} from '../../../packages/youtube-connector/dist/index.js';
+// @deno-types="../../../packages/youtube-connector/dist/enrichment.d.ts"
+import { projectVideoSnapshotToRawItem } from '../../../packages/youtube-connector/dist/enrichment.js';
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL');
 const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');

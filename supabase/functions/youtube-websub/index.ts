@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+// @deno-types="../../../packages/youtube-connector/dist/index.d.ts"
 import {
   YOUTUBE_WEBSUB_PROVIDER,
   assertNotificationBodySize,
@@ -10,7 +11,7 @@ import {
   parseYouTubeAtomFeed,
   sha256Hex,
   verifyHubSignature,
-} from '../../../packages/youtube-connector/src/index.ts';
+} from '../../../packages/youtube-connector/dist/index.js';
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL');
 const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
