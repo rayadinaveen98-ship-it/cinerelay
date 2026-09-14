@@ -6,9 +6,9 @@ Date: 2026-09-14
 
 **Phase 2: IMPLEMENTATION COMPLETE / HOSTED PILOT ACTIVE / FINAL LIVE-UPLOAD + RENEWAL EVIDENCE PENDING**
 
-The production YouTube connector is complete at the repository, migration, hosted-database, CI and Edge-Function layers. The dedicated hosted CineRelay environment exists and the first real end-to-end official YouTube canary has produced a canonical CineRelay event successfully.
+The production YouTube connector is complete at the repository, migration, hosted-database, CI and Edge-Function layers. The dedicated hosted CineRelay environment exists, the first real end-to-end official YouTube canary has produced a canonical CineRelay event successfully, and recurring hosted worker execution is now automated through Supabase Cron.
 
-Phase 2 is **not yet marked production-complete** because two final hosted-pilot observations are still required: a naturally occurring signed post-subscription WebSub upload notification and a real lease-renewal generation proving zero-gap renewal in production.
+Phase 2 is **not yet marked production-complete** because two final naturally time-dependent hosted-pilot observations are still required: a signed post-subscription WebSub notification from a genuinely new upload and a real lease-renewal generation proving zero-gap renewal in production.
 
 ## Completed implementation slices
 
@@ -153,14 +153,45 @@ Current merge gate includes:
 - **13/13 intelligence benchmark cases** passing, including the real-world project-announcement/release-window pattern and exact-date precedence;
 - **13/13 YouTube connector canaries** passing;
 - **8/8 YouTube planning/enrichment/fallback canaries** passing;
-- Deno type-checks for all seven current Edge Functions;
+- Deno type-checks for all **eight** current Edge Functions;
 - deployment-native Edge bundle generation;
 - clean PostgreSQL 17 Supabase migration startup;
-- **27 pgTAP database assertions** passing;
+- **34 pgTAP database assertions** passing, including Vault-backed scheduler authentication;
 - Postgres `db lint --level error` gate;
 - regression coverage for the real `upsert_raw_item_revision` PL/pgSQL ambiguity found by the hosted pilot.
 
-CI run **#94** is green across all three jobs.
+CI run **#102** is green across all three jobs.
+
+### P2.11 Recurring hosted worker scheduling — COMPLETE + HOSTED VERIFIED
+
+Scheduling is implemented with Supabase `pg_cron + pg_net + Vault` and a dedicated `cinerelay-scheduler-dispatch` Edge Function.
+
+Security properties:
+
+- scheduler token is generated inside Postgres;
+- encrypted token is stored only in Supabase Vault;
+- application schema stores only the SHA-256 token hash;
+- token value is never committed to GitHub or exposed to ChatGPT;
+- dispatcher accepts only four fixed actions;
+- dispatcher forwards to existing internal workers using the already-configured internal admin secret;
+- worker URLs and request bodies cannot be supplied by callers, preventing generic dispatch/SSRF behavior;
+- `anon` and `authenticated` cannot call the scheduler-token verification RPC.
+
+Hosted schedules:
+
+- `cinerelay-youtube-enrichment`: every minute;
+- `cinerelay-process-raw-item`: every minute;
+- `cinerelay-youtube-maintenance`: every 10 minutes;
+- `cinerelay-youtube-fallback`: every 15 minutes.
+
+Hosted proof:
+
+- direct database-originated Vault -> `pg_net` -> dispatcher -> raw-worker call returned HTTP `200`;
+- first automatic enrichment cron run succeeded;
+- first automatic raw-processing cron run succeeded;
+- their Edge dispatcher responses returned HTTP `200` with zero pending jobs, proving unattended execution works.
+
+Manual PowerShell is no longer required for normal worker operation.
 
 ## Current hosted environment
 
@@ -178,7 +209,13 @@ Configured runtime secrets:
 - `CINERELAY_INTERNAL_ADMIN_SECRET`
 - `YOUTUBE_API_KEY`
 
-All seven Edge Functions are deployed and active:
+Database-generated scheduler material:
+
+- `cinerelay_scheduler_dispatch_token` stored encrypted in Vault;
+- `cinerelay_project_url` stored in Vault for hosted cron dispatch;
+- only scheduler token hash stored in `public.scheduler_credentials`.
+
+All eight Edge Functions are deployed and active:
 
 - `youtube-websub`
 - `youtube-source-admin`
@@ -187,6 +224,7 @@ All seven Edge Functions are deployed and active:
 - `process-raw-item-worker`
 - `youtube-fallback-worker`
 - `youtube-maintenance-worker`
+- `cinerelay-scheduler-dispatch`
 
 `process-raw-item-worker` is deployed with classifier `deterministic-domain-v1.1` from the CI-produced deployment bundle.
 
@@ -198,7 +236,7 @@ Completed:
 - committed migrations applied;
 - security hardening applied;
 - custom runtime secrets configured outside GitHub;
-- all seven Edge Functions deployed;
+- all eight Edge Functions deployed;
 - four official Telugu-film pilot channels registered;
 - WebSub challenge/lease verification succeeded for all four;
 - `channels.list` calls succeeded;
@@ -209,15 +247,15 @@ Completed:
 - real canonical event created with correct verification, priority, structured release window and primary evidence;
 - replay did not create duplicate canonical event spam;
 - quota ledger remained low-cost and observable;
-- hosted persistence bug discovered by the canary, fixed, regression-tested and kept green in CI.
+- hosted persistence bug discovered by the canary, fixed, regression-tested and kept green in CI;
+- recurring worker scheduling installed and automatic minute-level worker dispatch verified.
 
 Still required before Phase 2 can be marked fully complete:
 
 1. naturally occurring signed WebSub notification from a new post-subscription upload;
-2. verify that notification flows into enrichment without manual replay;
+2. verify that notification flows into enrichment and canonical intelligence without manual replay;
 3. observe one real renewal generation in hosted production and confirm zero-gap supersession;
-4. complete bounded recurring worker scheduling so hosted operation does not depend on manual PowerShell triggers;
-5. record latency from provider notification availability to canonical event for the real push path.
+4. record latency from provider notification availability to canonical event for the real push path.
 
 ## Do not start yet
 
