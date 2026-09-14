@@ -28,11 +28,28 @@ enabled = false
 [auth]
 enabled = false
 
+# YouTube WebSub cannot present a Supabase user JWT. The public callback is
+# protected by an unguessable callback token plus the hub HMAC signature.
 [functions.youtube-websub]
 verify_jwt = false
 
+# Internal connector functions use x-cinerelay-internal-key and are not user APIs.
+# Disabling gateway JWT is intentional so cron and function-to-function calls work;
+# each function rejects requests without the independent internal secret.
 [functions.youtube-subscription-admin]
 verify_jwt = false
 
 [functions.youtube-enrichment-worker]
+verify_jwt = false
+
+[functions.process-raw-item-worker]
+verify_jwt = false
+
+[functions.youtube-fallback-worker]
+verify_jwt = false
+
+[functions.youtube-source-admin]
+verify_jwt = false
+
+[functions.youtube-maintenance-worker]
 verify_jwt = false
