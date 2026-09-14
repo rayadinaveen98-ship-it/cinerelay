@@ -49,6 +49,16 @@ jobs:
         run: deno check --config supabase/functions/youtube-source-admin/deno.json supabase/functions/youtube-source-admin/index.ts
       - name: Type-check youtube-maintenance-worker
         run: deno check --config supabase/functions/youtube-maintenance-worker/deno.json supabase/functions/youtube-maintenance-worker/index.ts
+      - name: Upload verified Edge deployment bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: cinerelay-edge-bundle
+          path: |
+            supabase/functions
+            packages/domain/dist
+            packages/youtube-connector/dist
+          if-no-files-found: error
+          retention-days: 7
 
   database-migrations:
     runs-on: ubuntu-latest
