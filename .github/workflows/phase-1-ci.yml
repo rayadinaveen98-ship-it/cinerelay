@@ -58,10 +58,8 @@ jobs:
       - uses: supabase/setup-cli@v1
         with:
           version: latest
-      - name: Start local Supabase
-        run: supabase start
-      - name: Rebuild database from migrations
-        run: supabase db reset --local
+      - name: Start database and apply migrations
+        run: supabase db start
       - name: Run pgTAP database tests
         run: supabase test db
       - name: Lint database functions
