@@ -9,6 +9,7 @@ import {
 } from '../../packages/youtube-connector/dist/enrichment.js';
 import {
   buildUploadsPlaylistItemsUrl,
+  decideFallbackHealth,
   normalizeUploadsPlaylistItemsResponse,
 } from '../../packages/youtube-connector/dist/fallback.js';
 
@@ -86,4 +87,32 @@ await test('fallback helper rejects non-uploads playlist ids', async () => {
   assert.throws(() => buildUploadsPlaylistItemsUrl('PL-not-an-uploads-playlist', 'api-key', 10));
 });
 
-console.log(`\nYouTube planning/enrichment/fallback canaries: ${passed}/8 passed.`);
+await test('quiet source is not marked stale merely because no WebSub delivery has occurred', async () => {
+  assert.deepEqual(decideFallbackHealth({ gapExceededWindow: false, recoveredUploadCount: 0, existingErrorCode: null }), { degraded: false });
+});
+
+await test('fallback recovery proves a missed WebSub delivery', async () => {
+  assert.deepEqual(decideFallbackHealth({ gapExceededWindow: false, recoveredUploadCount: 1, existingErrorCode: null }), {
+    degraded: true,
+    errorCode: 'WEBSUB_MISSED_DELIVERY',
+    errorMessage: 'Fallback recovered 1 upload(s) that were not observed via WebSub',
+  });
+});
+
+await test('missed WebSub delivery stays degraded until a real push proves recovery', async () => {
+  assert.deepEqual(decideFallbackHealth({ gapExceededWindow: false, recoveredUploadCount: 0, existingErrorCode: 'WEBSUB_MISSED_DELIVERY' }), {
+    degraded: true,
+    errorCode: 'WEBSUB_MISSED_DELIVERY',
+    errorMessage: 'Awaiting a successful WebSub delivery after a recovered miss',
+  });
+});
+
+await test('bounded-window gap takes precedence over WebSub miss health', async () => {
+  assert.deepEqual(decideFallbackHealth({ gapExceededWindow: true, recoveredUploadCount: 2, existingErrorCode: 'WEBSUB_MISSED_DELIVERY' }), {
+    degraded: true,
+    errorCode: 'FALLBACK_WINDOW_GAP',
+    errorMessage: 'Previous upload was outside the bounded fallback window',
+  });
+});
+
+console.log(`\nYouTube planning/enrichment/fallback canaries: ${passed}/12 passed.`);
