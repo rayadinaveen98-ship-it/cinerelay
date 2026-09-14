@@ -58,7 +58,7 @@ Deno.serve(async (request) => {
 
     const { data: dueRows, error: dueError } = await supabase
       .from('youtube_channel_state')
-      .select('source_identity_id,channel_id,uploads_playlist_id,latest_known_video_id,last_websub_at,last_fallback_check_at,next_fallback_check_at,fallback_gap_count')
+      .select('source_identity_id,channel_id,uploads_playlist_id,latest_known_video_id,last_websub_at,last_fallback_check_at,next_fallback_check_at,fallback_gap_count,consecutive_websub_events')
       .not('uploads_playlist_id', 'is', null)
       .or(`next_fallback_check_at.is.null,next_fallback_check_at.lte.${nowIso}`)
       .order('next_fallback_check_at', { ascending: true, nullsFirst: true })
@@ -178,12 +178,14 @@ Deno.serve(async (request) => {
       if (gapExceededWindow) gapSources += 1;
       const webhookStale = isWebhookStale(row.last_websub_at, now);
       const degraded = gapExceededWindow || webhookStale;
-      await supabase.from('youtube_channel_state').update({
+      const channelUpdate: Record<string, unknown> = {
         latest_known_video_id: newest.videoId,
         last_fallback_check_at: nowIso,
         next_fallback_check_at: nextCheck(now, degraded),
         fallback_gap_count: Number(row.fallback_gap_count ?? 0) + (gapExceededWindow ? 1 : 0),
-      }).eq('source_identity_id', sourceIdentityId);
+      };
+      if (missing.length > 0) channelUpdate.consecutive_websub_events = 0;
+      await supabase.from('youtube_channel_state').update(channelUpdate).eq('source_identity_id', sourceIdentityId);
       await updateSourceHealth(sourceIdentityId, {
         health_state: degraded ? 'DEGRADED' : 'HEALTHY',
         last_attempt_at: nowIso,
