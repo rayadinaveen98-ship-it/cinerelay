@@ -8,13 +8,13 @@ values ('11000000-0000-4000-8000-000000000001', 'MOVIE', 'Registration Film', 'r
 
 select lives_ok(
   $$select * from public.register_youtube_source(
-    'UCbbbbbbbbbbbbbbbbbbbbbb',
-    'Registration Studio',
-    '@registrationstudio',
-    'UUbbbbbbbbbbbbbbbbbbbbbb',
-    1,
-    'PRODUCTION_HOUSE',
-    array['11000000-0000-4000-8000-000000000001'::uuid]
+    'UCbbbbbbbbbbbbbbbbbbbbbb'::text,
+    'Registration Studio'::text,
+    '@registrationstudio'::text,
+    'UUbbbbbbbbbbbbbbbbbbbbbb'::text,
+    1::smallint,
+    'PRODUCTION_HOUSE'::text,
+    array['11000000-0000-4000-8000-000000000001'::uuid]::uuid[]
   )$$,
   'first registration atomically creates the YouTube source graph'
 );
@@ -27,13 +27,13 @@ select results_eq(
 
 select lives_ok(
   $$select * from public.register_youtube_source(
-    'UCbbbbbbbbbbbbbbbbbbbbbb',
-    'Registration Studio Updated',
-    '@registrationstudio',
-    'UUbbbbbbbbbbbbbbbbbbbbbb',
-    1,
-    'PRODUCTION_HOUSE',
-    array['11000000-0000-4000-8000-000000000001'::uuid]
+    'UCbbbbbbbbbbbbbbbbbbbbbb'::text,
+    'Registration Studio Updated'::text,
+    '@registrationstudio'::text,
+    'UUbbbbbbbbbbbbbbbbbbbbbb'::text,
+    1::smallint,
+    'PRODUCTION_HOUSE'::text,
+    array['11000000-0000-4000-8000-000000000001'::uuid]::uuid[]
   )$$,
   're-registration safely updates the existing source graph'
 );
