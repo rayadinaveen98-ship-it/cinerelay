@@ -1,148 +1,137 @@
-# Phase 2 Pilot Incident — Repeated WebSub Delivery Misses
+# Phase 2 Pilot Incident — WebSub Delivery Miss + Recovery Hardening
 
 Date: 2026-09-14
 
 ## Summary
 
-The hosted Phase-2 pilot observed real Geetha Arts uploads published after the Tier-A YouTube WebSub subscriptions became active.
+The hosted Phase-2 pilot observed three genuinely new Geetha Arts uploads after its WebSub lease was active. None appeared through the accepted WebSub receipt path; CineRelay recovered all three through the uploads-playlist fallback and processed them successfully.
 
-Three post-subscription uploads were not observed through the WebSub receipt path. CineRelay's uploads-playlist fallback recovered all three and the normal enrichment/processing workers completed successfully. This does **not** satisfy Exit Gate A. It is valuable production evidence because it proves the fallback safety path works and exposed two observability/health-semantics issues before merge.
+The incident did **not** satisfy the natural push gate, but it proved the fallback safety path and exposed three production issues before merge:
 
-## Source and observed uploads
+1. rejected/ignored callback attempts had insufficient persisted diagnostics;
+2. quiet channels were incorrectly treated as WebSub-stale;
+3. successful enrichment could overwrite a WebSub delivery failure in the shared source-health row.
+
+All three issues are now hardened.
+
+## Affected source and uploads
 
 Source: **Geetha Arts**  
-Channel id: `UCiJfiEg1FImWsVuEu0L8X6Q`  
-Generation-1 subscription verified: approximately `2026-09-14 11:04:49 UTC`
+Channel: `UCiJfiEg1FImWsVuEu0L8X6Q`
 
-### Upload 1
+Post-subscription uploads recovered by fallback:
 
-- video id: `cYvPtLZSL5I`
-- title: `Master Telugu Movie | It's All God's Will | Chiranjeevi, Sakshi Sivanand | Deva| Suresh Krissna`
-- published: `2026-09-14 12:30:22 UTC`
-- fallback enrichment job created: approximately `2026-09-14 12:45:06 UTC`
-- raw item persisted: approximately `2026-09-14 12:46:02 UTC`
-- resolution: safely `UNRESOLVED`, score `0`
+- `cYvPtLZSL5I` — published `2026-09-14 12:30:22 UTC`
+- `DCYcSoTobwU` — published `2026-09-14 13:30:35 UTC`
+- `b98yv5Gu1r4` — published `2026-09-14 13:45:28 UTC`
 
-### Upload 2
+All three were enriched successfully. The latter two were processed automatically by the normal minute workers after a controlled fallback dispatch. No bounded latest-50 gap occurred.
 
-- video id: `DCYcSoTobwU`
-- title: `#Parugu Movie Scenes | #alluarjun #sheela #sunil #prakashraj #Jayasudha | #shortvideo #ytshorts`
-- published: `2026-09-14 13:30:35 UTC`
-- fallback enrichment job created: `2026-09-14 13:53:33 UTC`
-- enrichment completed: approximately `2026-09-14 13:54:01 UTC`
-- processing completed: approximately `2026-09-14 13:54:02 UTC`
-- resolution: safely `UNRESOLVED`, score `0`
+The resolver safely left the recovered items `UNRESOLVED` at score `0` rather than inventing a title match.
 
-### Upload 3
+## Issue 1 — callback rejection observability
 
-- video id: `b98yv5Gu1r4`
-- title: `#Parugu Movie Scenes | #alluarjun #sheela #sunil #prakashraj #Jayasudha | #shortvideo #ytshorts`
-- published: `2026-09-14 13:45:28 UTC`
-- fallback enrichment job created: `2026-09-14 13:53:33 UTC`
-- enrichment completed: approximately `2026-09-14 13:54:01 UTC`
-- processing completed: approximately `2026-09-14 13:54:02 UTC`
-- resolution: safely `UNRESOLVED`, score `0`
+Before hardening, a POST with an invalid or missing HMAC could return `202` without a persisted diagnostic trace. That made these two cases indistinguishable:
 
-No `YOUTUBE_WEBSUB` receipt existed for these uploads when they were recovered.
+- Google never delivered the callback;
+- Google delivered it but CineRelay rejected it.
 
-Uploads 2 and 3 were both published before the diagnostic WebSub callback version 8 was deployed, so they cannot distinguish between:
+The hosted callback now persists minimal `REJECTED` / `IGNORED` diagnostic receipts after a valid callback token resolves.
 
-- the Google hub never POSTing the notification; and
-- the hub POSTing but the old callback rejecting it before a diagnostic receipt was persisted.
+Stored diagnostic material is limited to operational metadata and payload hashes. Rejected payload bodies and signature values are not persisted.
 
-The next real upload under callback version 8 is therefore the first event that can resolve that ambiguity.
+Hosted `youtube-websub`: **v8**.
 
-## What worked
+## Issue 2 — quiet source falsely marked stale
 
-- all four generation-1 leases remained active;
-- fallback detected post-subscription uploads that push did not surface;
-- `YOUTUBE_ENRICH_VIDEO` jobs were enqueued with `discoveredBy = UPLOADS_PLAYLIST_FALLBACK`;
-- targeted `videos.list` enrichment succeeded;
-- raw items and revisions persisted;
-- `PROCESS_RAW_ITEM` completed successfully;
-- unresolved content stayed `UNRESOLVED` rather than being force-matched;
-- no fallback-window loss occurred (`fallback_gap_count = 0`);
-- the scheduler continued running unattended.
+The original fallback health logic treated `last_websub_at = null` as a stale push path. That is incorrect for an event-driven source: a quiet channel may legitimately send no event for an arbitrary period.
 
-The post-deploy version-8 fallback smoke dispatch returned HTTP `200` with:
+Current health rules:
 
-- `due = 1`;
-- `checked = 1`;
-- `recoveredUploads = 2`;
-- `gapSources = 0`.
+- quiet/no proven miss -> `HEALTHY`;
+- fallback recovers a new upload first -> `DEGRADED / WEBSUB_MISSED_DELIVERY`;
+- a later accepted WebSub delivery clears that WebSub-specific degradation;
+- bounded fallback-window loss -> `FALLBACK_WINDOW_GAP`.
 
-This validates the safety objective: a missed push does not silently lose a newly published official upload.
+Hosted `youtube-fallback-worker`: **v8**.
 
-## Issues exposed
+## Issue 3 — enrichment erased another subsystem's health
 
-### 1. WebSub rejection diagnostics were too quiet
+After fallback correctly set Geetha Arts to `DEGRADED / WEBSUB_MISSED_DELIVERY`, successful targeted enrichment later reset the shared source health to `HEALTHY`.
 
-Before this incident, a POST reaching the callback with an invalid/missing HMAC signature returned `202` intentionally but left no persisted diagnostic trace. The hosted watch therefore could not distinguish:
+Root cause: enrichment success treated a successful `videos.list` call as permission to clear the current source-health error regardless of which subsystem owned that error.
 
-- the hub never POSTed to CineRelay; from
-- the hub POSTed but CineRelay rejected the signature.
+Repair:
 
-The callback now records minimal `REJECTED`/`IGNORED` diagnostic receipts after a valid callback token is resolved. It stores only operational metadata such as reason, generation, content type/length, signature presence and payload hash. It does not store the rejected payload or signature value.
+- new atomic database RPC `record_youtube_enrichment_success(...)`;
+- enrichment success clears only enrichment-owned failure codes;
+- WebSub, fallback and subscription errors remain authoritative;
+- `WEBSUB_MISSED_DELIVERY` remains until a real successful WebSub delivery clears it.
 
-### 2. Quiet channels were incorrectly marked `WEBSUB_STALE`
+Hosted verification:
 
-The original fallback worker treated `last_websub_at = null` as stale. That is not valid for an event-driven feed: a channel that publishes nothing may legitimately produce no WebSub delivery for an arbitrary period.
+1. Geetha was repaired back to `DEGRADED / WEBSUB_MISSED_DELIVERY`;
+2. a successful enrichment-health canary was recorded;
+3. Geetha remained degraded with the same WebSub error afterward.
 
-Health semantics are now outcome-based:
+Hosted `youtube-enrichment-worker`: **v8**.
 
-- no new upload + no WebSub event => healthy;
-- fallback recovers a new upload that WebSub did not deliver => `DEGRADED / WEBSUB_MISSED_DELIVERY`;
-- that degradation persists until a later successful WebSub push proves recovery;
-- a bounded fallback-window loss remains `FALLBACK_WINDOW_GAP` and takes precedence.
+## Incident-driven subscription refresh
 
-A successful WebSub delivery now clears only WebSub-specific delivery degradation and restores the normal fallback cadence.
+Because generation 1 had missed three uploads, Geetha Arts was intentionally made renewal-due and the normal production maintenance path was used to refresh its live hub subscription.
 
-## Corrective deployment
+Result:
 
-Verified branch CI run **#115** passed all three jobs:
+- scheduler request id `283`;
+- maintenance HTTP `200`;
+- renewal due `1`;
+- renewed `1`;
+- renewal failures `0`;
+- generation 2 requested `2026-09-14 14:13:03.525049 UTC`;
+- generation 2 verified `2026-09-14 14:13:05.490 UTC`;
+- generation 2 became `ACTIVE`;
+- generation 1 became `SUPERSEDED` only after replacement verification.
 
-- intelligence/connectors;
-- all eight Edge Function checks + deployment bundle build;
-- clean PostgreSQL-17 migrations + **36 pgTAP assertions** + DB lint.
+This proved the zero-gap lease replacement property in production and advanced Phase-2 Gate B to **PASS**. Full evidence is in `PHASE2_GATE_B_RENEWAL_PROOF_2026-09-14.md`.
 
-The exact CI-produced deployment bundle was then deployed to the hosted CineRelay project:
+Importantly, the successful lease renewal did **not** clear Geetha's separate `WEBSUB_MISSED_DELIVERY` state. Lease verification and notification delivery are tracked as distinct facts.
 
-- `youtube-websub` -> **version 8 / ACTIVE**;
-- `youtube-fallback-worker` -> **version 8 / ACTIVE**.
+## Current state after incident hardening
 
-The hosted migration `websub_delivery_health_recovery` was applied successfully.
+Geetha Arts:
 
-## Hosted state after repair
+- active lease: generation 2
+- health: `DEGRADED`
+- error: `WEBSUB_MISSED_DELIVERY`
+- `last_websub_at = null`
+- `consecutive_websub_events = 0`
 
-- **Geetha Arts:** `DEGRADED / WEBSUB_MISSED_DELIVERY` — correct because real post-subscription uploads were recovered only by fallback.
-- **Mythri Movie Makers:** `HEALTHY` — quiet/no proven miss.
-- **Sithara Entertainments:** `HEALTHY` — quiet/no proven miss.
-- **Haarika & Hassine Creations:** `HEALTHY` — quiet/no proven miss.
+Other pilot sources remain healthy unless a real connector failure is observed.
 
-All four generation-1 leases remain `ACTIVE`.
+## CI evidence
 
-## Exit-gate consequence
+Health-ownership repair branch head:
 
-Exit Gate A remains **PENDING**.
+`2eb955f4071743e6d3477739715e234255f8a2dc`
 
-A fallback-only discovery is intentionally not accepted as proof of the push path. The next qualifying event must produce either:
+CineRelay CI `#122`: PASS.
 
-1. a valid signed WebSub receipt that continues automatically through enrichment/intelligence; or
-2. a persisted version-8 callback diagnostic that precisely identifies why the notification was rejected.
+Relevant checks:
 
-Only case 1 satisfies Exit Gate A.
+- all three CI jobs passed;
+- all 8 Edge Functions type-check;
+- fresh PostgreSQL-17 migration startup passed;
+- **40 pgTAP tests passed**;
+- DB lint reported no schema errors.
 
-Exit Gate B (real zero-gap lease renewal) also remains pending.
+The hosted enrichment v8 deployment came from the exact CI-produced deployment artifact.
 
-## Corrective implementation
+## Phase consequence
 
-Repository changes include:
+Gate B is complete.
 
-- deterministic fallback-health decision helper + canaries;
-- fallback worker health semantics based on proven misses rather than silence;
-- persisted callback rejection/ignore diagnostics;
-- database recovery behavior that clears `WEBSUB_MISSED_DELIVERY` only after a successful real push;
-- hosted data repair converting false `WEBSUB_STALE` states into correct source-specific states;
-- pgTAP coverage for successful WebSub health recovery.
+Gate A remains the only Phase-2 blocker:
 
-The Phase-2 PR must remain draft until the original two production exit gates pass.
+> A genuinely new upload must produce an accepted WebSub receipt through the hardened callback and automatically traverse CineRelay before fallback becomes its first discovery path.
+
+If the next upload is rejected or ignored, the v8 diagnostics must identify the exact callback failure before Gate A can pass.
