@@ -7,8 +7,13 @@ import {
   projectVideoSnapshotToRawItem,
   videoSnapshotFingerprint,
 } from '../../packages/youtube-connector/dist/enrichment.js';
+import {
+  buildUploadsPlaylistItemsUrl,
+  normalizeUploadsPlaylistItemsResponse,
+} from '../../packages/youtube-connector/dist/fallback.js';
 
 const channelId = 'UCaaaaaaaaaaaaaaaaaaaaaa';
+const uploadsPlaylistId = 'UUaaaaaaaaaaaaaaaaaaaaaa';
 const sourceIdentityId = '11111111-1111-4111-8111-111111111111';
 let passed = 0;
 async function test(name, fn) { await fn(); passed += 1; console.log(`PASS ${name}`); }
@@ -53,4 +58,32 @@ await test('enriched video projects into revision-safe raw-item fields', async (
   assert.equal(projection.contentFingerprint.length, 64);
 });
 
-console.log(`\nYouTube planning/enrichment canaries: ${passed}/5 passed.`);
+await test('fallback URL targets uploads playlist with bounded latest window', async () => {
+  const url = new URL(buildUploadsPlaylistItemsUrl(uploadsPlaylistId, 'api-key', 50));
+  assert.equal(url.pathname.endsWith('/playlistItems'), true);
+  assert.equal(url.searchParams.get('playlistId'), uploadsPlaylistId);
+  assert.equal(url.searchParams.get('part'), 'snippet,contentDetails');
+  assert.equal(url.searchParams.get('maxResults'), '50');
+  assert.equal(url.searchParams.get('key'), 'api-key');
+});
+
+await test('fallback response normalizes upload video ids and publication times', async () => {
+  const normalized = normalizeUploadsPlaylistItemsResponse({
+    items: [
+      {
+        snippet: { title: 'Example Trailer', resourceId: { videoId: 'vidAAA12345' } },
+        contentDetails: { videoId: 'vidAAA12345', videoPublishedAt: '2026-09-14T05:00:00Z' },
+      },
+    ],
+  });
+  assert.equal(normalized.length, 1);
+  assert.equal(normalized[0].videoId, 'vidAAA12345');
+  assert.equal(normalized[0].title, 'Example Trailer');
+  assert.equal(normalized[0].publishedAt, '2026-09-14T05:00:00.000Z');
+});
+
+await test('fallback helper rejects non-uploads playlist ids', async () => {
+  assert.throws(() => buildUploadsPlaylistItemsUrl('PL-not-an-uploads-playlist', 'api-key', 10));
+});
+
+console.log(`\nYouTube planning/enrichment/fallback canaries: ${passed}/8 passed.`);
