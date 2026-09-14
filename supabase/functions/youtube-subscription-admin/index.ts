@@ -67,12 +67,21 @@ Deno.serve(async (request) => {
     const channelId = identity.platform_identity_id;
     assertYouTubeChannelId(channelId);
 
-    const { data: subscriptions, error: subscriptionError } = await supabase.from('connector_subscriptions').select('id,generation,state').eq('provider', YOUTUBE_WEBSUB_PROVIDER).eq('source_identity_id', sourceIdentityId).order('generation', { ascending: false }).limit(20);
+    const { data: subscriptions, error: subscriptionError } = await supabase
+      .from('connector_subscriptions')
+      .select('id,generation,state,requested_at,verified_at,expires_at,renew_after')
+      .eq('provider', YOUTUBE_WEBSUB_PROVIDER)
+      .eq('source_identity_id', sourceIdentityId)
+      .order('generation', { ascending: false })
+      .limit(20);
     if (subscriptionError) throw subscriptionError;
-    const latestGeneration = Math.max(0, ...(subscriptions ?? []).map((item) => Number(item.generation)));
+    const rows = subscriptions ?? [];
+    const latestGeneration = Math.max(0, ...rows.map((item) => Number(item.generation)));
 
     if (action === 'unsubscribe') {
-      const active = (subscriptions ?? []).find((item) => item.state === 'ACTIVE') ?? (subscriptions ?? []).find((item) => item.state === 'SUPERSEDED');
+      const alreadyStopping = rows.find((item) => item.state === 'UNSUBSCRIBING');
+      if (alreadyStopping) return response(200, { action, skipped: true, reason: 'unsubscribe_already_in_flight', generation: Number(alreadyStopping.generation), state: alreadyStopping.state });
+      const active = rows.find((item) => item.state === 'ACTIVE') ?? rows.find((item) => item.state === 'SUPERSEDED');
       if (!active) return response(409, { error: 'no_active_subscription' });
       const plan = await planUnsubscription({ sourceIdentityId, channelId, generation: Number(active.generation), callbackBaseUrl, masterSecret: masterSecret! });
       const hubResponse = await fetch(plan.hubRequest.url, { method: 'POST', headers: plan.hubRequest.headers, body: plan.hubRequest.body });
@@ -80,6 +89,35 @@ Deno.serve(async (request) => {
       const { error } = await supabase.from('connector_subscriptions').update({ state: 'UNSUBSCRIBING', last_error: null }).eq('id', active.id);
       if (error) throw error;
       return response(202, { action, generation: Number(active.generation), hub: YOUTUBE_WEBSUB_HUB_URL });
+    }
+
+    if (action === 'subscribe') {
+      const existing = rows.find((item) => ['ACTIVE', 'PENDING', 'RENEWING'].includes(String(item.state)));
+      if (existing) {
+        return response(200, {
+          action,
+          skipped: true,
+          reason: 'subscription_already_present',
+          generation: Number(existing.generation),
+          state: String(existing.state),
+          expiresAt: existing.expires_at ?? null,
+        });
+      }
+    }
+
+    if (action === 'renew') {
+      const inFlight = rows.find((item) => item.state === 'PENDING' || item.state === 'RENEWING');
+      if (inFlight) {
+        return response(200, {
+          action,
+          skipped: true,
+          reason: 'renewal_already_in_flight',
+          generation: Number(inFlight.generation),
+          state: String(inFlight.state),
+        });
+      }
+      const active = rows.find((item) => item.state === 'ACTIVE');
+      if (!active) return response(409, { error: 'no_active_subscription_to_renew' });
     }
 
     const channel = await validateChannel(sourceIdentityId, channelId);
