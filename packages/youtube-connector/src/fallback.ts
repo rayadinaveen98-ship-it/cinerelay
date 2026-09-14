@@ -8,6 +8,12 @@ export type UploadsPlaylistItem = {
   publishedAt?: string;
 };
 
+export type FallbackHealthDecision = {
+  degraded: boolean;
+  errorCode?: 'FALLBACK_WINDOW_GAP' | 'WEBSUB_MISSED_DELIVERY';
+  errorMessage?: string;
+};
+
 function asRecord(value: unknown): Record<string, unknown> | undefined {
   return typeof value === 'object' && value !== null ? value as Record<string, unknown> : undefined;
 }
@@ -62,4 +68,40 @@ export function normalizeUploadsPlaylistItemsResponse(payload: unknown): Uploads
   }
 
   return result;
+}
+
+export function decideFallbackHealth(input: {
+  gapExceededWindow: boolean;
+  recoveredUploadCount: number;
+  existingErrorCode?: string | null;
+}): FallbackHealthDecision {
+  if (!Number.isSafeInteger(input.recoveredUploadCount) || input.recoveredUploadCount < 0) {
+    throw new Error('recoveredUploadCount must be a non-negative integer');
+  }
+
+  if (input.gapExceededWindow) {
+    return {
+      degraded: true,
+      errorCode: 'FALLBACK_WINDOW_GAP',
+      errorMessage: 'Previous upload was outside the bounded fallback window',
+    };
+  }
+
+  if (input.recoveredUploadCount > 0) {
+    return {
+      degraded: true,
+      errorCode: 'WEBSUB_MISSED_DELIVERY',
+      errorMessage: `Fallback recovered ${input.recoveredUploadCount} upload(s) that were not observed via WebSub`,
+    };
+  }
+
+  if (input.existingErrorCode === 'WEBSUB_MISSED_DELIVERY') {
+    return {
+      degraded: true,
+      errorCode: 'WEBSUB_MISSED_DELIVERY',
+      errorMessage: 'Awaiting a successful WebSub delivery after a recovered miss',
+    };
+  }
+
+  return { degraded: false };
 }
