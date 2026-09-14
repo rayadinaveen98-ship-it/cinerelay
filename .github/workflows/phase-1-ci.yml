@@ -43,6 +43,8 @@ jobs:
         run: deno check --config supabase/functions/youtube-subscription-admin/deno.json supabase/functions/youtube-subscription-admin/index.ts
       - name: Type-check youtube-enrichment-worker
         run: deno check --config supabase/functions/youtube-enrichment-worker/deno.json supabase/functions/youtube-enrichment-worker/index.ts
+      - name: Type-check process-raw-item-worker
+        run: deno check --config supabase/functions/process-raw-item-worker/deno.json supabase/functions/process-raw-item-worker/index.ts
 
   database-migrations:
     runs-on: ubuntu-latest
