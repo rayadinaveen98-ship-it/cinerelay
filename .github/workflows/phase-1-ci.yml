@@ -49,6 +49,8 @@ jobs:
         run: deno check --config supabase/functions/youtube-fallback-worker/deno.json supabase/functions/youtube-fallback-worker/index.ts
       - name: Type-check youtube-source-admin
         run: deno check --config supabase/functions/youtube-source-admin/deno.json supabase/functions/youtube-source-admin/index.ts
+      - name: Type-check youtube-maintenance-worker
+        run: deno check --config supabase/functions/youtube-maintenance-worker/deno.json supabase/functions/youtube-maintenance-worker/index.ts
 
   database-migrations:
     runs-on: ubuntu-latest
