@@ -99,91 +99,27 @@ async function register(body: {
   const channel = await validateChannel(channelId);
   const displayName = (body.displayName ?? channel.title).trim();
   if (!displayName || displayName.length > 300) throw new Error('Invalid displayName');
+  const entityIds = [...new Set((body.entityIds ?? []).filter(Boolean))];
 
-  const { data: existingIdentity, error: existingError } = await supabase
-    .from('source_identities')
-    .select('id,source_id,active')
-    .eq('platform', 'YOUTUBE')
-    .eq('platform_identity_id', channelId)
-    .maybeSingle();
-  if (existingError) throw existingError;
+  const { data: registrationData, error: registrationError } = await supabase.rpc('register_youtube_source', {
+    p_channel_id: channelId,
+    p_display_name: displayName,
+    p_custom_url: channel.customUrl ?? null,
+    p_uploads_playlist_id: channel.uploadsPlaylistId ?? null,
+    p_authority_tier: authorityTier,
+    p_source_role: sourceRole,
+    p_entity_ids: entityIds,
+  });
+  if (registrationError) throw registrationError;
+  const registration = Array.isArray(registrationData) ? registrationData[0] : registrationData;
+  if (!registration) throw new Error('register_youtube_source returned no row');
 
-  let sourceId: string;
-  let sourceIdentityId: string;
-  let created = false;
-
-  if (existingIdentity) {
-    sourceId = String(existingIdentity.source_id);
-    sourceIdentityId = String(existingIdentity.id);
-    const { error: sourceUpdateError } = await supabase.from('sources').update({
-      display_name: displayName,
-      authority_tier: authorityTier,
-      source_role: sourceRole,
-      active: true,
-    }).eq('id', sourceId);
-    if (sourceUpdateError) throw sourceUpdateError;
-    const { error: identityUpdateError } = await supabase.from('source_identities').update({
-      canonical_url: `https://www.youtube.com/channel/${channelId}`,
-      connector_type: 'YOUTUBE_WEBSUB',
-      poll_class: 'PUSH',
-      access_mode: 'WEBHOOK',
-      active: true,
-    }).eq('id', sourceIdentityId);
-    if (identityUpdateError) throw identityUpdateError;
-  } else {
-    const { data: source, error: sourceError } = await supabase.from('sources').insert({
-      display_name: displayName,
-      authority_tier: authorityTier,
-      source_role: sourceRole,
-      active: true,
-      notes: 'Registered by youtube-source-admin',
-    }).select('id').single();
-    if (sourceError) throw sourceError;
-    sourceId = String(source.id);
-
-    const { data: identity, error: identityError } = await supabase.from('source_identities').insert({
-      source_id: sourceId,
-      platform: 'YOUTUBE',
-      platform_identity_id: channelId,
-      handle: channel.customUrl ?? null,
-      canonical_url: `https://www.youtube.com/channel/${channelId}`,
-      connector_type: 'YOUTUBE_WEBSUB',
-      poll_class: 'PUSH',
-      access_mode: 'WEBHOOK',
-      connector_config: { schemaVersion: 1 },
-      active: true,
-    }).select('id').single();
-    if (identityError) throw identityError;
-    sourceIdentityId = String(identity.id);
-    created = true;
-  }
-
-  const nowIso = new Date().toISOString();
-  const { error: channelStateError } = await supabase.from('youtube_channel_state').upsert({
-    source_identity_id: sourceIdentityId,
-    channel_id: channelId,
-    uploads_playlist_id: channel.uploadsPlaylistId ?? null,
-    next_fallback_check_at: channel.uploadsPlaylistId ? nowIso : null,
-  }, { onConflict: 'source_identity_id' });
-  if (channelStateError) throw channelStateError;
-
-  const { error: healthError } = await supabase.from('source_health').upsert({
-    source_identity_id: sourceIdentityId,
-    health_state: 'HEALTHY',
-    last_attempt_at: nowIso,
-    last_success_at: nowIso,
-    next_due_at: null,
-    consecutive_failures: 0,
-    last_http_status: 200,
-    last_error_code: null,
-    last_error_message: null,
-    parser_version: 'youtube-v1',
-  }, { onConflict: 'source_identity_id' });
-  if (healthError) throw healthError;
-
-  const scopeCount = await replaceScope(sourceIdentityId, body.entityIds ?? []);
+  const sourceId = String(registration.source_id);
+  const sourceIdentityId = String(registration.source_identity_id);
+  const created = registration.created === true;
   const shouldSubscribe = body.subscribe !== false;
   const subscription = shouldSubscribe ? await callSubscriptionAdmin(sourceIdentityId, 'subscribe') : null;
+
   if (subscription && !subscription.ok) {
     await supabase.from('source_health').update({
       health_state: 'DEGRADED',
@@ -203,7 +139,7 @@ async function register(body: {
       customUrl: channel.customUrl ?? null,
       uploadsPlaylistId: channel.uploadsPlaylistId ?? null,
     },
-    scopeCount,
+    scopeCount: entityIds.length,
     subscription,
   };
 }
