@@ -7,7 +7,7 @@ Date: 2026-09-15
 **Phase 0 — Product Foundation: COMPLETE**  
 **Phase 1 — Intelligence Core Skeleton: COMPLETE + merged to `main`**  
 **Phase 2 — YouTube Production Connector: COMPLETE / PRODUCTION-VERIFIED / merged to `main`**  
-**Phase 3 — Internal Web Intelligence Console: ACTIVE / P3.1–P3.5 IMPLEMENTED / P3.6 HOSTED QA REMAINS**
+**Phase 3 — Internal Web Intelligence Console: ACTIVE / P3.1–P3.5 HOSTED / P3.6 CODE + SECURITY HARDENING COMPLETE / EXTERNAL OPERATOR + CLOUDFLARE QA REMAINS**
 
 Phase 2 merged through PR #2 at:
 
@@ -26,8 +26,6 @@ CineRelay continues unattended official-source ingestion through:
 `official uploads playlist -> authoritative discovery -> targeted videos.list enrichment -> raw/revision persistence -> intelligence processing`
 
 WebSub is a best-effort accelerator, not a correctness dependency.
-
-Authoritative discovery retains zero-gap correctness telemetry through `fallback_gap_count`.
 
 ## Phase 3 implemented surface
 
@@ -76,38 +74,57 @@ Authoritative discovery retains zero-gap correctness telemetry through `fallback
 - separate authenticated review API;
 - direct mutation RPCs restricted to `service_role`.
 
-P3.5 automated baseline:
-
-- head `3fbd4dac6db167e8f35791ee7c3e54dd540fdf33`;
-- CI #168 / run `34965690108`: **PASS** across all four jobs;
-- 53 pgTAP tests: PASS;
-- artifact `10394872074`;
-- digest `sha256:1f4c33d90db40230d97049907ea88909bfaf4022279a984d4ae96b063eaccbcd`.
-
-Hosted P3.5 runtime:
+P3.5 hosted runtime:
 
 - `process-raw-item-worker` v10 ACTIVE;
 - `cinerelay-review-api` v1 ACTIVE;
-- unauthenticated review request `3127` -> `401 authentication_required`;
-- normal processor scheduler request `3128` -> HTTP 200;
-- no production operator override or ADMIN audit row was created during rollout.
+- production overrides remain `0`;
+- production ADMIN audit actions remain `0`.
 
-## Active slice
+## P3.6 completed engineering work
 
-**P3.6 — QA + hosted internal console**
+- Overview unresolved metric uses `current_entity_resolution_results` rather than historical result rows;
+- Cloudflare SPA fallback committed;
+- Cloudflare security headers/CSP committed;
+- immutable asset caching + no-store shell policy committed;
+- browser bundle privileged-secret scan enforced in CI;
+- static web `dist` artifact produced by CI;
+- hosted console API updated from an exact green deployment artifact.
 
-Remaining truth gates:
+Final hardening baseline:
 
-1. first genuine Supabase Auth operator login;
+- head `77f26c4cadab919e3aeb871872577a9f5fc8802e`;
+- CI #174 / run `34966684998`: **PASS across all four jobs**;
+- 53 pgTAP tests: PASS;
+- all ten Edge Functions: PASS;
+- web static-host contract + forbidden-secret scan: PASS;
+- Edge deployment artifact `10395063082`, digest `sha256:7e6ed7926071f075fba6782b67766280f1194b93c9a89c684b15983889103356`;
+- web artifact `10395149789`, digest `sha256:dd4ff547bf472475ff9a37705525075a5d21dac82550e5e27b38881c3826f0ea`.
+
+Hosted P3.6 proof:
+
+- `cinerelay-console-api` v5 ACTIVE;
+- request `3634` -> `401 authentication_required`;
+- request `3635` -> `401 invalid_session`;
+- all recurring CineRelay scheduler jobs remained active with latest status `succeeded`;
+- current hosted Auth users: `0`;
+- current active operators: `0`;
+- current unresolved queue: `18`.
+
+The two harmless hosted verification-ledger entries have been reconciled into Git as no-op migration files so local CI and production migration history remain aligned.
+
+## Remaining Phase-3 truth gates
+
+1. first genuine Supabase Auth user/operator login through the normal login flow;
 2. authenticated non-operator -> 403 proof;
 3. allowlisted operator -> 200 proof;
 4. signed-in browser QA for overview/feed/event detail/operations/review queue;
-5. Cloudflare Pages static deployment with SPA/auth callback verification;
-6. browser-secret/security review;
-7. fix Overview unresolved metric to use latest/current resolution state before any real operator correction;
-8. final CI, documentation and PR readiness.
+5. Cloudflare Pages production deployment with only public `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` build values;
+6. hosted deep-link/auth-callback/refresh/CSP/browser-secret verification;
+7. optional real correction only when an operator actually intends it and evidence is sufficient;
+8. final PR readiness after those genuine account/browser gates.
 
-Do not fabricate a production correction merely to satisfy QA. A live mutation should happen only when an operator has adequate evidence and intends the correction.
+The current session has no dedicated Cloudflare deployment connector. Do not silently switch the production host to Vercel merely to close the gate.
 
 ## Guardrails
 
