@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { fetchConsoleOperations } from '../lib/console-api';
+import { ReviewWorkflow } from './ReviewWorkflow';
 
 function fmt(value: string | null | undefined) {
   return value ? new Date(value).toLocaleString() : '—';
@@ -84,6 +85,8 @@ export function OperationsPage() {
           <div className="mt-4 max-h-[420px] space-y-3 overflow-auto pr-1">{data.jobs.recent.slice(0, 40).map((job, index) => <div key={`${job.job_type}:${job.created_at}:${index}`} className="rounded-xl border border-zinc-800 bg-zinc-950/60 p-4"><div className="flex items-center justify-between gap-3"><p className="text-sm text-zinc-200">{job.job_type}</p><span className={pill(job.state, job.state === 'DEAD_LETTER' || job.state === 'RETRY_WAIT')}>{job.state}</span></div><p className="mt-2 text-xs text-zinc-500">attempt {job.attempt_count}/{job.max_attempts} · created {fmt(job.created_at)}</p>{job.last_error && <p className="mt-2 text-xs text-red-300">{job.last_error}</p>}</div>)}</div>
         </div>
       </section>
+
+      <ReviewWorkflow />
     </div>
   );
 }
