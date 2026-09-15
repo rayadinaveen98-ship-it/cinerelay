@@ -8,7 +8,9 @@ import {
   videoSnapshotFingerprint,
 } from '../../packages/youtube-connector/dist/enrichment.js';
 import {
+  YOUTUBE_DISCOVERY_INTERVAL_MS,
   buildUploadsPlaylistItemsUrl,
+  decideDiscoveryIntervalMs,
   decideFallbackHealth,
   normalizeUploadsPlaylistItemsResponse,
 } from '../../packages/youtube-connector/dist/fallback.js';
@@ -59,7 +61,7 @@ await test('enriched video projects into revision-safe raw-item fields', async (
   assert.equal(projection.contentFingerprint.length, 64);
 });
 
-await test('fallback URL targets uploads playlist with bounded latest window', async () => {
+await test('authoritative discovery URL targets uploads playlist with bounded latest window', async () => {
   const url = new URL(buildUploadsPlaylistItemsUrl(uploadsPlaylistId, 'api-key', 50));
   assert.equal(url.pathname.endsWith('/playlistItems'), true);
   assert.equal(url.searchParams.get('playlistId'), uploadsPlaylistId);
@@ -68,7 +70,7 @@ await test('fallback URL targets uploads playlist with bounded latest window', a
   assert.equal(url.searchParams.get('key'), 'api-key');
 });
 
-await test('fallback response normalizes upload video ids and publication times', async () => {
+await test('uploads response normalizes upload video ids and publication times', async () => {
   const normalized = normalizeUploadsPlaylistItemsResponse({
     items: [
       {
@@ -83,7 +85,7 @@ await test('fallback response normalizes upload video ids and publication times'
   assert.equal(normalized[0].publishedAt, '2026-09-14T05:00:00.000Z');
 });
 
-await test('fallback helper rejects non-uploads playlist ids', async () => {
+await test('uploads helper rejects non-uploads playlist ids', async () => {
   assert.throws(() => buildUploadsPlaylistItemsUrl('PL-not-an-uploads-playlist', 'api-key', 10));
 });
 
@@ -91,19 +93,19 @@ await test('quiet source is not marked stale merely because no WebSub delivery h
   assert.deepEqual(decideFallbackHealth({ gapExceededWindow: false, recoveredUploadCount: 0, existingErrorCode: null }), { degraded: false });
 });
 
-await test('fallback recovery proves a missed WebSub delivery', async () => {
+await test('authoritative polling proves a missed WebSub accelerator delivery', async () => {
   assert.deepEqual(decideFallbackHealth({ gapExceededWindow: false, recoveredUploadCount: 1, existingErrorCode: null }), {
     degraded: true,
     errorCode: 'WEBSUB_MISSED_DELIVERY',
-    errorMessage: 'Fallback recovered 1 upload(s) that were not observed via WebSub',
+    errorMessage: 'Authoritative uploads polling found 1 upload(s) that were not observed via WebSub',
   });
 });
 
-await test('missed WebSub delivery stays degraded until a real push proves recovery', async () => {
+await test('missed WebSub delivery stays degraded while authoritative polling remains healthy', async () => {
   assert.deepEqual(decideFallbackHealth({ gapExceededWindow: false, recoveredUploadCount: 0, existingErrorCode: 'WEBSUB_MISSED_DELIVERY' }), {
     degraded: true,
     errorCode: 'WEBSUB_MISSED_DELIVERY',
-    errorMessage: 'Awaiting a successful WebSub delivery after a recovered miss',
+    errorMessage: 'Authoritative uploads polling is healthy; awaiting a successful WebSub delivery to restore accelerator health',
   });
 });
 
@@ -111,8 +113,23 @@ await test('bounded-window gap takes precedence over WebSub miss health', async 
   assert.deepEqual(decideFallbackHealth({ gapExceededWindow: true, recoveredUploadCount: 2, existingErrorCode: 'WEBSUB_MISSED_DELIVERY' }), {
     degraded: true,
     errorCode: 'FALLBACK_WINDOW_GAP',
-    errorMessage: 'Previous upload was outside the bounded fallback window',
+    errorMessage: 'Previous upload was outside the bounded uploads-playlist window',
   });
 });
 
-console.log(`\nYouTube planning/enrichment/fallback canaries: ${passed}/12 passed.`);
+await test('normal authoritative discovery cadence is fifteen minutes', async () => {
+  assert.equal(decideDiscoveryIntervalMs({ existingErrorCode: null }), YOUTUBE_DISCOVERY_INTERVAL_MS.normal);
+  assert.equal(YOUTUBE_DISCOVERY_INTERVAL_MS.normal, 15 * 60 * 1000);
+});
+
+await test('WebSub delivery degradation accelerates authoritative discovery to five minutes', async () => {
+  assert.equal(decideDiscoveryIntervalMs({ existingErrorCode: 'WEBSUB_MISSED_DELIVERY' }), YOUTUBE_DISCOVERY_INTERVAL_MS.hot);
+  assert.equal(YOUTUBE_DISCOVERY_INTERVAL_MS.hot, 5 * 60 * 1000);
+});
+
+await test('provider failures back off discovery to protect quota and upstreams', async () => {
+  assert.equal(decideDiscoveryIntervalMs({ existingErrorCode: 'WEBSUB_MISSED_DELIVERY', providerFailure: true }), YOUTUBE_DISCOVERY_INTERVAL_MS.backoff);
+  assert.equal(YOUTUBE_DISCOVERY_INTERVAL_MS.backoff, 30 * 60 * 1000);
+});
+
+console.log(`\nYouTube planning/enrichment/discovery canaries: ${passed}/15 passed.`);
