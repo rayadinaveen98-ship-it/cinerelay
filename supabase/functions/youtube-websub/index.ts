@@ -19,6 +19,11 @@ const webSubMasterSecret = Deno.env.get('CINERELAY_WEBSUB_MASTER_SECRET');
 if (!supabaseUrl || !serviceRoleKey || !webSubMasterSecret) throw new Error('Missing required CineRelay WebSub environment');
 
 const supabase = createClient(supabaseUrl, serviceRoleKey, { auth: { persistSession: false, autoRefreshToken: false } });
+const WEBSUB_INGRESS_PROVIDER = 'YOUTUBE_WEBSUB_INGRESS';
+const INGRESS_BUCKET_MS = 5 * 60 * 1000;
+
+type SubscriptionRow = Record<string, unknown>;
+type IngressTokenState = 'MATCHED' | 'UNKNOWN' | 'MISSING' | 'TOO_LONG';
 
 function json(status: number, body: Record<string, unknown>): Response {
   return new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } });
@@ -34,6 +39,43 @@ async function subscriptionForToken(token: string) {
     .maybeSingle();
   if (error) throw error;
   return data;
+}
+
+function ingressBucket(now = Date.now()): string {
+  return new Date(Math.floor(now / INGRESS_BUCKET_MS) * INGRESS_BUCKET_MS).toISOString();
+}
+
+async function recordIngressReceipt(input: {
+  request: Request;
+  tokenState: IngressTokenState;
+  subscription?: SubscriptionRow | null;
+}): Promise<void> {
+  if (input.request.method !== 'POST') return;
+  const sourceIdentityId = input.subscription?.source_identity_id ? String(input.subscription.source_identity_id) : null;
+  const generation = input.subscription?.generation === undefined ? null : Number(input.subscription.generation);
+  const signaturePresent = Boolean(input.request.headers.get('x-hub-signature'));
+  const externalKey = [
+    'post',
+    ingressBucket(),
+    input.tokenState.toLowerCase(),
+    sourceIdentityId ?? 'unknown-source',
+    signaturePresent ? 'signature' : 'no-signature',
+  ].join(':');
+  const { error } = await supabase.from('connector_receipts').upsert({
+    provider: WEBSUB_INGRESS_PROVIDER,
+    source_identity_id: sourceIdentityId,
+    external_key: externalKey,
+    status: 'RECEIVED',
+    metadata: {
+      tokenState: input.tokenState,
+      generation,
+      contentType: input.request.headers.get('content-type'),
+      contentLength: input.request.headers.get('content-length'),
+      signaturePresent,
+      telemetryBucketMinutes: 5,
+    },
+  }, { onConflict: 'provider,external_key', ignoreDuplicates: true });
+  if (error) console.warn('youtube-websub ingress telemetry failure', error);
 }
 
 async function channelForSource(sourceIdentityId: string) {
@@ -76,7 +118,7 @@ async function recordDiagnosticReceipt(input: {
   if (error) console.warn('youtube-websub diagnostic receipt failure', error);
 }
 
-async function handleVerification(requestUrl: URL, subscription: Record<string, unknown>): Promise<Response> {
+async function handleVerification(requestUrl: URL, subscription: SubscriptionRow): Promise<Response> {
   let verification;
   try {
     verification = parseWebSubVerification(requestUrl.searchParams);
@@ -107,7 +149,7 @@ async function handleVerification(requestUrl: URL, subscription: Record<string, 
   return buildVerificationResponse(verification.challenge);
 }
 
-function subscriptionCanReceive(subscription: Record<string, unknown>): boolean {
+function subscriptionCanReceive(subscription: SubscriptionRow): boolean {
   const state = String(subscription.state);
   if (state === 'ACTIVE') return true;
   if (state !== 'SUPERSEDED') return false;
@@ -115,7 +157,7 @@ function subscriptionCanReceive(subscription: Record<string, unknown>): boolean 
   return Number.isFinite(expiresAt) && expiresAt > Date.now();
 }
 
-async function handleNotification(request: Request, subscription: Record<string, unknown>): Promise<Response> {
+async function handleNotification(request: Request, subscription: SubscriptionRow): Promise<Response> {
   if (!subscriptionCanReceive(subscription)) return new Response(null, { status: 410 });
   const contentLength = Number(request.headers.get('content-length') ?? '0');
   if (Number.isFinite(contentLength) && contentLength > 0) {
@@ -195,8 +237,16 @@ Deno.serve(async (request) => {
   try {
     const url = new URL(request.url);
     const token = url.searchParams.get('token');
-    if (!token || token.length > 256) return new Response('Not Found', { status: 404 });
+    if (!token) {
+      await recordIngressReceipt({ request, tokenState: 'MISSING' });
+      return new Response('Not Found', { status: 404 });
+    }
+    if (token.length > 256) {
+      await recordIngressReceipt({ request, tokenState: 'TOO_LONG' });
+      return new Response('Not Found', { status: 404 });
+    }
     const subscription = await subscriptionForToken(token);
+    await recordIngressReceipt({ request, tokenState: subscription ? 'MATCHED' : 'UNKNOWN', subscription });
     if (!subscription) return new Response('Not Found', { status: 404 });
     if (request.method === 'GET') return await handleVerification(url, subscription);
     if (request.method === 'POST') return await handleNotification(request, subscription);
