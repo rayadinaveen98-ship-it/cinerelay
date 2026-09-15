@@ -34,7 +34,19 @@ jobs:
         run: npm --prefix apps/web install --no-audit --no-fund --ignore-scripts
       - name: Build web console
         run: npm --prefix apps/web run build
-      - name: Upload deployable static console
+      - name: Verify static-host contract and forbidden-secret absence
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f apps/web/dist/_redirects
+          test -f apps/web/dist/_headers
+          grep -F '/* /index.html 200' apps/web/dist/_redirects
+          grep -F "Content-Security-Policy:" apps/web/dist/_headers
+          if grep -R -E 'SUPABASE_SERVICE_ROLE_KEY|CINERELAY_INTERNAL_ADMIN_SECRET|CINERELAY_WEBSUB_MASTER_SECRET|YOUTUBE_API_KEY' apps/web/dist; then
+            echo 'Forbidden privileged credential marker found in browser bundle' >&2
+            exit 1
+          fi
+      - name: Upload static console build artifact
         uses: actions/upload-artifact@v4
         with:
           name: cinerelay-web-console-dist
