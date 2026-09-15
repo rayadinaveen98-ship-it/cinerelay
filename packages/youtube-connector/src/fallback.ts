@@ -2,6 +2,12 @@ import { assertYouTubeVideoId, YOUTUBE_DATA_API_BASE_URL } from './index.js';
 
 const UPLOADS_PLAYLIST_ID_PATTERN = /^UU[A-Za-z0-9_-]{22}$/;
 
+export const YOUTUBE_DISCOVERY_INTERVAL_MS = Object.freeze({
+  hot: 5 * 60 * 1000,
+  normal: 15 * 60 * 1000,
+  backoff: 30 * 60 * 1000,
+});
+
 export type UploadsPlaylistItem = {
   videoId: string;
   title?: string;
@@ -70,6 +76,17 @@ export function normalizeUploadsPlaylistItemsResponse(payload: unknown): Uploads
   return result;
 }
 
+export function decideDiscoveryIntervalMs(input: {
+  existingErrorCode?: string | null;
+  providerFailure?: boolean;
+}): number {
+  if (input.providerFailure) return YOUTUBE_DISCOVERY_INTERVAL_MS.backoff;
+  if (input.existingErrorCode === 'WEBSUB_MISSED_DELIVERY' || input.existingErrorCode === 'FALLBACK_WINDOW_GAP') {
+    return YOUTUBE_DISCOVERY_INTERVAL_MS.hot;
+  }
+  return YOUTUBE_DISCOVERY_INTERVAL_MS.normal;
+}
+
 export function decideFallbackHealth(input: {
   gapExceededWindow: boolean;
   recoveredUploadCount: number;
@@ -83,7 +100,7 @@ export function decideFallbackHealth(input: {
     return {
       degraded: true,
       errorCode: 'FALLBACK_WINDOW_GAP',
-      errorMessage: 'Previous upload was outside the bounded fallback window',
+      errorMessage: 'Previous upload was outside the bounded uploads-playlist window',
     };
   }
 
@@ -91,7 +108,7 @@ export function decideFallbackHealth(input: {
     return {
       degraded: true,
       errorCode: 'WEBSUB_MISSED_DELIVERY',
-      errorMessage: `Fallback recovered ${input.recoveredUploadCount} upload(s) that were not observed via WebSub`,
+      errorMessage: `Authoritative uploads polling found ${input.recoveredUploadCount} upload(s) that were not observed via WebSub`,
     };
   }
 
@@ -99,7 +116,7 @@ export function decideFallbackHealth(input: {
     return {
       degraded: true,
       errorCode: 'WEBSUB_MISSED_DELIVERY',
-      errorMessage: 'Awaiting a successful WebSub delivery after a recovered miss',
+      errorMessage: 'Authoritative uploads polling is healthy; awaiting a successful WebSub delivery to restore accelerator health',
     };
   }
 
