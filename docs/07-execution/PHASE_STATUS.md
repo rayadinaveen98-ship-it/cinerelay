@@ -7,105 +7,111 @@ Date: 2026-09-15
 **Phase 0 — Product Foundation: COMPLETE**  
 **Phase 1 — Intelligence Core Skeleton: COMPLETE + merged to `main`**  
 **Phase 2 — YouTube Production Connector: COMPLETE / PRODUCTION-VERIFIED / merged to `main`**  
-**Phase 3 — Internal Web Intelligence Console: ACTIVE / P3.1 FOUNDATION STARTED**
+**Phase 3 — Internal Web Intelligence Console: ACTIVE / P3.1–P3.5 IMPLEMENTED / P3.6 HOSTED QA REMAINS**
 
 Phase 2 merged through PR #2 at:
 
 `e757afef33b18572c1438462621d98298d388cb5`
 
-Phase 3 is now active on:
+Phase 3 is active on:
 
 `phase-3/internal-web-console`
 
-## Production ingestion baseline carried into Phase 3
+Draft PR: `#3`.
 
-CineRelay has an unattended official-source ingestion and intelligence backend:
+## Production ingestion baseline
+
+CineRelay continues unattended official-source ingestion through:
 
 `official uploads playlist -> authoritative discovery -> targeted videos.list enrichment -> raw/revision persistence -> intelligence processing`
 
-WebSub remains a best-effort low-latency accelerator rather than a correctness dependency.
+WebSub is a best-effort accelerator, not a correctness dependency.
 
-Per-source discovery cadence:
+Authoritative discovery retains zero-gap correctness telemetry through `fallback_gap_count`.
 
-- WebSub-degraded/hot source: 5 minutes
-- normal source: 15 minutes
-- provider/API/quota backoff: 30 minutes
+## Phase 3 implemented surface
 
-All four pilot sources remained at `fallback_gap_count = 0` after the migration and automatic 5-minute scheduler ticks.
+### P3.1 — Secure web foundation
 
-## Final Phase-2 production proof
+- React/TypeScript/Vite internal console;
+- Supabase Auth magic-link client;
+- server-side `operator_users` allowlist;
+- no privileged browser credential;
+- authenticated console API boundary;
+- overview and health metrics;
+- web/Edge/database CI coverage.
 
-Production scheduler request `2975` checked all four pilot sources through authoritative discovery:
+### P3.2 — Live intelligence feed
 
-- due `4`
-- checked `4`
-- discovered uploads `1`
-- gap sources `0`
-- quota units `13 -> 17`
-- discovery mode `UPLOADS_PLAYLIST_PRIMARY`
-- WebSub role `ACCELERATOR`
+- real canonical events;
+- entity/title, verification and priority;
+- source-backed evidence links;
+- live refresh.
 
-It found real Haarika & Hassine Creations upload `C6R0LkeURFo`, then automatically completed enrichment and downstream processing. Resolution truthfully remained `UNRESOLVED / 0` rather than inventing an entity match.
+### P3.3 — Event/evidence detail
 
-WebSub v9 also closed the pre-token observability blind spot. Controlled request `2971` produced the expected `404` while persisting safe `YOUTUBE_WEBSUB_INGRESS` telemetry with `tokenState = MISSING`.
+- raw evidence;
+- revision history;
+- claim provenance;
+- entity/title timeline.
 
-Gate B zero-gap lease replacement remains production-proven.
+### P3.4 — Source registry + operations
 
-## Final Phase-2 quality baseline
+- source-health/error ownership;
+- authoritative discovery cadence/gaps;
+- WebSub telemetry;
+- quota usage;
+- worker jobs;
+- secret-free scheduler health.
 
-Implementation baseline:
+### P3.5 — Audited review/corrections
 
-`58854a4413f35ceb8e7fbca2452b23513f6d8e07`
+- current unresolved/ambiguous queue;
+- durable operator resolution overrides;
+- existing-entity binding or missing-entity creation;
+- source candidate-scope learning;
+- normal reprocessing after correction;
+- audited clear override;
+- audited event suppress/reclassify/merge;
+- separate authenticated review API;
+- direct mutation RPCs restricted to `service_role`.
 
-CineRelay CI `#132` / run `34959975534`: **PASS**.
+P3.5 automated baseline:
 
-Final documentation-consistent head:
+- head `3fbd4dac6db167e8f35791ee7c3e54dd540fdf33`;
+- CI #168 / run `34965690108`: **PASS** across all four jobs;
+- 53 pgTAP tests: PASS;
+- artifact `10394872074`;
+- digest `sha256:1f4c33d90db40230d97049907ea88909bfaf4022279a984d4ae96b063eaccbcd`.
 
-`27b4a6e9bdc38d69c3d2a5720ad8bc1bac4349f0`
+Hosted P3.5 runtime:
 
-CineRelay CI `#137` / run `34960861126`: **PASS across all three jobs**.
-
-Phase-2 merge commit:
-
-`e757afef33b18572c1438462621d98298d388cb5`
-
-## Phase 3 objective
-
-Build a secure internal web intelligence console over the real production backend so an operator can inspect and manage CineRelay without relying on raw Supabase dashboard/database access.
-
-Locked Phase-3 capabilities:
-
-- authentication;
-- live intelligence feed;
-- event detail + evidence;
-- title/entity timeline;
-- source registry;
-- source-health dashboard;
-- WebSub/discovery/quota/scheduler diagnostics;
-- unresolved/ambiguous review queue;
-- controlled correction/merge/suppress/reclassify actions;
-- search and filters;
-- benchmark diagnostics.
+- `process-raw-item-worker` v10 ACTIVE;
+- `cinerelay-review-api` v1 ACTIVE;
+- unauthenticated review request `3127` -> `401 authentication_required`;
+- normal processor scheduler request `3128` -> HTTP 200;
+- no production operator override or ADMIN audit row was created during rollout.
 
 ## Active slice
 
-**P3.1 — Web foundation + secure data boundary**
+**P3.6 — QA + hosted internal console**
 
-Required foundation:
+Remaining truth gates:
 
-- working React/TypeScript internal web app in `apps/web`;
-- application shell/routing;
-- authenticated operator boundary;
-- typed server-side data access;
-- shared UI models derived from real backend contracts;
-- CI build/type-check coverage;
-- no service-role credentials in browser code.
+1. first genuine Supabase Auth operator login;
+2. authenticated non-operator -> 403 proof;
+3. allowlisted operator -> 200 proof;
+4. signed-in browser QA for overview/feed/event detail/operations/review queue;
+5. Cloudflare Pages static deployment with SPA/auth callback verification;
+6. browser-secret/security review;
+7. fix Overview unresolved metric to use latest/current resolution state before any real operator correction;
+8. final CI, documentation and PR readiness.
 
-See `docs/07-execution/PHASE3_STATUS.md` for the detailed execution contract and exit criteria.
+Do not fabricate a production correction merely to satisfy QA. A live mutation should happen only when an operator has adequate evidence and intends the correction.
 
 ## Guardrails
 
-Do not expand Phase 3 into broad Android UI, mass source onboarding, X/Instagram ingestion, broad scraping, public accounts, or paid infrastructure before the internal console foundation is proven.
+Do not expand Phase 3 into broad Android UI, mass source onboarding, X/Instagram ingestion, broad scraping, public accounts, community features, or paid infrastructure before the internal-console gate is complete.
 
 ## Authoritative execution docs
 
