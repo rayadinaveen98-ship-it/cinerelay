@@ -49,7 +49,7 @@ async function exactCount(table: string, filter?: (query: any) => any): Promise<
 async function overview(user: { id: string; email?: string | null }, operator: { display_name?: string | null }) {
   const [rawItems, events, sources, unresolved, healthResult, channelResult] = await Promise.all([
     exactCount('raw_items'), exactCount('events'), exactCount('source_identities', (q) => q.eq('active', true)),
-    exactCount('entity_resolution_results', (q) => q.eq('resolution_state', 'UNRESOLVED')),
+    exactCount('current_entity_resolution_results', (q) => q.eq('resolution_state', 'UNRESOLVED')),
     admin.from('source_health').select('health_state'), admin.from('youtube_channel_state').select('fallback_gap_count'),
   ]);
   if (healthResult.error) throw healthResult.error;
