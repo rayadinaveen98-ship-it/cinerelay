@@ -255,6 +255,73 @@ async function eventDetail(eventId: string) {
   return { generatedAt: new Date().toISOString(), event, entity, evidence, timeline: timeline ?? [] };
 }
 
+async function operations() {
+  const [sourcesResult, identitiesResult, healthResult, channelResult, subscriptionsResult, quotaResult, receiptsResult, jobsResult, schedulerResult] = await Promise.all([
+    admin.from('sources').select('id,display_name,authority_tier,source_role,territory,languages,active,created_at,updated_at').order('display_name'),
+    admin.from('source_identities').select('id,source_id,platform,platform_identity_id,handle,canonical_url,connector_type,poll_class,access_mode,active,created_at,updated_at').order('created_at'),
+    admin.from('source_health').select('source_identity_id,health_state,last_attempt_at,last_success_at,last_item_at,next_due_at,consecutive_failures,last_http_status,last_error_code,last_error_message,rate_limited_until,subscription_expires_at,parser_version,updated_at'),
+    admin.from('youtube_channel_state').select('source_identity_id,channel_id,uploads_playlist_id,latest_known_video_id,last_websub_at,last_enriched_at,last_fallback_check_at,next_fallback_check_at,fallback_gap_count,consecutive_websub_events,updated_at'),
+    admin.from('connector_subscriptions').select('id,source_identity_id,provider,generation,signature_required,state,lease_seconds,requested_at,verified_at,expires_at,renew_after,denied_at,last_error,updated_at').order('generation', { ascending: false }),
+    admin.from('connector_quota_usage').select('provider,quota_bucket,method,units,request_count,response_status,usage_day,occurred_at').order('occurred_at', { ascending: false }).limit(1000),
+    admin.from('connector_receipts').select('provider,source_identity_id,external_key,received_at,processed_at,status,error_message,metadata').in('provider', ['YOUTUBE_WEBSUB', 'YOUTUBE_WEBSUB_INGRESS']).order('received_at', { ascending: false }).limit(50),
+    admin.from('jobs').select('job_type,state,attempt_count,max_attempts,run_after,last_error,created_at,completed_at').order('created_at', { ascending: false }).limit(100),
+    admin.rpc('console_scheduler_health'),
+  ]);
+
+  for (const result of [sourcesResult, identitiesResult, healthResult, channelResult, subscriptionsResult, quotaResult, receiptsResult, jobsResult, schedulerResult]) {
+    if (result.error) throw result.error;
+  }
+
+  const sourceMap = new Map((sourcesResult.data ?? []).map((row) => [row.id, row]));
+  const healthMap = new Map((healthResult.data ?? []).map((row) => [row.source_identity_id, row]));
+  const channelMap = new Map((channelResult.data ?? []).map((row) => [row.source_identity_id, row]));
+  const latestSubscription = new Map<string, Record<string, unknown>>();
+  for (const row of subscriptionsResult.data ?? []) {
+    if (!latestSubscription.has(row.source_identity_id)) latestSubscription.set(row.source_identity_id, row);
+  }
+
+  const registry = (identitiesResult.data ?? []).map((identity) => ({
+    source: sourceMap.get(identity.source_id) ?? null,
+    identity,
+    health: healthMap.get(identity.id) ?? null,
+    youtube: channelMap.get(identity.id) ?? null,
+    subscription: latestSubscription.get(identity.id) ?? null,
+  }));
+
+  const quotaRows = quotaResult.data ?? [];
+  const latestQuotaDay = quotaRows[0]?.usage_day ?? null;
+  const quotaMap = new Map<string, { provider: string; quotaBucket: string; method: string; units: number; requests: number }>();
+  for (const row of quotaRows) {
+    if (latestQuotaDay && row.usage_day !== latestQuotaDay) continue;
+    const key = `${row.provider}:${row.quota_bucket}:${row.method}`;
+    const current = quotaMap.get(key) ?? { provider: row.provider, quotaBucket: row.quota_bucket, method: row.method, units: 0, requests: 0 };
+    current.units += Number(row.units ?? 0);
+    current.requests += Number(row.request_count ?? 0);
+    quotaMap.set(key, current);
+  }
+
+  const jobStateCounts = new Map<string, number>();
+  for (const row of jobsResult.data ?? []) {
+    const key = `${row.job_type}:${row.state}`;
+    jobStateCounts.set(key, (jobStateCounts.get(key) ?? 0) + 1);
+  }
+
+  return {
+    generatedAt: new Date().toISOString(),
+    registry,
+    scheduler: schedulerResult.data ?? [],
+    quota: { usageDay: latestQuotaDay, methods: [...quotaMap.values()] },
+    receipts: receiptsResult.data ?? [],
+    jobs: {
+      recent: jobsResult.data ?? [],
+      stateCounts: [...jobStateCounts.entries()].map(([key, count]) => {
+        const [jobType, state] = key.split(':');
+        return { jobType, state, count };
+      }),
+    },
+  };
+}
+
 Deno.serve(async (request): Promise<Response> => {
   try {
     if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: corsHeaders });
@@ -269,6 +336,7 @@ Deno.serve(async (request): Promise<Response> => {
       const detail = await eventDetail(body.eventId);
       return detail ? json(200, detail) : json(404, { error: 'event_not_found' });
     }
+    if (body.action === 'operations') return json(200, await operations());
     return json(400, { error: 'unsupported_action' });
   } catch (error) {
     console.error('cinerelay-console-api failure', error);
