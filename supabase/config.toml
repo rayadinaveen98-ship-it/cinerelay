@@ -59,3 +59,10 @@ verify_jwt = false
 # allow-list of internal workers using the existing internal admin secret.
 [functions.cinerelay-scheduler-dispatch]
 verify_jwt = false
+
+# Browser clients call the console API with a Supabase Auth bearer token. Gateway
+# JWT verification is disabled so CORS preflight remains simple; the function
+# independently validates the token with auth.getUser() and then checks the
+# operator_users allowlist before any service-role query is executed.
+[functions.cinerelay-console-api]
+verify_jwt = false

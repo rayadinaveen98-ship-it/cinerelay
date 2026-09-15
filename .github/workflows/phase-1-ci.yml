@@ -22,6 +22,19 @@ jobs:
       - run: npm install --no-audit --no-fund --ignore-scripts
       - run: npm run ci
 
+  web-console:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install web dependencies
+        run: npm --prefix apps/web install --no-audit --no-fund --ignore-scripts
+      - name: Build web console
+        run: npm --prefix apps/web run build
+
   edge-functions:
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -51,6 +64,8 @@ jobs:
         run: deno check --config supabase/functions/youtube-maintenance-worker/deno.json supabase/functions/youtube-maintenance-worker/index.ts
       - name: Type-check cinerelay-scheduler-dispatch
         run: deno check --config supabase/functions/cinerelay-scheduler-dispatch/deno.json supabase/functions/cinerelay-scheduler-dispatch/index.ts
+      - name: Type-check cinerelay-console-api
+        run: deno check --config supabase/functions/cinerelay-console-api/deno.json supabase/functions/cinerelay-console-api/index.ts
       - name: Build deployment-native Edge bundles
         shell: bash
         run: |
@@ -64,6 +79,7 @@ jobs:
             youtube-fallback-worker
             youtube-maintenance-worker
             cinerelay-scheduler-dispatch
+            cinerelay-console-api
           )
           for fn in "${functions[@]}"; do
             mkdir -p "edge-deploy/${fn}"
