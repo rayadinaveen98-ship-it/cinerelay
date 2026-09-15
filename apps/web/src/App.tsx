@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Link, Outlet, createRootRoute, createRoute, createRouter, RouterProvider } from '@tanstack/react-router';
 import { useAuth } from './auth/AuthProvider';
 import { fetchConsoleFeed, fetchConsoleOverview, fetchEventDetail } from './lib/console-api';
+import { OperationsPage } from './pages/OperationsPage';
 
 function LoadingScreen() {
   return <main className="grid min-h-screen place-items-center bg-zinc-950 text-zinc-300">Loading CineRelay…</main>;
@@ -66,6 +67,7 @@ function Shell() {
         <nav className="space-y-2">
           <Link to="/" className="block rounded-xl px-4 py-3 text-sm text-zinc-300 hover:bg-zinc-900 [&.active]:bg-zinc-900 [&.active]:text-white">Overview</Link>
           <Link to="/feed" className="block rounded-xl px-4 py-3 text-sm text-zinc-300 hover:bg-zinc-900 [&.active]:bg-zinc-900 [&.active]:text-white">Live feed</Link>
+          <Link to="/sources" className="block rounded-xl px-4 py-3 text-sm text-zinc-300 hover:bg-zinc-900 [&.active]:bg-zinc-900 [&.active]:text-white">Sources & ops</Link>
           <Link to="/health" className="block rounded-xl px-4 py-3 text-sm text-zinc-300 hover:bg-zinc-900 [&.active]:bg-zinc-900 [&.active]:text-white">System health</Link>
         </nav>
         <Outlet />
@@ -112,7 +114,7 @@ function EventDetailPage() {
       <Panel title={data.event.headline} eyebrow={data.entity?.canonical_name ?? 'Unknown entity'}>
         <div className="flex flex-wrap gap-2 text-xs uppercase tracking-wide text-zinc-500"><span>{data.event.event_type.replaceAll('_', ' ')}</span><span>•</span><span>{data.event.verification_state}</span><span>•</span><span>{data.event.priority_band}</span><span>•</span><span>{data.event.status}</span></div>
         {data.event.summary && <p className="mt-4 text-sm leading-6 text-zinc-300">{data.event.summary}</p>}
-        <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4"><DetailMetric label="Detected" value={new Date(data.event.detected_at).toLocaleString()} /><DetailMetric label="Verification" value={String(data.event.verification_confidence)} /><DetailMetric label="Priority score" value={String(data.event.priority_score)} /><DetailMetric label="Classifier" value={data.event.classifier_version} /></div>
+        <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4"><DetailMetric label="Detected" value={new Date(data.event.detected_at).toLocaleString()} /><DetailMetric label="Verification" value={data.event.verification_confidence == null ? '—' : String(data.event.verification_confidence)} /><DetailMetric label="Priority score" value={String(data.event.priority_score)} /><DetailMetric label="Classifier" value={data.event.classifier_version} /></div>
         <details className="mt-5 rounded-xl border border-zinc-800 bg-zinc-950/60 p-4"><summary className="cursor-pointer text-sm font-medium text-zinc-300">Structured event data</summary><pre className="mt-3 overflow-x-auto whitespace-pre-wrap text-xs leading-5 text-zinc-500">{JSON.stringify(data.event.structured_data, null, 2)}</pre></details>
       </Panel>
 
@@ -121,7 +123,7 @@ function EventDetailPage() {
           <article key={`${evidence.rawItem?.id ?? 'none'}-${index}`} className="rounded-2xl border border-zinc-800 bg-zinc-950/70 p-5">
             <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs uppercase tracking-wide text-zinc-500"><span>{evidence.role}</span><span>weight {String(evidence.weight)}</span>{evidence.source && <span>tier {evidence.source.authorityTier}</span>}</div>
             {evidence.source && <div className="mt-3"><p className="font-medium text-zinc-200">{evidence.source.name}</p><p className="mt-1 text-sm text-zinc-500">{evidence.source.platform} · {evidence.source.connectorType} · {evidence.source.accessMode}</p></div>}
-            {evidence.rawItem && <div className="mt-4 rounded-xl border border-zinc-800 bg-zinc-900/60 p-4"><p className="text-sm font-medium text-zinc-200">{evidence.rawItem.rawTitle ?? evidence.rawItem.platformItemId}</p>{evidence.rawItem.rawText && <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-zinc-400">{evidence.rawItem.rawText}</p>}<div className="mt-3 flex flex-wrap gap-3 text-xs text-zinc-500"><span>Published {evidence.rawItem.publishedAt ? new Date(evidence.rawItem.publishedAt).toLocaleString() : '—'}</span><span>First seen {new Date(evidence.rawItem.firstSeenAt).toLocaleString()}</span><span>{evidence.rawItem.revisions.length} revision(s)</span></div><a href={evidence.rawItem.canonicalUrl} target="_blank" rel="noreferrer" className="mt-3 inline-block text-sm text-amber-400 hover:text-amber-300">Open official source ↗</a></div>}
+            {evidence.rawItem && <div className="mt-4 rounded-xl border border-zinc-800 bg-zinc-900/60 p-4"><p className="text-sm font-medium text-zinc-200">{evidence.rawItem.rawTitle ?? evidence.rawItem.platformItemId ?? 'Untitled source item'}</p>{evidence.rawItem.rawText && <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-zinc-400">{evidence.rawItem.rawText}</p>}<div className="mt-3 flex flex-wrap gap-3 text-xs text-zinc-500"><span>Published {evidence.rawItem.publishedAt ? new Date(evidence.rawItem.publishedAt).toLocaleString() : '—'}</span><span>First seen {new Date(evidence.rawItem.firstSeenAt).toLocaleString()}</span><span>{evidence.rawItem.revisions.length} revision(s)</span></div><a href={evidence.rawItem.canonicalUrl} target="_blank" rel="noreferrer" className="mt-3 inline-block text-sm text-amber-400 hover:text-amber-300">Open official source ↗</a></div>}
             {evidence.claim && <details className="mt-4 rounded-xl border border-zinc-800 p-4"><summary className="cursor-pointer text-sm text-zinc-300">Extracted claim: {evidence.claim.predicate}</summary><pre className="mt-3 overflow-x-auto whitespace-pre-wrap text-xs text-zinc-500">{JSON.stringify({ value: evidence.claim.value_json, qualifiers: evidence.claim.qualifiers_json, confidence: evidence.claim.extraction_confidence, engine: evidence.claim.engine_version, pointers: evidence.claim.evidencePointers }, null, 2)}</pre></details>}
             {evidence.rawItem && evidence.rawItem.revisions.length > 0 && <details className="mt-4 rounded-xl border border-zinc-800 p-4"><summary className="cursor-pointer text-sm text-zinc-300">Revision history</summary><div className="mt-3 space-y-3">{evidence.rawItem.revisions.map((revision) => <div key={revision.id} className="rounded-lg bg-zinc-900/70 p-3"><div className="flex flex-wrap gap-3 text-xs text-zinc-500"><span>{revision.change_kind}</span><span>{new Date(revision.observed_at).toLocaleString()}</span></div>{revision.title && <p className="mt-2 text-sm text-zinc-300">{revision.title}</p>}</div>)}</div></details>}
           </article>
@@ -152,8 +154,9 @@ const rootRoute = createRootRoute({ component: Shell });
 const overviewRoute = createRoute({ getParentRoute: () => rootRoute, path: '/', component: OverviewPage });
 const feedRoute = createRoute({ getParentRoute: () => rootRoute, path: '/feed', component: FeedPage });
 const eventDetailRoute = createRoute({ getParentRoute: () => rootRoute, path: '/events/$eventId', component: EventDetailPage });
+const sourcesRoute = createRoute({ getParentRoute: () => rootRoute, path: '/sources', component: OperationsPage });
 const healthRoute = createRoute({ getParentRoute: () => rootRoute, path: '/health', component: HealthPage });
-const routeTree = rootRoute.addChildren([overviewRoute, feedRoute, eventDetailRoute, healthRoute]);
+const routeTree = rootRoute.addChildren([overviewRoute, feedRoute, eventDetailRoute, sourcesRoute, healthRoute]);
 const router = createRouter({ routeTree });
 
 declare module '@tanstack/react-router' { interface Register { router: typeof router } }
