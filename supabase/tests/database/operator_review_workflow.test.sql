@@ -1,7 +1,7 @@
 begin;
 
 create extension if not exists pgtap with schema extensions;
-select plan(12);
+select plan(13);
 
 insert into public.sources (id, display_name, authority_tier, source_role, active)
 values ('22000000-0000-4000-8000-000000000001', 'Operator Review Studio', 1, 'PRODUCTION_HOUSE', true);
