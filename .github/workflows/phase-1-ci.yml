@@ -66,6 +66,8 @@ jobs:
         run: deno check --config supabase/functions/cinerelay-scheduler-dispatch/deno.json supabase/functions/cinerelay-scheduler-dispatch/index.ts
       - name: Type-check cinerelay-console-api
         run: deno check --config supabase/functions/cinerelay-console-api/deno.json supabase/functions/cinerelay-console-api/index.ts
+      - name: Type-check cinerelay-review-api
+        run: deno check --config supabase/functions/cinerelay-review-api/deno.json supabase/functions/cinerelay-review-api/index.ts
       - name: Build deployment-native Edge bundles
         shell: bash
         run: |
@@ -80,6 +82,7 @@ jobs:
             youtube-maintenance-worker
             cinerelay-scheduler-dispatch
             cinerelay-console-api
+            cinerelay-review-api
           )
           for fn in "${functions[@]}"; do
             mkdir -p "edge-deploy/${fn}"
