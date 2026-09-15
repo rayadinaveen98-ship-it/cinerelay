@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns:yt="http://www.youtube.com/xml/schemas/2015" xmlns="http://www.w3.org/2005/Atom">
+  <link rel="hub" href="https://pubsubhubbub.appspot.com"/>
+  <link rel="self" href="https://www.youtube.com/feeds/videos.xml?channel_id=UCaaaaaaaaaaaaaaaaaaaaaa"/>
+  <title>YouTube video feed</title>
+  <updated>2026-09-14T05:10:00+00:00</updated>
+  <entry>
+    <id>yt:video:vidAAA12345</id>
+    <yt:videoId>vidAAA12345</yt:videoId>
+    <yt:channelId>UCaaaaaaaaaaaaaaaaaaaaaa</yt:channelId>
+    <title>Example &amp; Film Official Trailer</title>
+    <link rel="alternate" href="https://www.youtube.com/watch?v=vidAAA12345"/>
+    <author>
+      <name>Example Studio</name>
+      <uri>https://www.youtube.com/channel/UCaaaaaaaaaaaaaaaaaaaaaa</uri>
+    </author>
+    <published>2026-09-14T05:00:00+00:00</published>
+    <updated>2026-09-14T05:10:00+00:00</updated>
+  </entry>
+</feed>

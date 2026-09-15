@@ -10,7 +10,7 @@ max_rows = 1000
 [db]
 port = 54322
 shadow_port = 54320
-major_version = 15
+major_version = 17
 
 [db.seed]
 enabled = true
@@ -27,3 +27,35 @@ enabled = false
 
 [auth]
 enabled = false
+
+# YouTube WebSub cannot present a Supabase user JWT. The public callback is
+# protected by an unguessable callback token plus the hub HMAC signature.
+[functions.youtube-websub]
+verify_jwt = false
+
+# Internal connector functions use x-cinerelay-internal-key and are not user APIs.
+# Disabling gateway JWT is intentional so cron and function-to-function calls work;
+# each function rejects requests without the independent internal secret.
+[functions.youtube-subscription-admin]
+verify_jwt = false
+
+[functions.youtube-enrichment-worker]
+verify_jwt = false
+
+[functions.process-raw-item-worker]
+verify_jwt = false
+
+[functions.youtube-fallback-worker]
+verify_jwt = false
+
+[functions.youtube-source-admin]
+verify_jwt = false
+
+[functions.youtube-maintenance-worker]
+verify_jwt = false
+
+# Database cron calls only this dispatcher. It validates a database-generated
+# Vault token through verify_scheduler_token() and then forwards to a strict
+# allow-list of internal workers using the existing internal admin secret.
+[functions.cinerelay-scheduler-dispatch]
+verify_jwt = false

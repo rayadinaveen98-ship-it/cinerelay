@@ -1,0 +1,17 @@
+{
+  "kind": "youtube#channelListResponse",
+  "items": [
+    {
+      "id": "UCaaaaaaaaaaaaaaaaaaaaaa",
+      "snippet": {
+        "title": "Example Studio",
+        "description": "Official studio channel",
+        "customUrl": "@examplestudio",
+        "thumbnails": {"high": {"url": "https://yt3.example/channel.jpg"}}
+      },
+      "contentDetails": {
+        "relatedPlaylists": {"uploads": "UUaaaaaaaaaaaaaaaaaaaaaa"}
+      }
+    }
+  ]
+}

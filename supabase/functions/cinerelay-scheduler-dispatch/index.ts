@@ -1,0 +1,98 @@
+import { createClient } from '@supabase/supabase-js';
+
+const supabaseUrl = Deno.env.get('SUPABASE_URL');
+const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+const internalSecret = Deno.env.get('CINERELAY_INTERNAL_ADMIN_SECRET');
+if (!supabaseUrl || !serviceRoleKey || !internalSecret) throw new Error('Missing scheduler-dispatch environment');
+
+const supabase = createClient(supabaseUrl, serviceRoleKey, {
+  auth: { persistSession: false, autoRefreshToken: false },
+});
+
+type Action = 'youtube-enrichment' | 'process-raw-item' | 'youtube-fallback' | 'youtube-maintenance';
+
+type DispatchTarget = {
+  slug: string;
+  body: Record<string, unknown>;
+};
+
+const TARGETS: Record<Action, DispatchTarget> = {
+  'youtube-enrichment': { slug: 'youtube-enrichment-worker', body: { limit: 25 } },
+  'process-raw-item': { slug: 'process-raw-item-worker', body: { limit: 25 } },
+  'youtube-fallback': { slug: 'youtube-fallback-worker', body: { limit: 20 } },
+  'youtube-maintenance': { slug: 'youtube-maintenance-worker', body: { limit: 50 } },
+};
+
+function json(status: number, body: Record<string, unknown>): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { 'content-type': 'application/json', 'cache-control': 'no-store' },
+  });
+}
+
+async function authorized(request: Request): Promise<boolean> {
+  const token = request.headers.get('x-cinerelay-scheduler-key') ?? '';
+  if (token.length < 32 || token.length > 256) return false;
+  const { data, error } = await supabase.rpc('verify_scheduler_token', { p_token: token });
+  return !error && data === true;
+}
+
+function isAction(value: unknown): value is Action {
+  return typeof value === 'string' && Object.prototype.hasOwnProperty.call(TARGETS, value);
+}
+
+Deno.serve(async (request) => {
+  try {
+    if (request.method !== 'POST') {
+      return new Response(null, { status: 405, headers: { allow: 'POST' } });
+    }
+    if (!(await authorized(request))) return json(401, { error: 'unauthorized' });
+
+    const body = await request.json().catch(() => ({})) as { action?: unknown };
+    if (!isAction(body.action)) return json(400, { error: 'invalid_action' });
+
+    const target = TARGETS[body.action];
+    const upstream = await fetch(`${supabaseUrl!.replace(/\/$/, '')}/functions/v1/${target.slug}`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'x-cinerelay-internal-key': internalSecret!,
+      },
+      body: JSON.stringify(target.body),
+      signal: AbortSignal.timeout(45_000),
+    });
+
+    const raw = await upstream.text();
+    let result: unknown = null;
+    if (raw) {
+      try {
+        result = JSON.parse(raw);
+      } catch {
+        result = { body: raw.slice(0, 1000) };
+      }
+    }
+
+    if (!upstream.ok) {
+      console.error('scheduler dispatch upstream failure', {
+        action: body.action,
+        slug: target.slug,
+        status: upstream.status,
+      });
+      return json(502, {
+        error: 'upstream_failure',
+        action: body.action,
+        upstreamStatus: upstream.status,
+      });
+    }
+
+    return json(200, {
+      ok: true,
+      action: body.action,
+      upstreamStatus: upstream.status,
+      result,
+    });
+  } catch (error) {
+    console.error('scheduler-dispatch failure', error);
+    return json(500, { error: 'internal_error' });
+  }
+});

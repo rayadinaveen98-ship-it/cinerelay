@@ -1,0 +1,10 @@
+-- Hosted migration-history marker only.
+--
+-- Supabase MCP applied `scheduler_dispatch_auth` to the hosted CineRelay project
+-- at version 20260914120334 before the repository-ordered migration filename was
+-- created. Executable scheduler-auth DDL intentionally lives in:
+--
+--   20260914223000_scheduler_dispatch_auth.sql
+--
+-- Keeping this marker preserves hosted/local migration-history explainability
+-- without executing scheduler DDL before the Phase-1/Phase-2 foundation exists.
