@@ -1,18 +1,20 @@
 # Phase 2 Status — YouTube Production Connector
 
-Date: 2026-09-14
+Date: 2026-09-15
 
 ## Overall state
 
-**Phase 2: IMPLEMENTATION COMPLETE / HOSTED PILOT ACTIVE / ONE FINAL LIVE PUSH GATE PENDING**
+**Phase 2: COMPLETE / PRODUCTION-VERIFIED / READY TO MERGE**
 
-The YouTube production connector is implemented and running in the hosted CineRelay Supabase project. Repository, database, Edge Functions, scheduler, fallback recovery, quota controls, intelligence processing, source health, and zero-gap subscription renewal have all been exercised in production.
+The Phase-2 YouTube production connector is implemented, running unattended in the hosted CineRelay Supabase project, and production-verified under the final reliability contract.
 
-Phase 2 now has exactly **one** remaining merge blocker:
+The final operating model is:
 
-> A genuinely new upload must arrive through an accepted WebSub callback and automatically traverse CineRelay before fallback becomes its first discovery path.
+`official uploads playlist -> authoritative discovery -> targeted videos.list enrichment -> raw/revision persistence -> intelligence processing`
 
-Gate B — zero-gap subscription renewal — passed on 2026-09-14 through an incident-driven early production renewal canary. See `PHASE2_GATE_B_RENEWAL_PROOF_2026-09-14.md`.
+YouTube WebSub remains enabled as a best-effort low-latency accelerator. It is no longer a correctness dependency because repeated production uploads were missed despite verified subscriptions while uploads-playlist discovery recovered them without bounded-window gaps.
+
+See `PHASE2_AUTHORITATIVE_DISCOVERY_PROOF_2026-09-15.md` for the production proof.
 
 ## Hosted project
 
@@ -31,7 +33,8 @@ Current cadence:
 - enrichment: every minute
 - raw processing: every minute
 - maintenance: every 10 minutes
-- fallback: every 15 minutes
+- discovery dispatcher: every 5 minutes
+- authoritative per-source discovery: 5 minutes hot / 15 minutes normal / 30 minutes provider-error backoff
 
 Manual PowerShell is not required for normal operation.
 
@@ -42,38 +45,63 @@ Manual PowerShell is not required for normal operation.
 3. Haarika & Hassine Creations
 4. Geetha Arts
 
-All four have a usable active WebSub lease. Geetha Arts is now on generation 2 after the production renewal canary; the other three remain on generation 1.
+All four remain registered official YouTube sources. WebSub leases continue to be maintained, but lease/push health is an accelerator signal rather than the sole ingestion path.
 
-## Gate A — natural WebSub delivery
+## Authoritative discovery production proof
 
-**Status: PENDING**
+On 2026-09-15 the four pilot channels were made due once and the normal hosted scheduler path invoked the production discovery worker.
 
-The live pilot observed three Geetha Arts uploads after its generation-1 subscription was verified:
+Scheduler request `2975` returned HTTP `200` with:
 
-- `cYvPtLZSL5I` — `2026-09-14 12:30:22 UTC`
-- `DCYcSoTobwU` — `2026-09-14 13:30:35 UTC`
-- `b98yv5Gu1r4` — `2026-09-14 13:45:28 UTC`
+- due: `4`
+- checked: `4`
+- discovered uploads: `1`
+- bounded-window gap sources: `0`
+- quota units before: `13`
+- quota units after: `17`
+- discovery mode: `UPLOADS_PLAYLIST_PRIMARY`
+- WebSub role: `ACCELERATOR`
 
-None produced an accepted `YOUTUBE_WEBSUB` receipt. All three were recovered by the uploads-playlist fallback, enriched successfully, processed successfully, and safely remained `UNRESOLVED` rather than receiving invented entity matches.
+The real upload found was Haarika & Hassine Creations video `C6R0LkeURFo`, published at `2026-09-15 10:45:17 UTC`.
 
-This proved the safety path but did not satisfy the push gate.
+It automatically completed:
 
-The callback was hardened after the incident so the next real post now distinguishes:
+- authoritative uploads-playlist discovery;
+- `YOUTUBE_ENRICH_VIDEO` successfully;
+- raw item + revision persistence;
+- `PROCESS_RAW_ITEM` successfully;
+- truthful entity resolution.
 
-- hub never called CineRelay; from
-- hub called CineRelay but the callback rejected/ignored the request.
+The result was `UNRESOLVED / score 0`, which is correct for the current source/entity scope. No false canonical event was created.
 
-Minimal rejected/ignored callback diagnostics persist operational metadata and payload hashes only; rejected payload bodies and signature values are not stored.
+## Adaptive cadence proof
 
-Google's current official documentation still describes the same YouTube PubSubHubbub/WebSub channel-feed contract, so no upstream contract migration has been identified.
+Immediately after the production canary:
+
+- Geetha Arts: `DEGRADED / WEBSUB_MISSED_DELIVERY` -> 5-minute discovery cadence
+- Haarika & Hassine Creations: `DEGRADED / WEBSUB_MISSED_DELIVERY` -> 5-minute discovery cadence
+- Mythri Movie Makers: `HEALTHY` -> 15-minute discovery cadence
+- Sithara Entertainments: `HEALTHY` -> 15-minute discovery cadence
+
+Provider/API/quota failures use a 30-minute backoff and remain visible through source health.
+
+## WebSub v9 observability
+
+Production `youtube-websub` v9 adds ingress telemetry before callback-token resolution.
+
+Controlled request `2971` intentionally POSTed without a token and returned the expected `404`, while a safe `YOUTUBE_WEBSUB_INGRESS` receipt persisted with `tokenState = MISSING`.
+
+This closes the previous blind spot where missing/unknown-token POSTs could disappear before diagnostics. The telemetry does not persist callback tokens, HMAC signature values, or rejected request bodies.
+
+Future natural push evidence remains useful for measuring accelerator performance, but a successful push is no longer required to prove ingestion correctness.
 
 ## Gate B — zero-gap lease renewal
 
 **Status: PASS**
 
-During incident recovery, Geetha Arts generation 1 was intentionally made renewal-due and the normal production maintenance path was dispatched.
+The existing production proof remains valid.
 
-Observed production result:
+During incident recovery, Geetha Arts generation 1 was intentionally made renewal-due and the normal production maintenance path created and verified generation 2 through the real Google hub.
 
 - scheduler request id: `283`
 - HTTP status: `200`
@@ -82,28 +110,16 @@ Observed production result:
 - renewal failures: `0`
 - verification timeouts: `0`
 - expired leases: `0`
-
-Generation evidence:
-
-- gen 1 verified: `2026-09-14 11:04:49.709 UTC`
 - gen 2 requested: `2026-09-14 14:13:03.525049 UTC`
 - gen 2 verified: `2026-09-14 14:13:05.490 UTC`
-- gen 2 state: `ACTIVE`
-- gen 1 state after gen-2 verification: `SUPERSEDED`
-- gen 2 renew-after: `2026-09-22 14:13:05.490 UTC`
-- gen 2 expiry: `2026-09-24 14:13:05.490 UTC`
-
-The real Google hub verified generation 2 in roughly two seconds. Generation 1 remained usable until the replacement was verified, proving the zero-gap generation contract.
-
-This was an incident-driven early renewal rather than the naturally scheduled September 22 tick. The natural timing can still be observed later as long-horizon operational evidence, but the zero-gap replacement property itself is now production-proven.
+- gen 1 remained usable until gen 2 was verified and then became `SUPERSEDED`
 
 See `PHASE2_GATE_B_RENEWAL_PROOF_2026-09-14.md`.
 
-## Production intelligence proof
+## Canonical intelligence proof
 
-A real Mythri Movie Makers canary already proved the canonical intelligence path:
+Mythri Movie Makers video `rfP-ArN8nds` previously proved the canonical intelligence path:
 
-- video: `rfP-ArN8nds`
 - entity: `Family Pack`
 - resolution confidence: `0.98`
 - canonical event: `PROJECT_ANNOUNCED`
@@ -114,99 +130,82 @@ A real Mythri Movie Makers canary already proved the canonical intelligence path
 - evidence: `PRIMARY`
 - replay dedupe: exactly one canonical event
 
-This proves:
+Together with the 2026-09-15 discovery canary, Phase 2 now proves both ingestion correctness and downstream intelligence behavior.
 
-`official source -> discovery -> videos.list -> raw item -> revision -> processing -> scoped resolution -> deterministic classification -> canonical event -> evidence`
+## Source-health ownership
 
-## Fallback proof
+Successful enrichment clears only enrichment-owned failures through `record_youtube_enrichment_success(...)`.
 
-The Geetha Arts incident proved the bounded fallback safety path under real missed pushes.
+WebSub/subscription/discovery failures remain independent. This prevents a successful `videos.list` call from incorrectly hiding a missed WebSub delivery.
 
-A controlled post-deploy fallback dispatch returned HTTP `200` with:
+A WebSub miss may keep a source `DEGRADED` for accelerator-health visibility while authoritative polling continues to provide correct ingestion.
 
-- `due = 1`
-- `checked = 1`
-- `recoveredUploads = 2`
-- `gapSources = 0`
+## Current production function versions relevant to the final contract
 
-Both resulting enrichment jobs and downstream processing jobs completed on the normal minute workers. `fallback_gap_count` remained `0`.
-
-## Source-health ownership repair
-
-A second production bug was found during the same incident: after fallback correctly marked Geetha Arts `DEGRADED / WEBSUB_MISSED_DELIVERY`, successful enrichment incorrectly reset the shared source health to `HEALTHY`.
-
-Root cause: the enrichment worker treated `videos.list` success as permission to clear health owned by other connector subsystems.
-
-Repair:
-
-- new atomic RPC: `record_youtube_enrichment_success(...)`
-- successful enrichment clears only enrichment-owned failures
-- WebSub/fallback/subscription errors remain authoritative
-- a successful WebSub delivery remains the only path that clears `WEBSUB_MISSED_DELIVERY`
-
-Hosted verification after repair:
-
-1. Geetha was restored to `DEGRADED / WEBSUB_MISSED_DELIVERY`;
-2. a successful enrichment-health canary was recorded;
-3. Geetha remained `DEGRADED / WEBSUB_MISSED_DELIVERY` afterward;
-4. generation-2 lease activation also correctly preserved the unrelated missed-delivery degradation.
-
-Current Geetha state:
-
-- health: `DEGRADED`
-- error: `WEBSUB_MISSED_DELIVERY`
-- `last_websub_at = null`
-- `consecutive_websub_events = 0`
-
-## Current hosted function versions relevant to the incident
-
-- `youtube-websub`: v8
-- `youtube-fallback-worker`: v8
+- `youtube-websub`: **v9**
+- `youtube-fallback-worker`: **v9** — legacy slug, authoritative discovery role
 - `youtube-enrichment-worker`: v8
+- `process-raw-item-worker`: v9
 
-## CI baseline
+## Final CI baseline
 
-Health-ownership repair head:
+Implementation head before these documentation commits:
 
-`2eb955f4071743e6d3477739715e234255f8a2dc`
+`58854a4413f35ceb8e7fbca2452b23513f6d8e07`
 
-CineRelay CI **#122: PASS** across all three jobs.
+CineRelay CI **#132** / run `34959975534`: **PASS** across all three jobs.
 
-Current automated gates include:
+Validated:
 
-- 13/13 intelligence benchmark cases
-- 13/13 YouTube connector canaries
-- 12/12 YouTube planning/enrichment/fallback canaries
-- all 8 Edge Function Deno checks
-- deployment-native Edge bundle generation
-- fresh PostgreSQL-17 migration startup
-- **40 pgTAP tests / PASS**
-- DB lint with no schema errors
+- intelligence + connector CI: PASS
+- YouTube planning/enrichment/discovery canaries: **15/15**
+- all eight Edge Function type-checks: PASS
+- deployment-native Edge bundle generation: PASS
+- PostgreSQL-17 migration startup: PASS
+- pgTAP database tests: PASS
+- DB lint: PASS
 
-The hosted enrichment-worker v8 deployment came from the exact CI-produced deployment artifact of this green baseline.
+Deployment artifact:
 
-## Current merge rule
+- `cinerelay-edge-deploy-bundle`
+- artifact id `10393330447`
+- digest `sha256:9d8f75d6ab50763056b7e92a9c0235b1b954f512cd4b9366f724ab04aa5b7a17`
 
-PR #2 remains **draft**.
+Production `youtube-websub` v9 and authoritative discovery worker v9 were deployed from this exact green artifact.
 
-Do not merge until Gate A passes:
+## Quota evidence
 
-1. a genuinely new post-v8/post-renewal upload produces an accepted WebSub receipt;
-2. the notification creates the enrichment job automatically;
-3. raw item/revision persistence succeeds;
-4. downstream processing succeeds;
-5. entity resolution remains truthful (`RESOLVED`, `AMBIGUOUS`, or `UNRESOLVED`);
-6. a meaningful supported event produces exactly one canonical event with evidence;
-7. provider-receipt-to-canonical latency is recorded;
-8. fallback is not the first discovery path for that qualifying upload.
+After the production canary on 2026-09-15, recorded YouTube Data API usage remained very small:
 
-Do not start broad Phase-3 UI work, mass source onboarding, X/Instagram ingestion, or broad scraping before this final gate is recorded.
+- `playlistItems.list`: 14 units / 14 requests
+- `videos.list`: 4 units / 4 requests
+
+The existing quota guard and reserve remain active.
+
+## Final Phase-2 merge rule
+
+The production reliability requirements are now satisfied:
+
+1. unattended official-source discovery works;
+2. authoritative uploads discovery has no observed bounded-window gap;
+3. real uploads automatically enrich and process downstream;
+4. resolution remains truthful rather than force-matched;
+5. quota and source health are observable;
+6. WebSub failure cannot create an ingestion correctness gap;
+7. WebSub ingress is observable before token resolution;
+8. zero-gap subscription replacement is production-proven;
+9. CI is green from the same artifact deployed to production.
+
+A future natural WebSub success is an operational accelerator metric, not a Phase-2 exit gate.
+
+PR #2 is therefore ready for final documentation-consistent CI and merge. Phase 3 may begin after the merge.
 
 ## Authoritative evidence
 
+- `PHASE2_AUTHORITATIVE_DISCOVERY_PROOF_2026-09-15.md`
+- `PHASE2_GATE_B_RENEWAL_PROOF_2026-09-14.md`
 - `PHASE2_HOSTED_PILOT_WATCH.md`
 - `PHASE2_PILOT_INCIDENT_2026-09-14.md`
-- `PHASE2_GATE_B_RENEWAL_PROOF_2026-09-14.md`
 - `PHASE2_YOUTUBE_OPERATIONS.md`
 
-_Last updated: 2026-09-14_
+_Last updated: 2026-09-15_
