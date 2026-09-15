@@ -1,10 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 // @deno-types="../../../packages/domain/dist/index.d.ts"
-import {
-  normalizeItem,
-  processSingle,
-  resolveEntity,
-} from '../../../packages/domain/dist/index.js';
+import { normalizeItem, processSingle, resolveEntity } from '../../../packages/domain/dist/index.js';
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL');
 const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
@@ -13,20 +9,12 @@ if (!supabaseUrl || !serviceRoleKey || !internalSecret) throw new Error('Missing
 
 const supabase = createClient(supabaseUrl, serviceRoleKey, { auth: { persistSession: false, autoRefreshToken: false } });
 const RESOLVER_VERSION = 'source-scope-resolver-v1';
+const OPERATOR_RESOLVER_VERSION = 'operator-override-v1';
 const CLASSIFIER_VERSION = 'deterministic-domain-v1.1';
 
-type EntityCandidate = {
-  id: string;
-  canonicalName: string;
-  aliases: string[];
-};
-
-type SourceDescriptor = {
-  authorityTier: number;
-  role?: string;
-  platform?: string;
-  name?: string;
-};
+type EntityCandidate = { id: string; canonicalName: string; aliases: string[] };
+type SourceDescriptor = { authorityTier: number; role?: string; platform?: string; name?: string };
+type Resolution = { state: string; score: number; entity?: EntityCandidate; matchedAlias?: string };
 
 function authorized(request: Request): boolean {
   const supplied = request.headers.get('x-cinerelay-internal-key') ?? '';
@@ -43,12 +31,7 @@ function json(status: number, body: Record<string, unknown>): Response {
 async function failJob(job: Record<string, unknown>, workerId: string, error: string): Promise<void> {
   const attemptCount = Number(job.attempt_count ?? 1);
   const retrySeconds = Math.min(3600, 20 * 2 ** Math.max(0, attemptCount - 1));
-  await supabase.rpc('fail_job', {
-    p_job_id: String(job.id),
-    p_worker_id: workerId,
-    p_error: error,
-    p_retry_after_seconds: retrySeconds,
-  });
+  await supabase.rpc('fail_job', { p_job_id: String(job.id), p_worker_id: workerId, p_error: error, p_retry_after_seconds: retrySeconds });
 }
 
 async function completeJob(job: Record<string, unknown>, workerId: string): Promise<void> {
@@ -63,22 +46,17 @@ function sourceRow(value: unknown): Record<string, unknown> | undefined {
 }
 
 async function loadRawItem(rawItemId: string): Promise<Record<string, unknown> | undefined> {
-  const { data, error } = await supabase
-    .from('raw_items')
+  const { data, error } = await supabase.from('raw_items')
     .select('id,source_identity_id,platform_item_id,canonical_url,published_at,raw_title,raw_text,normalized_text,content_fingerprint,metadata')
-    .eq('id', rawItemId)
-    .maybeSingle();
+    .eq('id', rawItemId).maybeSingle();
   if (error) throw error;
   return data as Record<string, unknown> | undefined;
 }
 
 async function loadSource(sourceIdentityId: string): Promise<SourceDescriptor> {
-  const { data, error } = await supabase
-    .from('source_identities')
+  const { data, error } = await supabase.from('source_identities')
     .select('id,platform,source_id,sources(display_name,authority_tier,source_role)')
-    .eq('id', sourceIdentityId)
-    .eq('active', true)
-    .maybeSingle();
+    .eq('id', sourceIdentityId).eq('active', true).maybeSingle();
   if (error) throw error;
   if (!data) throw new Error('source_identity_not_found');
   const source = sourceRow((data as Record<string, unknown>).sources);
@@ -91,33 +69,45 @@ async function loadSource(sourceIdentityId: string): Promise<SourceDescriptor> {
   };
 }
 
+async function loadEntity(entityId: string): Promise<EntityCandidate | undefined> {
+  const [{ data: entity, error: entityError }, { data: aliases, error: aliasError }] = await Promise.all([
+    supabase.from('entities').select('id,canonical_name,entity_type,status').eq('id', entityId).eq('status', 'ACTIVE').maybeSingle(),
+    supabase.from('entity_aliases').select('alias').eq('entity_id', entityId),
+  ]);
+  if (entityError) throw entityError;
+  if (aliasError) throw aliasError;
+  if (!entity || !['MOVIE', 'SERIES', 'SEASON'].includes(String(entity.entity_type))) return undefined;
+  return {
+    id: String(entity.id),
+    canonicalName: String(entity.canonical_name),
+    aliases: (aliases ?? []).map((row) => String(row.alias ?? '')).filter(Boolean),
+  };
+}
+
+async function loadOperatorOverride(rawItemId: string): Promise<{ id: string; entity: EntityCandidate } | undefined> {
+  const { data, error } = await supabase.from('operator_resolution_overrides')
+    .select('id,entity_id,active').eq('raw_item_id', rawItemId).eq('active', true).maybeSingle();
+  if (error) throw error;
+  if (!data) return undefined;
+  const entity = await loadEntity(String(data.entity_id));
+  if (!entity) throw new Error('operator_override_entity_invalid');
+  return { id: String(data.id), entity };
+}
+
 async function loadCandidates(sourceIdentityId: string): Promise<EntityCandidate[]> {
   const now = new Date().toISOString();
-  const { data: scopeRows, error: scopeError } = await supabase
-    .from('source_entity_candidates')
-    .select('entity_id,confidence,priority')
-    .eq('source_identity_id', sourceIdentityId)
-    .eq('active', true)
-    .or(`valid_from.is.null,valid_from.lte.${now}`)
-    .or(`valid_to.is.null,valid_to.gt.${now}`)
-    .order('priority', { ascending: true })
-    .order('confidence', { ascending: false });
+  const { data: scopeRows, error: scopeError } = await supabase.from('source_entity_candidates')
+    .select('entity_id,confidence,priority').eq('source_identity_id', sourceIdentityId).eq('active', true)
+    .or(`valid_from.is.null,valid_from.lte.${now}`).or(`valid_to.is.null,valid_to.gt.${now}`)
+    .order('priority', { ascending: true }).order('confidence', { ascending: false });
   if (scopeError) throw scopeError;
   const ids = [...new Set((scopeRows ?? []).map((row: Record<string, unknown>) => String(row.entity_id)).filter(Boolean))];
   if (ids.length === 0) return [];
 
-  const { data: entities, error: entityError } = await supabase
-    .from('entities')
-    .select('id,canonical_name,entity_type,status')
-    .in('id', ids)
-    .in('entity_type', ['MOVIE', 'SERIES', 'SEASON'])
-    .eq('status', 'ACTIVE');
+  const { data: entities, error: entityError } = await supabase.from('entities')
+    .select('id,canonical_name,entity_type,status').in('id', ids).in('entity_type', ['MOVIE', 'SERIES', 'SEASON']).eq('status', 'ACTIVE');
   if (entityError) throw entityError;
-
-  const { data: aliases, error: aliasError } = await supabase
-    .from('entity_aliases')
-    .select('entity_id,alias')
-    .in('entity_id', ids);
+  const { data: aliases, error: aliasError } = await supabase.from('entity_aliases').select('entity_id,alias').in('entity_id', ids);
   if (aliasError) throw aliasError;
 
   const aliasMap = new Map<string, string[]>();
@@ -131,22 +121,15 @@ async function loadCandidates(sourceIdentityId: string): Promise<EntityCandidate
   }
 
   return (entities ?? []).map((row: Record<string, unknown>) => ({
-    id: String(row.id),
-    canonicalName: String(row.canonical_name),
-    aliases: aliasMap.get(String(row.id)) ?? [],
+    id: String(row.id), canonicalName: String(row.canonical_name), aliases: aliasMap.get(String(row.id)) ?? [],
   }));
 }
 
 async function currentTheatricalDate(entityId: string): Promise<string | undefined> {
-  const { data, error } = await supabase
-    .from('events')
-    .select('event_type,structured_data,detected_at')
-    .eq('primary_entity_id', entityId)
-    .eq('status', 'ACTIVE')
+  const { data, error } = await supabase.from('events').select('event_type,structured_data,detected_at')
+    .eq('primary_entity_id', entityId).eq('status', 'ACTIVE')
     .in('event_type', ['THEATRICAL_DATE_ANNOUNCED', 'THEATRICAL_DATE_CHANGED'])
-    .order('detected_at', { ascending: false })
-    .limit(1)
-    .maybeSingle();
+    .order('detected_at', { ascending: false }).limit(1).maybeSingle();
   if (error) throw error;
   if (!data) return undefined;
   const structured = (data as Record<string, unknown>).structured_data;
@@ -157,14 +140,14 @@ async function currentTheatricalDate(entityId: string): Promise<string | undefin
   return undefined;
 }
 
-async function persistResolution(rawItemId: string, resolution: { state: string; score: number; entity?: EntityCandidate; matchedAlias?: string }, candidateCount: number): Promise<void> {
+async function persistResolution(rawItemId: string, resolution: Resolution, methods: unknown[], engineVersion: string): Promise<void> {
   const { error } = await supabase.rpc('record_entity_resolution', {
     p_raw_item_id: rawItemId,
     p_entity_id: resolution.entity?.id ?? null,
     p_score: resolution.score,
     p_resolution_state: resolution.state,
-    p_methods: [{ method: 'SOURCE_ENTITY_SCOPE', candidateCount, matchedAlias: resolution.matchedAlias ?? null }],
-    p_engine_version: RESOLVER_VERSION,
+    p_methods: methods,
+    p_engine_version: engineVersion,
   });
   if (error) throw error;
 }
@@ -197,22 +180,28 @@ async function processJob(job: Record<string, unknown>, workerId: string): Promi
   if (String(raw.source_identity_id) !== sourceIdentityId) throw new Error('source_identity_mismatch');
 
   const source = await loadSource(sourceIdentityId);
-  const candidates = await loadCandidates(sourceIdentityId);
   const fixtureItem = {
     title: typeof raw.raw_title === 'string' ? raw.raw_title : '',
     text: typeof raw.raw_text === 'string' ? raw.raw_text : '',
     url: String(raw.canonical_url),
   };
 
-  if (candidates.length === 0) {
-    await persistResolution(rawItemId, { state: 'UNRESOLVED', score: 0 }, 0);
-    await completeJob(job, workerId);
-    return { resolution: 'UNRESOLVED' };
+  const operatorOverride = await loadOperatorOverride(rawItemId);
+  let resolution: Resolution;
+  if (operatorOverride) {
+    resolution = { state: 'RESOLVED', score: 1, entity: operatorOverride.entity, matchedAlias: operatorOverride.entity.canonicalName };
+    await persistResolution(rawItemId, resolution, [{ method: 'OPERATOR_OVERRIDE', overrideId: operatorOverride.id }], OPERATOR_RESOLVER_VERSION);
+  } else {
+    const candidates = await loadCandidates(sourceIdentityId);
+    if (candidates.length === 0) {
+      await persistResolution(rawItemId, { state: 'UNRESOLVED', score: 0 }, [{ method: 'SOURCE_ENTITY_SCOPE', candidateCount: 0, matchedAlias: null }], RESOLVER_VERSION);
+      await completeJob(job, workerId);
+      return { resolution: 'UNRESOLVED' };
+    }
+    const normalized = normalizeItem(fixtureItem, source);
+    resolution = resolveEntity(normalized, { candidateEntities: candidates }) as Resolution;
+    await persistResolution(rawItemId, resolution, [{ method: 'SOURCE_ENTITY_SCOPE', candidateCount: candidates.length, matchedAlias: resolution.matchedAlias ?? null }], RESOLVER_VERSION);
   }
-
-  const normalized = normalizeItem(fixtureItem, source);
-  const resolution = resolveEntity(normalized, { candidateEntities: candidates });
-  await persistResolution(rawItemId, resolution as { state: string; score: number; entity?: EntityCandidate; matchedAlias?: string }, candidates.length);
 
   if (resolution.state !== 'RESOLVED' || !resolution.entity?.id) {
     await completeJob(job, workerId);
@@ -243,10 +232,7 @@ Deno.serve(async (request) => {
     const body = await request.json().catch(() => ({})) as { limit?: number };
     const limit = Math.max(1, Math.min(50, Number(body.limit ?? 25)));
     const { data: jobs, error: leaseError } = await supabase.rpc('lease_jobs', {
-      p_job_type: 'PROCESS_RAW_ITEM',
-      p_worker_id: workerId,
-      p_limit: limit,
-      p_lease_seconds: 120,
+      p_job_type: 'PROCESS_RAW_ITEM', p_worker_id: workerId, p_limit: limit, p_lease_seconds: 120,
     });
     if (leaseError) throw leaseError;
     if (!jobs || jobs.length === 0) return json(200, { leased: 0, processed: 0, events: 0 });

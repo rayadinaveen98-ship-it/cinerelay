@@ -22,6 +22,53 @@ jobs:
       - run: npm install --no-audit --no-fund --ignore-scripts
       - run: npm run ci
 
+  web-console:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # These values are intentionally public browser configuration. Never place
+    # service-role, connector, or other privileged secrets in VITE_* variables.
+    env:
+      VITE_SUPABASE_URL: https://dnqaejljfzwhsainpdxb.supabase.co
+      VITE_SUPABASE_PUBLISHABLE_KEY: sb_publishable_hR65p2JkQ2x5fFLx_kkcNQ_1SxNN3QP
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install web dependencies
+        run: npm --prefix apps/web install --no-audit --no-fund --ignore-scripts
+      - name: Build web console
+        run: npm --prefix apps/web run build
+      - name: Verify static-host contract and browser configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f apps/web/dist/_redirects
+          test -f apps/web/dist/_headers
+          grep -F '/* /index.html 200' apps/web/dist/_redirects
+          grep -F 'Content-Security-Policy:' apps/web/dist/_headers
+          grep -R -F "$VITE_SUPABASE_URL" apps/web/dist/assets --include='*.js'
+          grep -R -F "$VITE_SUPABASE_PUBLISHABLE_KEY" apps/web/dist/assets --include='*.js'
+          if grep -R -F 'VITE_SUPABASE_URL:void 0' apps/web/dist/assets --include='*.js'; then
+            echo 'VITE Supabase URL was not bound into the browser artifact' >&2
+            exit 1
+          fi
+          if grep -R -F 'VITE_SUPABASE_PUBLISHABLE_KEY:void 0' apps/web/dist/assets --include='*.js'; then
+            echo 'VITE Supabase publishable key was not bound into the browser artifact' >&2
+            exit 1
+          fi
+          if grep -R -E 'SUPABASE_SERVICE_ROLE_KEY|CINERELAY_INTERNAL_ADMIN_SECRET|CINERELAY_WEBSUB_MASTER_SECRET|YOUTUBE_API_KEY' apps/web/dist; then
+            echo 'Forbidden privileged credential marker found in browser bundle' >&2
+            exit 1
+          fi
+      - name: Upload deployable static console artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: cinerelay-web-console-dist
+          path: apps/web/dist
+          if-no-files-found: error
+          retention-days: 7
+
   edge-functions:
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -51,6 +98,10 @@ jobs:
         run: deno check --config supabase/functions/youtube-maintenance-worker/deno.json supabase/functions/youtube-maintenance-worker/index.ts
       - name: Type-check cinerelay-scheduler-dispatch
         run: deno check --config supabase/functions/cinerelay-scheduler-dispatch/deno.json supabase/functions/cinerelay-scheduler-dispatch/index.ts
+      - name: Type-check cinerelay-console-api
+        run: deno check --config supabase/functions/cinerelay-console-api/deno.json supabase/functions/cinerelay-console-api/index.ts
+      - name: Type-check cinerelay-review-api
+        run: deno check --config supabase/functions/cinerelay-review-api/deno.json supabase/functions/cinerelay-review-api/index.ts
       - name: Build deployment-native Edge bundles
         shell: bash
         run: |
@@ -64,6 +115,8 @@ jobs:
             youtube-fallback-worker
             youtube-maintenance-worker
             cinerelay-scheduler-dispatch
+            cinerelay-console-api
+            cinerelay-review-api
           )
           for fn in "${functions[@]}"; do
             mkdir -p "edge-deploy/${fn}"

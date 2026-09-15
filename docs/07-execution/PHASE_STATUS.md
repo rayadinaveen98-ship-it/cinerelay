@@ -6,149 +6,134 @@ Date: 2026-09-15
 
 **Phase 0 — Product Foundation: COMPLETE**  
 **Phase 1 — Intelligence Core Skeleton: COMPLETE + merged to `main`**  
-**Phase 2 — YouTube Production Connector: COMPLETE / PRODUCTION-VERIFIED / READY TO MERGE**  
-**Phase 3 — Internal Web Intelligence Console: UNLOCKED after PR #2 merges**
+**Phase 2 — YouTube Production Connector: COMPLETE / PRODUCTION-VERIFIED / merged to `main`**  
+**Phase 3 — Internal Web Intelligence Console: ACTIVE / P3.1–P3.5 HOSTED / P3.6 ENGINEERING COMPLETE / EXTERNAL OPERATOR + CLOUDFLARE QA REMAINS**
 
-CineRelay now has a real hosted backend, unattended recurring workers, official YouTube ingestion, authoritative uploads-playlist discovery, optional WebSub acceleration, canonical intelligence processing, production source health, quota controls, and a production-proven zero-gap WebSub renewal lifecycle.
+Phase 2 merged through PR #2 at:
 
-## Final Phase-2 architecture
+`e757afef33b18572c1438462621d98298d388cb5`
 
-The correctness path is:
+Phase 3 branch:
+
+`phase-3/internal-web-console`
+
+Draft PR: `#3`.
+
+## Production ingestion baseline
 
 `official uploads playlist -> authoritative discovery -> targeted videos.list enrichment -> raw/revision persistence -> intelligence processing`
 
-WebSub remains active as a best-effort low-latency accelerator. Repeated provider-side push misses no longer make CineRelay lose data or block the roadmap.
+WebSub remains a best-effort accelerator, not a correctness dependency.
 
-Per-source discovery cadence:
+## Phase 3 implemented surface
 
-- WebSub-degraded/hot source: 5 minutes
-- normal source: 15 minutes
-- provider/API/quota backoff: 30 minutes
+P3.1–P3.5 are implemented, hosted and protected by the authenticated operator boundary:
 
-The hosted discovery dispatcher runs every 5 minutes and services only rows that are due.
+- secure React/TypeScript internal console;
+- live canonical intelligence feed;
+- event/evidence detail and entity timeline;
+- source registry, health, discovery, WebSub, quota, worker and scheduler diagnostics;
+- current unresolved/ambiguous review queue;
+- durable operator resolution overrides;
+- entity binding/missing-entity creation;
+- normal reprocessing after correction;
+- audited clear/suppress/reclassify/merge actions;
+- separate review API;
+- direct mutation RPCs restricted to `service_role`.
 
-## Phase 2 branch
+Hosted P3.5 runtime remains:
 
-- branch: `phase-2/youtube-connector`
-- PR: `#2`
-- hosted project: `CineRelay`
-- Supabase ref: `dnqaejljfzwhsainpdxb`
-- region: `ap-south-1`
-- recurring infrastructure cost: **₹0/month**
+- `process-raw-item-worker` v10 ACTIVE;
+- `cinerelay-review-api` v1 ACTIVE;
+- active production overrides `0`;
+- production ADMIN audit actions `0`.
 
-## Production proof
+## P3.6 engineering status
 
-### Canonical intelligence
+Completed:
 
-Mythri Movie Makers video `rfP-ArN8nds`:
+- Overview unresolved metric uses latest `current_entity_resolution_results`;
+- Cloudflare SPA fallback and security/CSP headers;
+- immutable asset caching + no-store app shell;
+- privileged-secret marker scan for browser bundles;
+- environment-bound production-like web build using only the browser-public Supabase URL + publishable key;
+- explicit CI failure if Vite public config is unbound;
+- exact hosted migration-ledger order reconciled in Git.
 
-- resolved to **Family Pack** at `0.98`;
-- classified `PROJECT_ANNOUNCED`;
-- verification `OFFICIAL`;
-- priority `HIGH`;
-- primary evidence attached;
-- replay deduped to exactly one canonical event.
+### CI #174 issue and correction
 
-### Authoritative discovery
+CI #174 compiled successfully, but direct inspection found its static artifact had undefined `VITE_SUPABASE_*` values and therefore was not a valid runtime deployment artifact. It was never deployed to Cloudflare.
 
-Production scheduler request `2975` checked all four pilot sources through the new authoritative discovery worker:
+The workflow now asserts that the real browser-public Supabase configuration is present in emitted JavaScript and that the prior `void 0` pattern is absent.
 
-- due `4`
-- checked `4`
-- discovered uploads `1`
-- gap sources `0`
-- quota units `13 -> 17`
-- discovery mode `UPLOADS_PLAYLIST_PRIMARY`
-- WebSub role `ACCELERATOR`
+### Final engineering baseline — CI #181
 
-It found real Haarika & Hassine Creations upload `C6R0LkeURFo` and automatically completed enrichment plus downstream processing. The current source scope truthfully produced `UNRESOLVED / 0` rather than inventing an entity match.
+Head:
 
-### Adaptive cadence
+`bcb3ca8e21754e9aa37ba22f2938db0105e229d4`
 
-The same production canary proved:
+CineRelay CI #181 / run `34990528085`: **PASS across all four jobs**.
 
-- Geetha Arts -> 5-minute hot cadence after `WEBSUB_MISSED_DELIVERY`
-- Haarika & Hassine Creations -> 5-minute hot cadence after its newly observed WebSub miss
-- Mythri Movie Makers -> 15-minute normal cadence
-- Sithara Entertainments -> 15-minute normal cadence
+- fresh migrations: PASS;
+- 53 pgTAP tests: PASS;
+- DB lint: PASS;
+- intelligence/connectors: PASS;
+- all ten Edge Functions: PASS;
+- environment-bound web build: PASS;
+- static-host/CSP/browser-config/secret checks: PASS.
 
-### WebSub v9 observability
+Artifacts:
 
-A controlled no-token POST, request `2971`, returned the expected `404` and still persisted a `YOUTUBE_WEBSUB_INGRESS` receipt with `tokenState = MISSING`.
+- deployable web `10405273418`, digest `sha256:e22653caf259c8e5ab68542ca5bc7c48234bb527365c95d179425e4934de7601`;
+- Edge deploy bundle `10405841036`, digest `sha256:a04e527e243e5f032b1f4edeb15cb8018b5f58b392b2d9ffd1c736ad896fd4fc`;
+- Edge source bundle `10405676678`, digest `sha256:9c618b6340888f53067fd9c90a96b729d969e4be2b1cb9efa468c5f64d35e5a0`.
 
-This closes the previous pre-token diagnostic blind spot. Future real pushes can be distinguished as matched, unknown-token, missing-token, or overlong-token ingress before signature/payload validation.
+Direct inspection of the #181 web ZIP confirmed the public Supabase configuration is embedded, undefined Vite patterns are absent, privileged secret markers are absent, and Cloudflare `_headers` / `_redirects` are present.
 
-### Gate B — zero-gap renewal
+Hosted console API remains `cinerelay-console-api` v5 ACTIVE. Console source did not change between #174 and #181, so no redundant redeployment is required.
 
-Previously passed in production:
+Hosted negative auth canaries:
 
-- generation 2 requested `2026-09-14 14:13:03.525049 UTC`
-- generation 2 verified `2026-09-14 14:13:05.490 UTC`
-- generation 1 remained usable until replacement verification
-- generation 1 became `SUPERSEDED` only after generation 2 became active
-- no usable-lease gap occurred
+- request `3634` -> `401 authentication_required`;
+- request `3635` -> `401 invalid_session`.
 
-The renewal lifecycle remains valuable for WebSub acceleration even though WebSub no longer controls ingestion correctness.
+Latest checked hosted state:
 
-## Final quality baseline
+- Auth users `0`;
+- active operators `0`;
+- active overrides `0`;
+- ADMIN audit actions `0`;
+- current unresolved queue `18`;
+- recurring scheduler jobs healthy.
 
-Implementation head before final documentation commits:
+Migration parity is exact for:
 
-`58854a4413f35ceb8e7fbca2452b23513f6d8e07`
+1. `20260915115439_operator_review_workflow`
+2. `20260915115543_noop_verify_operator_review_workflow`
+3. `20260915115553_operator_review_workflow_verify_cleanup`
 
-CineRelay CI `#132` / run `34959975534`: **PASS** across all three jobs.
+## Remaining Phase-3 truth gates
 
-Validated:
+1. first genuine Supabase Auth login;
+2. authenticated non-operator -> `403` proof;
+3. allowlisted operator -> `200` proof;
+4. signed-in browser QA for overview/feed/detail/operations/review queue;
+5. Cloudflare Pages production deployment from the environment-bound build;
+6. hosted deep-link/auth-callback/refresh/CSP/browser-secret verification;
+7. real correction only if evidence and operator intent justify one;
+8. mark PR #3 ready only after those genuine account/browser gates.
 
-- intelligence-and-connectors: PASS
-- YouTube planning/enrichment/discovery canaries: 15/15
-- all eight Edge Functions: type-check PASS
-- deployment-native bundle: PASS
-- PostgreSQL-17 migration startup: PASS
-- pgTAP: PASS
-- DB lint: PASS
+The current session has no dedicated Cloudflare deployment connector. Do not silently switch production hosting to Vercel merely to close the gate.
 
-Deployment artifact:
+## Guardrails
 
-- id `10393330447`
-- digest `sha256:9d8f75d6ab50763056b7e92a9c0235b1b954f512cd4b9366f724ab04aa5b7a17`
+Do not expand Phase 3 into broad Android UI, mass source onboarding, X/Instagram ingestion, broad scraping, public accounts, community features, or paid infrastructure before the internal-console gate is complete.
 
-Production `youtube-websub` v9 and `youtube-fallback-worker` v9 were deployed from this exact green artifact.
+## Authoritative execution docs
 
-## Phase-2 completion decision
-
-Natural WebSub delivery is no longer an exit gate. It remains an operational metric for accelerator latency and upstream reliability.
-
-Phase 2 is complete because CineRelay now has an unattended, official-source, quota-bounded ingestion path whose correctness does not depend on provider push delivery.
-
-PR #2 should receive one final documentation-consistent CI pass and then merge to `main`.
-
-## Next phase
-
-**Phase 3 — Internal Web Intelligence Console** begins after PR #2 merges.
-
-Planned scope remains:
-
-- authentication;
-- live feed;
-- event detail + evidence;
-- title timeline;
-- source registry;
-- source-health dashboard;
-- review/correction queue;
-- merge/suppress/reclassify tools;
-- filters/search;
-- benchmark diagnostics.
-
-Do not begin broad Android UI, mass source onboarding, X/Instagram ingestion, or broad scraping ahead of the internal web console foundation.
-
-## Authoritative Phase-2 docs
-
+- `docs/07-execution/PHASE3_STATUS.md`
 - `docs/07-execution/PHASE2_STATUS.md`
 - `docs/07-execution/PHASE2_AUTHORITATIVE_DISCOVERY_PROOF_2026-09-15.md`
-- `docs/07-execution/PHASE2_HOSTED_PILOT_WATCH.md`
-- `docs/07-execution/PHASE2_PILOT_INCIDENT_2026-09-14.md`
-- `docs/07-execution/PHASE2_GATE_B_RENEWAL_PROOF_2026-09-14.md`
 - `docs/07-execution/PHASE2_YOUTUBE_OPERATIONS.md`
 
 _Last updated: 2026-09-15_
