@@ -2,17 +2,15 @@ import { createClient } from '@supabase/supabase-js';
 // @deno-types="../../../packages/youtube-connector/dist/index.d.ts"
 import { YOUTUBE_QUOTA_POLICY_V1, decideQuota } from '../../../packages/youtube-connector/dist/index.js';
 // @deno-types="../../../packages/youtube-connector/dist/fallback.d.ts"
-import { buildUploadsPlaylistItemsUrl, decideFallbackHealth, normalizeUploadsPlaylistItemsResponse } from '../../../packages/youtube-connector/dist/fallback.js';
+import { buildUploadsPlaylistItemsUrl, decideDiscoveryIntervalMs, decideFallbackHealth, normalizeUploadsPlaylistItemsResponse } from '../../../packages/youtube-connector/dist/fallback.js';
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL');
 const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 const internalSecret = Deno.env.get('CINERELAY_INTERNAL_ADMIN_SECRET');
 const youtubeApiKey = Deno.env.get('YOUTUBE_API_KEY');
-if (!supabaseUrl || !serviceRoleKey || !internalSecret || !youtubeApiKey) throw new Error('Missing YouTube fallback-worker environment');
+if (!supabaseUrl || !serviceRoleKey || !internalSecret || !youtubeApiKey) throw new Error('Missing YouTube discovery-worker environment');
 
 const supabase = createClient(supabaseUrl, serviceRoleKey, { auth: { persistSession: false, autoRefreshToken: false } });
-const HEALTHY_INTERVAL_MS = 6 * 60 * 60 * 1000;
-const DEGRADED_INTERVAL_MS = 30 * 60 * 1000;
 const PLAYLIST_WINDOW = 50;
 
 function authorized(request: Request): boolean {
@@ -36,8 +34,8 @@ async function updateSourceHealth(sourceIdentityId: string, values: Record<strin
   }
 }
 
-function nextCheck(now: Date, degraded: boolean): string {
-  return new Date(now.getTime() + (degraded ? DEGRADED_INTERVAL_MS : HEALTHY_INTERVAL_MS)).toISOString();
+function nextCheck(now: Date, existingErrorCode?: string | null, providerFailure = false): string {
+  return new Date(now.getTime() + decideDiscoveryIntervalMs({ existingErrorCode, providerFailure })).toISOString();
 }
 
 Deno.serve(async (request) => {
@@ -57,7 +55,7 @@ Deno.serve(async (request) => {
       .order('next_fallback_check_at', { ascending: true, nullsFirst: true })
       .limit(limit);
     if (dueError) throw dueError;
-    if (!dueRows || dueRows.length === 0) return json(200, { due: 0, checked: 0, recoveredUploads: 0 });
+    if (!dueRows || dueRows.length === 0) return json(200, { due: 0, checked: 0, discoveredUploads: 0 });
 
     const sourceIds = dueRows.map((row: Record<string, unknown>) => String(row.source_identity_id));
     const { data: activeSources, error: activeError } = await supabase.from('source_identities').select('id').in('id', sourceIds).eq('active', true);
@@ -72,7 +70,7 @@ Deno.serve(async (request) => {
     if (quotaError) throw quotaError;
     let usedUnits = Number(quotaUsed ?? 0);
     let checked = 0;
-    let recoveredUploads = 0;
+    let discoveredUploads = 0;
     let baselineSources = 0;
     let gapSources = 0;
 
@@ -95,9 +93,9 @@ Deno.serve(async (request) => {
           health_state: 'BUDGET_EXHAUSTED',
           last_attempt_at: nowIso,
           last_error_code: quota.reason,
-          last_error_message: 'YouTube quota reserve guard blocked fallback check',
+          last_error_message: 'YouTube quota reserve guard blocked authoritative uploads discovery',
         });
-        await supabase.from('youtube_channel_state').update({ next_fallback_check_at: nextCheck(now, true) }).eq('source_identity_id', sourceIdentityId);
+        await supabase.from('youtube_channel_state').update({ next_fallback_check_at: nextCheck(now, existingHealthError, true) }).eq('source_identity_id', sourceIdentityId);
         continue;
       }
 
@@ -111,7 +109,7 @@ Deno.serve(async (request) => {
         request_count: 1,
         source_identity_id: sourceIdentityId,
         response_status: apiResponse.status,
-        metadata: { playlistId, maxResults: PLAYLIST_WINDOW },
+        metadata: { playlistId, maxResults: PLAYLIST_WINDOW, role: 'AUTHORITATIVE_DISCOVERY' },
       });
 
       if (!apiResponse.ok) {
@@ -120,10 +118,10 @@ Deno.serve(async (request) => {
           health_state: rateLimited ? 'RATE_LIMITED' : 'DEGRADED',
           last_attempt_at: nowIso,
           last_http_status: apiResponse.status,
-          last_error_code: 'YOUTUBE_FALLBACK_API_ERROR',
+          last_error_code: 'YOUTUBE_DISCOVERY_API_ERROR',
           last_error_message: `playlistItems.list returned ${apiResponse.status}`,
         });
-        await supabase.from('youtube_channel_state').update({ last_fallback_check_at: nowIso, next_fallback_check_at: nextCheck(now, true) }).eq('source_identity_id', sourceIdentityId);
+        await supabase.from('youtube_channel_state').update({ last_fallback_check_at: nowIso, next_fallback_check_at: nextCheck(now, existingHealthError, true) }).eq('source_identity_id', sourceIdentityId);
         continue;
       }
 
@@ -131,7 +129,7 @@ Deno.serve(async (request) => {
       checked += 1;
       if (uploads.length === 0) {
         const health = decideFallbackHealth({ gapExceededWindow: false, recoveredUploadCount: 0, existingErrorCode: existingHealthError });
-        await supabase.from('youtube_channel_state').update({ last_fallback_check_at: nowIso, next_fallback_check_at: nextCheck(now, health.degraded) }).eq('source_identity_id', sourceIdentityId);
+        await supabase.from('youtube_channel_state').update({ last_fallback_check_at: nowIso, next_fallback_check_at: nextCheck(now, health.errorCode ?? null) }).eq('source_identity_id', sourceIdentityId);
         await updateSourceHealth(sourceIdentityId, {
           health_state: health.degraded ? 'DEGRADED' : 'HEALTHY',
           last_attempt_at: nowIso,
@@ -150,7 +148,7 @@ Deno.serve(async (request) => {
         await supabase.from('youtube_channel_state').update({
           latest_known_video_id: newest.videoId,
           last_fallback_check_at: nowIso,
-          next_fallback_check_at: nextCheck(now, health.degraded),
+          next_fallback_check_at: nextCheck(now, health.errorCode ?? null),
         }).eq('source_identity_id', sourceIdentityId);
         await updateSourceHealth(sourceIdentityId, {
           health_state: health.degraded ? 'DEGRADED' : 'HEALTHY',
@@ -170,7 +168,7 @@ Deno.serve(async (request) => {
         const timestamp = upload.publishedAt ?? nowIso;
         const { error: enqueueError } = await supabase.rpc('enqueue_job', {
           p_job_type: 'YOUTUBE_ENRICH_VIDEO',
-          p_idempotency_key: `youtube:enrich:fallback:${sourceIdentityId}:${upload.videoId}`,
+          p_idempotency_key: `youtube:enrich:playlist:${sourceIdentityId}:${upload.videoId}`,
           p_payload: {
             sourceIdentityId,
             notification: {
@@ -180,13 +178,13 @@ Deno.serve(async (request) => {
               watchUrl: `https://www.youtube.com/watch?v=${upload.videoId}`,
               publishedAt: upload.publishedAt ?? null,
               updatedAt: timestamp,
-              discoveredBy: 'UPLOADS_PLAYLIST_FALLBACK',
+              discoveredBy: 'UPLOADS_PLAYLIST_PRIMARY',
             },
           },
           p_priority: 25,
         });
         if (enqueueError) throw enqueueError;
-        recoveredUploads += 1;
+        discoveredUploads += 1;
       }
 
       if (gapExceededWindow) gapSources += 1;
@@ -198,7 +196,7 @@ Deno.serve(async (request) => {
       const channelUpdate: Record<string, unknown> = {
         latest_known_video_id: newest.videoId,
         last_fallback_check_at: nowIso,
-        next_fallback_check_at: nextCheck(now, health.degraded),
+        next_fallback_check_at: nextCheck(now, health.errorCode ?? null),
         fallback_gap_count: Number(row.fallback_gap_count ?? 0) + (gapExceededWindow ? 1 : 0),
       };
       if (missing.length > 0) channelUpdate.consecutive_websub_events = 0;
@@ -213,9 +211,9 @@ Deno.serve(async (request) => {
       });
     }
 
-    return json(200, { due: dueRows.length, checked, recoveredUploads, baselineSources, gapSources, quotaUsedBefore: Number(quotaUsed ?? 0), quotaUsedAfter: usedUnits });
+    return json(200, { due: dueRows.length, checked, discoveredUploads, baselineSources, gapSources, quotaUsedBefore: Number(quotaUsed ?? 0), quotaUsedAfter: usedUnits, discoveryMode: 'UPLOADS_PLAYLIST_PRIMARY', webSubRole: 'ACCELERATOR' });
   } catch (error) {
-    console.error('youtube-fallback-worker failure', error);
+    console.error('youtube-discovery-worker failure', error);
     return json(500, { error: 'internal_error' });
   }
 });
