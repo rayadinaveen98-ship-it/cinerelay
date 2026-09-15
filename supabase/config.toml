@@ -66,3 +66,8 @@ verify_jwt = false
 # operator_users allowlist before any service-role query is executed.
 [functions.cinerelay-console-api]
 verify_jwt = false
+
+# Review mutations use the same Auth + operator allowlist boundary as the read
+# console, but live in a separate function to isolate privileged write actions.
+[functions.cinerelay-review-api]
+verify_jwt = false
