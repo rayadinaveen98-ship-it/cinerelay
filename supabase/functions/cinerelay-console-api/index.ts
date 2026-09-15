@@ -29,13 +29,26 @@ function bearerToken(request: Request): string | null {
   return match?.[1] ?? null;
 }
 
-async function requireOperator(request: Request) {
+type AuthorizedOperator = {
+  ok: true;
+  user: { id: string; email?: string | null };
+  operator: { display_name: string | null };
+};
+
+type RejectedOperator = {
+  ok: false;
+  response: Response;
+};
+
+type OperatorAuthResult = AuthorizedOperator | RejectedOperator;
+
+async function requireOperator(request: Request): Promise<OperatorAuthResult> {
   const token = bearerToken(request);
-  if (!token) return { error: json(401, { error: 'authentication_required' }) } as const;
+  if (!token) return { ok: false, response: json(401, { error: 'authentication_required' }) };
 
   const { data: userResult, error: userError } = await admin.auth.getUser(token);
   const user = userResult.user;
-  if (userError || !user) return { error: json(401, { error: 'invalid_session' }) } as const;
+  if (userError || !user) return { ok: false, response: json(401, { error: 'invalid_session' }) };
 
   const { data: operator, error: operatorError } = await admin
     .from('operator_users')
@@ -44,9 +57,13 @@ async function requireOperator(request: Request) {
     .eq('active', true)
     .maybeSingle();
   if (operatorError) throw operatorError;
-  if (!operator) return { error: json(403, { error: 'operator_access_required' }) } as const;
+  if (!operator) return { ok: false, response: json(403, { error: 'operator_access_required' }) };
 
-  return { user, operator } as const;
+  return {
+    ok: true,
+    user: { id: user.id, email: user.email ?? null },
+    operator: { display_name: operator.display_name ?? null },
+  };
 }
 
 async function exactCount(table: string, filter?: (query: any) => any): Promise<number> {
@@ -91,13 +108,13 @@ async function overview(user: { id: string; email?: string | null }, operator: {
   };
 }
 
-Deno.serve(async (request) => {
+Deno.serve(async (request): Promise<Response> => {
   try {
     if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: corsHeaders });
     if (request.method !== 'POST') return new Response(null, { status: 405, headers: { ...corsHeaders, allow: 'POST, OPTIONS' } });
 
     const auth = await requireOperator(request);
-    if ('error' in auth) return auth.error;
+    if (!auth.ok) return auth.response;
 
     const body = await request.json().catch(() => ({})) as { action?: string };
     if (body.action !== 'overview') return json(400, { error: 'unsupported_action' });
