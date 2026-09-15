@@ -11,7 +11,7 @@ insert into public.source_identities (
 ) values (
   '32000000-0000-4000-8000-000000000001', '22000000-0000-4000-8000-000000000001', 'YOUTUBE',
   'UCreview0000000000000000', 'https://www.youtube.com/channel/UCreview0000000000000000',
-  'YOUTUBE_PLAYLIST', 'HOT', 'API', true
+  'YOUTUBE_PLAYLIST', 'HOT_5M', 'API', true
 );
 
 insert into public.entities (id, entity_type, canonical_name, primary_language, country_code, status)
