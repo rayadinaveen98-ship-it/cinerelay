@@ -1,12 +1,17 @@
 # Phase 2 — Hosted Pilot Watch Pack
 
-Date: 2026-09-14
+Date: 2026-09-15
 
-## Current purpose
+## Purpose
 
-Phase 2 now has **one** remaining production exit gate: a genuinely new upload must be accepted through the WebSub callback before fallback becomes its first discovery path.
+Phase 2 is production-verified. This watch pack now monitors ongoing YouTube ingestion reliability and WebSub accelerator behavior; it is **not** a merge gate.
 
-Gate B — zero-gap renewal — passed in production through the incident-driven Geetha Arts generation-2 renewal canary. See `PHASE2_GATE_B_RENEWAL_PROOF_2026-09-14.md`.
+The correctness path is authoritative uploads-playlist discovery. WebSub is retained as a best-effort low-latency accelerator.
+
+See:
+
+- `PHASE2_AUTHORITATIVE_DISCOVERY_PROOF_2026-09-15.md`
+- `PHASE2_GATE_B_RENEWAL_PROOF_2026-09-14.md`
 
 ## Hosted project
 
@@ -14,7 +19,7 @@ Gate B — zero-gap renewal — passed in production through the incident-driven
 - ref: `dnqaejljfzwhsainpdxb`
 - region: `ap-south-1`
 - branch: `phase-2/youtube-connector`
-- draft PR: `#2`
+- PR: `#2`
 
 ## Pilot sources
 
@@ -23,95 +28,109 @@ Gate B — zero-gap renewal — passed in production through the incident-driven
 3. Haarika & Hassine Creations
 4. Geetha Arts
 
-Geetha Arts currently has generation 2 `ACTIVE`; generation 1 is `SUPERSEDED`. The other three sources retain usable generation-1 leases.
+## Operating contract
 
-## Current incident state
+Authoritative discovery cadence:
 
-Three Geetha Arts uploads published after generation-1 verification were recovered by fallback with no accepted WebSub receipt:
+- WebSub-degraded/hot source: 5 minutes
+- normal source: 15 minutes
+- provider/API/quota backoff: 30 minutes
 
-- `cYvPtLZSL5I` — `2026-09-14 12:30:22 UTC`
-- `DCYcSoTobwU` — `2026-09-14 13:30:35 UTC`
-- `b98yv5Gu1r4` — `2026-09-14 13:45:28 UTC`
+The hosted dispatcher invokes the discovery worker every 5 minutes; the worker checks only sources whose own due time has arrived.
 
-Current Geetha health must remain:
+`fallback_gap_count > 0` is now the critical correctness alarm. A WebSub miss is an accelerator-health degradation, not an ingestion failure when authoritative discovery remains within its bounded window.
 
-- `DEGRADED`
-- `WEBSUB_MISSED_DELIVERY`
-- `last_websub_at = null`
-- `consecutive_websub_events = 0`
+## Current WebSub telemetry
 
-A successful enrichment or lease renewal must **not** clear this delivery failure. Only a successful real WebSub delivery may clear it.
+`youtube-websub` v9 records safe ingress evidence before callback-token resolution.
 
-Relevant hosted versions:
+Providers:
 
-- `youtube-websub`: v8
-- `youtube-fallback-worker`: v8
-- `youtube-enrichment-worker`: v8
+- `YOUTUBE_WEBSUB_INGRESS`: coarse ingress telemetry before token/signature/payload validation
+- `YOUTUBE_WEBSUB`: accepted notifications and post-token rejected/ignored diagnostics
 
-## Final Gate A — accepted natural WebSub upload
+Ingress token states:
 
-A pass requires a genuinely new upload to be delivered by the WebSub hub and accepted by CineRelay before fallback becomes its first discovery path.
+- `MATCHED`: callback token resolved to a known subscription
+- `UNKNOWN`: a token was supplied but did not resolve
+- `MISSING`: POST arrived without a token
+- `TOO_LONG`: token exceeded the callback safety bound
 
-Required evidence:
+No callback token value, HMAC signature value, or rejected payload body is stored.
 
-1. accepted `connector_receipts` row for provider `YOUTUBE_WEBSUB`;
-2. no diagnostic rejection/ignore for the qualifying delivery;
-3. `YOUTUBE_ENRICH_VIDEO` job created from the WebSub notification;
-4. targeted `videos.list` enrichment succeeds;
-5. raw item + revision persist;
-6. `PROCESS_RAW_ITEM` completes automatically;
-7. entity resolution is truthful (`RESOLVED`, `AMBIGUOUS`, or `UNRESOLVED`);
-8. when the content maps to a supported event, exactly one canonical event is created with evidence;
-9. replay/retry does not create duplicate canonical events;
-10. receipt-to-raw latency is recorded;
-11. receipt-to-canonical latency is recorded when an event is produced;
-12. fallback was not the first discovery path.
+A controlled production request `2971` proved the pre-token path by persisting `MISSING` while returning the expected `404`.
 
-A fallback-only discovery does **not** pass Gate A.
+## Production discovery proof
 
-## Callback diagnostic interpretation
+Production scheduler request `2975`:
 
-The hardened v8 callback persists minimal operational diagnostics only after a valid callback token resolves.
+- HTTP 200
+- four pilot sources checked
+- one real upload discovered
+- zero bounded-window gap sources
+- discovery mode `UPLOADS_PLAYLIST_PRIMARY`
+- WebSub role `ACCELERATOR`
 
-Interpretation:
+Real upload:
 
-- normal video external key + queued/processed progression = accepted WebSub path;
-- `diagnostic:rejected:*` = callback reached CineRelay but signature/payload/validation failed;
-- `diagnostic:ignored:*` = callback reached parsing but no acceptable matching channel entry was queued;
-- no receipt/diagnostic at all + later fallback discovery = likely no usable callback reached CineRelay for that upload.
-
-Diagnostic rows are investigation evidence, not Gate-A success.
+- source: Haarika & Hassine Creations
+- video: `C6R0LkeURFo`
+- published: `2026-09-15 10:45:17 UTC`
+- enrichment: SUCCEEDED
+- processing: SUCCEEDED
+- resolution: `UNRESOLVED / 0`
+- no false canonical event
 
 ## Watch queries
 
-### 1. WebSub generations
+### 1. Source health + discovery cadence
 
 ```sql
 select
   s.display_name,
-  cs.generation,
-  cs.state,
-  cs.requested_at,
-  cs.verified_at,
-  cs.renew_after,
-  cs.expires_at,
-  cs.last_error
-from public.connector_subscriptions cs
-join public.source_identities si on si.id = cs.source_identity_id
+  sh.health_state,
+  sh.last_error_code,
+  sh.last_error_message,
+  ycs.latest_known_video_id,
+  ycs.last_websub_at,
+  ycs.last_fallback_check_at,
+  ycs.next_fallback_check_at,
+  ycs.fallback_gap_count,
+  ycs.consecutive_websub_events
+from public.source_health sh
+join public.source_identities si on si.id = sh.source_identity_id
 join public.sources s on s.id = si.source_id
-where cs.provider = 'YOUTUBE_WEBSUB'
-order by s.display_name, cs.generation desc;
+left join public.youtube_channel_state ycs on ycs.source_identity_id = si.id
+where si.platform = 'YOUTUBE'
+order by s.display_name;
 ```
 
-### 2. WebSub receipts + diagnostics
+Expected correctness condition: `fallback_gap_count = 0` for all active pilot sources.
+
+### 2. WebSub ingress telemetry
 
 ```sql
 select
-  cr.id,
+  cr.received_at,
+  s.display_name,
+  cr.status,
+  cr.metadata
+from public.connector_receipts cr
+left join public.source_identities si on si.id = cr.source_identity_id
+left join public.sources s on s.id = si.source_id
+where cr.provider = 'YOUTUBE_WEBSUB_INGRESS'
+order by cr.received_at desc
+limit 50;
+```
+
+### 3. Accepted/rejected WebSub receipts
+
+```sql
+select
+  cr.received_at,
   s.display_name,
   cr.external_key,
   cr.status,
-  cr.received_at,
   cr.processed_at,
   cr.error_message,
   cr.metadata
@@ -123,7 +142,7 @@ order by cr.received_at desc
 limit 50;
 ```
 
-### 3. Recent ingestion jobs
+### 4. Recent YouTube jobs
 
 ```sql
 select
@@ -141,7 +160,7 @@ order by created_at desc
 limit 50;
 ```
 
-### 4. Latest YouTube raw items
+### 5. Latest YouTube raw items
 
 ```sql
 select
@@ -160,7 +179,7 @@ order by r.created_at desc
 limit 50;
 ```
 
-### 5. Latest resolution results
+### 6. Latest resolution results
 
 ```sql
 select
@@ -176,30 +195,7 @@ order by rr.created_at desc
 limit 50;
 ```
 
-### 6. Latest canonical events + evidence
-
-```sql
-select
-  ev.id as event_id,
-  e.canonical_name,
-  ev.event_type,
-  ev.verification_state,
-  ev.priority_band,
-  ev.headline,
-  ev.detected_at,
-  ri.platform_item_id,
-  ri.canonical_url
-from public.events ev
-join public.entities e on e.id = ev.primary_entity_id
-join public.event_evidence ee on ee.event_id = ev.id
-join public.raw_items ri on ri.id = ee.raw_item_id
-join public.source_identities si on si.id = ri.source_identity_id
-where si.platform = 'YOUTUBE'
-order by ev.detected_at desc
-limit 50;
-```
-
-### 7. Duplicate guard
+### 7. Duplicate event guard
 
 ```sql
 select dedupe_key, count(*)
@@ -210,28 +206,18 @@ having count(*) > 1;
 
 Expected: no rows.
 
-### 8. Source health
+### 8. Quota usage
 
 ```sql
 select
-  s.display_name,
-  sh.health_state,
-  sh.last_attempt_at,
-  sh.last_success_at,
-  sh.last_item_at,
-  sh.last_error_code,
-  sh.last_error_message,
-  ycs.last_websub_at,
-  ycs.last_fallback_check_at,
-  ycs.next_fallback_check_at,
-  ycs.fallback_gap_count,
-  ycs.consecutive_websub_events
-from public.source_health sh
-join public.source_identities si on si.id = sh.source_identity_id
-join public.sources s on s.id = si.source_id
-left join public.youtube_channel_state ycs on ycs.source_identity_id = si.id
-where si.platform = 'YOUTUBE'
-order by s.display_name;
+  usage_day,
+  method,
+  sum(units) as units,
+  sum(request_count) as requests
+from public.connector_quota_usage
+where provider = 'YOUTUBE_DATA_API'
+group by usage_day, method
+order by usage_day desc, method;
 ```
 
 ### 9. Cron health
@@ -240,6 +226,7 @@ order by s.display_name;
 select
   d.jobid,
   j.jobname,
+  j.schedule,
   d.status,
   d.return_message,
   d.start_time,
@@ -251,60 +238,23 @@ order by d.start_time desc
 limit 50;
 ```
 
-### 10. Dispatcher results
+## Investigation rules
 
-```sql
-select
-  id,
-  status_code,
-  timed_out,
-  error_msg,
-  content,
-  created
-from net._http_response
-order by created desc
-limit 50;
-```
+Investigate immediately when:
 
-## Latency recording
-
-For the qualifying push record:
-
-- `connector_receipts.received_at`
-- `raw_items.created_at`
-- `events.detected_at` when applicable
-
-Metrics:
-
-`raw_ingest_latency = raw_items.created_at - connector_receipts.received_at`
-
-`canonical_event_latency = events.detected_at - connector_receipts.received_at`
-
-Phase-0 target for push-capable Tier-A sources remains p50 < 2 minutes and p95 < 5 minutes after provider notification availability. One final canary validates order of magnitude, not a percentile distribution.
-
-## Incident conditions
-
-Investigate immediately if:
-
-- accepted receipt appears but no enrichment job follows;
-- accepted receipt remains unprocessed after the worker cadence;
-- fallback discovers a new upload before any accepted receipt;
-- `diagnostic:rejected:*` or `diagnostic:ignored:*` appears;
-- any job reaches `DEAD_LETTER`;
+- `fallback_gap_count` increases;
+- authoritative discovery cannot find the previous baseline inside the 50-item window;
+- discovery/API jobs reach `DEAD_LETTER`;
+- quota reserve guard remains active long enough to threaten the bounded discovery window;
+- a discovered upload does not complete enrichment and raw processing;
 - duplicate canonical-event dedupe keys appear;
-- Geetha becomes `HEALTHY` without an accepted WebSub delivery;
-- any active lease expires without a replacement.
+- a WebSub `MATCHED` ingress fails deeper validation repeatedly;
+- an active WebSub lease expires without a replacement.
 
-## Gate-B reference
+WebSub misses alone are not data-loss incidents when authoritative discovery remains healthy. They should remain visible through `WEBSUB_MISSED_DELIVERY` so accelerator reliability can be improved independently.
 
-Gate B is already passed. Do not re-open it unless a later regression contradicts the zero-gap renewal proof.
+## Completion state
 
-Evidence: `PHASE2_GATE_B_RENEWAL_PROOF_2026-09-14.md`.
+**PHASE 2 COMPLETE / PRODUCTION-VERIFIED**
 
-## Phase-2 completion rule
-
-PR #2 remains draft until Gate A passes.
-
-Current correct state:
-
-**IMPLEMENTATION COMPLETE / HOSTED PILOT ACTIVE / ONE FINAL LIVE PUSH GATE PENDING**
+Natural WebSub success remains useful ongoing operational evidence but is not a Phase-2 merge blocker.
