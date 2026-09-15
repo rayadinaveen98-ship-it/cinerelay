@@ -2,7 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link, Outlet, createRootRoute, createRoute, createRouter, RouterProvider } from '@tanstack/react-router';
 import { useAuth } from './auth/AuthProvider';
-import { fetchConsoleFeed, fetchConsoleOverview } from './lib/console-api';
+import { fetchConsoleFeed, fetchConsoleOverview, fetchEventDetail } from './lib/console-api';
 
 function LoadingScreen() {
   return <main className="grid min-h-screen place-items-center bg-zinc-950 text-zinc-300">Loading CineRelay…</main>;
@@ -91,13 +91,47 @@ function FeedPage() {
       {feed.data.items.length === 0 ? <p className="text-sm text-zinc-500">No canonical events yet.</p> : <div className="space-y-3">{feed.data.items.map((item) => (
         <article key={item.id} className="rounded-2xl border border-zinc-800 bg-zinc-950/70 p-5">
           <div className="flex flex-wrap items-center gap-2 text-xs uppercase tracking-wide text-zinc-500"><span>{item.eventType.replaceAll('_', ' ')}</span><span>•</span><span>{item.verificationState}</span><span>•</span><span>{item.priorityBand}</span><span>•</span><span>{new Date(item.detectedAt).toLocaleString()}</span></div>
-          <h2 className="mt-3 text-lg font-semibold text-zinc-100">{item.headline}</h2>
+          <Link to="/events/$eventId" params={{ eventId: item.id }} className="mt-3 block text-lg font-semibold text-zinc-100 hover:text-amber-300">{item.headline}</Link>
           <p className="mt-1 text-sm text-amber-300">{item.entityName ?? 'Unresolved entity'}</p>
           {item.summary && <p className="mt-3 text-sm leading-6 text-zinc-400">{item.summary}</p>}
           {item.evidence && <div className="mt-4 rounded-xl border border-zinc-800 bg-zinc-900/60 p-4 text-sm"><div className="flex flex-wrap gap-x-4 gap-y-1 text-zinc-500"><span>Source: <strong className="font-medium text-zinc-300">{item.evidence.sourceName ?? 'Unknown'}</strong></span><span>Evidence: <strong className="font-medium text-zinc-300">{item.evidence.role ?? '—'}</strong></span><span>Published: <strong className="font-medium text-zinc-300">{item.evidence.publishedAt ? new Date(item.evidence.publishedAt).toLocaleString() : '—'}</strong></span></div>{item.evidence.rawTitle && <p className="mt-2 text-zinc-300">{item.evidence.rawTitle}</p>}{item.evidence.canonicalUrl && <a href={item.evidence.canonicalUrl} target="_blank" rel="noreferrer" className="mt-2 inline-block text-amber-400 hover:text-amber-300">Open official evidence ↗</a>}</div>}
         </article>
       ))}</div>}
     </Panel>
+  );
+}
+
+function EventDetailPage() {
+  const { eventId } = eventDetailRoute.useParams();
+  const detail = useQuery({ queryKey: ['event-detail', eventId], queryFn: () => fetchEventDetail(eventId) });
+  if (detail.isPending) return <Panel title="Event detail"><p className="text-zinc-400">Tracing event evidence and revisions…</p></Panel>;
+  if (detail.isError) return <AccessError error={detail.error} />;
+  const data = detail.data;
+  return (
+    <div className="space-y-6">
+      <Panel title={data.event.headline} eyebrow={data.entity?.canonical_name ?? 'Unknown entity'}>
+        <div className="flex flex-wrap gap-2 text-xs uppercase tracking-wide text-zinc-500"><span>{data.event.event_type.replaceAll('_', ' ')}</span><span>•</span><span>{data.event.verification_state}</span><span>•</span><span>{data.event.priority_band}</span><span>•</span><span>{data.event.status}</span></div>
+        {data.event.summary && <p className="mt-4 text-sm leading-6 text-zinc-300">{data.event.summary}</p>}
+        <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4"><DetailMetric label="Detected" value={new Date(data.event.detected_at).toLocaleString()} /><DetailMetric label="Verification" value={String(data.event.verification_confidence)} /><DetailMetric label="Priority score" value={String(data.event.priority_score)} /><DetailMetric label="Classifier" value={data.event.classifier_version} /></div>
+        <details className="mt-5 rounded-xl border border-zinc-800 bg-zinc-950/60 p-4"><summary className="cursor-pointer text-sm font-medium text-zinc-300">Structured event data</summary><pre className="mt-3 overflow-x-auto whitespace-pre-wrap text-xs leading-5 text-zinc-500">{JSON.stringify(data.event.structured_data, null, 2)}</pre></details>
+      </Panel>
+
+      <Panel title="Evidence provenance" eyebrow={`${data.evidence.length} attached item${data.evidence.length === 1 ? '' : 's'}`}>
+        <div className="space-y-4">{data.evidence.map((evidence, index) => (
+          <article key={`${evidence.rawItem?.id ?? 'none'}-${index}`} className="rounded-2xl border border-zinc-800 bg-zinc-950/70 p-5">
+            <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs uppercase tracking-wide text-zinc-500"><span>{evidence.role}</span><span>weight {String(evidence.weight)}</span>{evidence.source && <span>tier {evidence.source.authorityTier}</span>}</div>
+            {evidence.source && <div className="mt-3"><p className="font-medium text-zinc-200">{evidence.source.name}</p><p className="mt-1 text-sm text-zinc-500">{evidence.source.platform} · {evidence.source.connectorType} · {evidence.source.accessMode}</p></div>}
+            {evidence.rawItem && <div className="mt-4 rounded-xl border border-zinc-800 bg-zinc-900/60 p-4"><p className="text-sm font-medium text-zinc-200">{evidence.rawItem.rawTitle ?? evidence.rawItem.platformItemId}</p>{evidence.rawItem.rawText && <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-zinc-400">{evidence.rawItem.rawText}</p>}<div className="mt-3 flex flex-wrap gap-3 text-xs text-zinc-500"><span>Published {evidence.rawItem.publishedAt ? new Date(evidence.rawItem.publishedAt).toLocaleString() : '—'}</span><span>First seen {new Date(evidence.rawItem.firstSeenAt).toLocaleString()}</span><span>{evidence.rawItem.revisions.length} revision(s)</span></div><a href={evidence.rawItem.canonicalUrl} target="_blank" rel="noreferrer" className="mt-3 inline-block text-sm text-amber-400 hover:text-amber-300">Open official source ↗</a></div>}
+            {evidence.claim && <details className="mt-4 rounded-xl border border-zinc-800 p-4"><summary className="cursor-pointer text-sm text-zinc-300">Extracted claim: {evidence.claim.predicate}</summary><pre className="mt-3 overflow-x-auto whitespace-pre-wrap text-xs text-zinc-500">{JSON.stringify({ value: evidence.claim.value_json, qualifiers: evidence.claim.qualifiers_json, confidence: evidence.claim.extraction_confidence, engine: evidence.claim.engine_version, pointers: evidence.claim.evidencePointers }, null, 2)}</pre></details>}
+            {evidence.rawItem && evidence.rawItem.revisions.length > 0 && <details className="mt-4 rounded-xl border border-zinc-800 p-4"><summary className="cursor-pointer text-sm text-zinc-300">Revision history</summary><div className="mt-3 space-y-3">{evidence.rawItem.revisions.map((revision) => <div key={revision.id} className="rounded-lg bg-zinc-900/70 p-3"><div className="flex flex-wrap gap-3 text-xs text-zinc-500"><span>{revision.change_kind}</span><span>{new Date(revision.observed_at).toLocaleString()}</span></div>{revision.title && <p className="mt-2 text-sm text-zinc-300">{revision.title}</p>}</div>)}</div></details>}
+          </article>
+        ))}</div>
+      </Panel>
+
+      <Panel title={`${data.entity?.canonical_name ?? 'Entity'} timeline`} eyebrow={`${data.timeline.length} event${data.timeline.length === 1 ? '' : 's'}`}>
+        <div className="space-y-2">{data.timeline.map((item) => <Link key={item.id} to="/events/$eventId" params={{ eventId: item.id }} className="block rounded-xl border border-zinc-800 bg-zinc-950/60 p-4 hover:border-zinc-700"><div className="flex flex-wrap gap-2 text-xs uppercase tracking-wide text-zinc-500"><span>{item.event_type.replaceAll('_', ' ')}</span><span>•</span><span>{item.verification_state}</span><span>•</span><span>{new Date(item.detected_at).toLocaleString()}</span></div><p className="mt-2 text-sm font-medium text-zinc-200">{item.headline}</p></Link>)}</div>
+      </Panel>
+    </div>
   );
 }
 
@@ -110,14 +144,16 @@ function HealthPage() {
 }
 
 function Metric({ label, value, critical = false }: { label: string; value: number; critical?: boolean }) { return <div className={`rounded-2xl border p-5 ${critical ? 'border-red-800 bg-red-950/30' : 'border-zinc-800 bg-zinc-950/70'}`}><p className="text-xs uppercase tracking-wider text-zinc-500">{label}</p><p className="mt-2 text-3xl font-semibold">{value}</p></div>; }
+function DetailMetric({ label, value }: { label: string; value: string }) { return <div className="rounded-xl border border-zinc-800 bg-zinc-950/60 p-4"><p className="text-xs uppercase tracking-wider text-zinc-500">{label}</p><p className="mt-2 break-words text-sm text-zinc-200">{value}</p></div>; }
 function Panel({ title, eyebrow, children }: { title: string; eyebrow?: string; children: React.ReactNode }) { return <section className="rounded-3xl border border-zinc-800 bg-zinc-900/50 p-6"><div className="mb-5 flex items-end justify-between gap-4"><h1 className="text-xl font-semibold">{title}</h1>{eyebrow && <span className="text-xs text-zinc-500">{eyebrow}</span>}</div>{children}</section>; }
 function AccessError({ error }: { error: Error }) { return <Panel title="Console access unavailable"><p className="text-sm leading-6 text-red-300">{error.message}</p><p className="mt-3 text-sm text-zinc-500">Authentication alone is not enough. Your Supabase user must also have an active row in `operator_users`.</p></Panel>; }
 
 const rootRoute = createRootRoute({ component: Shell });
 const overviewRoute = createRoute({ getParentRoute: () => rootRoute, path: '/', component: OverviewPage });
 const feedRoute = createRoute({ getParentRoute: () => rootRoute, path: '/feed', component: FeedPage });
+const eventDetailRoute = createRoute({ getParentRoute: () => rootRoute, path: '/events/$eventId', component: EventDetailPage });
 const healthRoute = createRoute({ getParentRoute: () => rootRoute, path: '/health', component: HealthPage });
-const routeTree = rootRoute.addChildren([overviewRoute, feedRoute, healthRoute]);
+const routeTree = rootRoute.addChildren([overviewRoute, feedRoute, eventDetailRoute, healthRoute]);
 const router = createRouter({ routeTree });
 
 declare module '@tanstack/react-router' { interface Register { router: typeof router } }
