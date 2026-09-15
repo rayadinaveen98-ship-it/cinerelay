@@ -11,6 +11,7 @@ const corsHeaders = {
   'access-control-allow-methods': 'POST, OPTIONS',
   'cache-control': 'no-store',
 };
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 function json(status: number, body: Record<string, unknown>): Response {
   return new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, 'content-type': 'application/json' } });
@@ -145,15 +146,129 @@ async function feed(limit: number) {
   return { generatedAt: new Date().toISOString(), items };
 }
 
+async function eventDetail(eventId: string) {
+  const { data: event, error: eventError } = await admin.from('events')
+    .select('id,primary_entity_id,event_type,event_schema_version,occurred_at,announced_at,detected_at,verification_state,verification_confidence,priority_score,priority_band,headline,summary,structured_data,dedupe_key,status,supersedes_event_id,classifier_version,created_at,updated_at')
+    .eq('id', eventId).maybeSingle();
+  if (eventError) throw eventError;
+  if (!event) return null;
+
+  const [{ data: entity, error: entityError }, { data: evidenceRows, error: evidenceError }, { data: timeline, error: timelineError }] = await Promise.all([
+    admin.from('entities').select('id,entity_type,canonical_name,slug,primary_language,country_code,status,created_at,updated_at').eq('id', event.primary_entity_id).maybeSingle(),
+    admin.from('event_evidence').select('event_id,raw_item_id,claim_id,evidence_role,weight,added_at').eq('event_id', eventId),
+    admin.from('events').select('id,event_type,verification_state,priority_band,headline,summary,status,detected_at,announced_at,occurred_at').eq('primary_entity_id', event.primary_entity_id).order('detected_at', { ascending: false }).limit(100),
+  ]);
+  if (entityError) throw entityError;
+  if (evidenceError) throw evidenceError;
+  if (timelineError) throw timelineError;
+
+  const rawIds = [...new Set((evidenceRows ?? []).map((row) => row.raw_item_id).filter(Boolean))];
+  const claimIds = [...new Set((evidenceRows ?? []).map((row) => row.claim_id).filter(Boolean))];
+  const [{ data: raws, error: rawError }, { data: revisions, error: revisionError }, { data: claims, error: claimsError }, { data: claimEvidence, error: claimEvidenceError }] = await Promise.all([
+    rawIds.length ? admin.from('raw_items').select('id,source_identity_id,platform_item_id,canonical_url,published_at,first_seen_at,last_seen_at,item_type,raw_title,raw_text,language_code,media_type,metadata,content_fingerprint,deleted_or_unavailable_at,current_revision_id,created_at,updated_at').in('id', rawIds) : Promise.resolve({ data: [], error: null }),
+    rawIds.length ? admin.from('raw_item_revisions').select('id,raw_item_id,observed_at,title,text,metadata,content_fingerprint,change_kind').in('raw_item_id', rawIds).order('observed_at', { ascending: false }) : Promise.resolve({ data: [], error: null }),
+    claimIds.length ? admin.from('claims').select('id,subject_entity_id,predicate,value_json,qualifiers_json,claim_time,extraction_confidence,engine_version,created_at').in('id', claimIds) : Promise.resolve({ data: [], error: null }),
+    claimIds.length ? admin.from('claim_evidence').select('claim_id,raw_item_id,raw_item_revision_id,evidence_role,text_span_or_pointer').in('claim_id', claimIds) : Promise.resolve({ data: [], error: null }),
+  ]);
+  if (rawError) throw rawError;
+  if (revisionError) throw revisionError;
+  if (claimsError) throw claimsError;
+  if (claimEvidenceError) throw claimEvidenceError;
+
+  const sourceIdentityIds = [...new Set((raws ?? []).map((row) => row.source_identity_id).filter(Boolean))];
+  const { data: identities, error: identityError } = sourceIdentityIds.length
+    ? await admin.from('source_identities').select('id,source_id,platform,platform_identity_id,handle,canonical_url,connector_type,poll_class,access_mode,active').in('id', sourceIdentityIds)
+    : { data: [], error: null };
+  if (identityError) throw identityError;
+  const sourceIds = [...new Set((identities ?? []).map((row) => row.source_id).filter(Boolean))];
+  const { data: sources, error: sourceError } = sourceIds.length
+    ? await admin.from('sources').select('id,display_name,authority_tier,source_role,territory,languages,active').in('id', sourceIds)
+    : { data: [], error: null };
+  if (sourceError) throw sourceError;
+
+  const rawMap = new Map((raws ?? []).map((row) => [row.id, row]));
+  const identityMap = new Map((identities ?? []).map((row) => [row.id, row]));
+  const sourceMap = new Map((sources ?? []).map((row) => [row.id, row]));
+  const claimMap = new Map((claims ?? []).map((row) => [row.id, row]));
+  const revisionsByRaw = new Map<string, Record<string, unknown>[]>();
+  for (const revision of revisions ?? []) {
+    const list = revisionsByRaw.get(revision.raw_item_id) ?? [];
+    list.push(revision);
+    revisionsByRaw.set(revision.raw_item_id, list);
+  }
+  const claimEvidenceByClaim = new Map<string, Record<string, unknown>[]>();
+  for (const row of claimEvidence ?? []) {
+    const list = claimEvidenceByClaim.get(row.claim_id) ?? [];
+    list.push(row);
+    claimEvidenceByClaim.set(row.claim_id, list);
+  }
+
+  const evidence = (evidenceRows ?? []).map((row) => {
+    const raw = rawMap.get(row.raw_item_id);
+    const identity = raw ? identityMap.get(raw.source_identity_id) : undefined;
+    const source = identity ? sourceMap.get(identity.source_id) : undefined;
+    const claim = row.claim_id ? claimMap.get(row.claim_id) : undefined;
+    return {
+      role: row.evidence_role,
+      weight: row.weight,
+      addedAt: row.added_at,
+      rawItem: raw ? {
+        id: raw.id,
+        platformItemId: raw.platform_item_id,
+        canonicalUrl: raw.canonical_url,
+        publishedAt: raw.published_at,
+        firstSeenAt: raw.first_seen_at,
+        lastSeenAt: raw.last_seen_at,
+        itemType: raw.item_type,
+        rawTitle: raw.raw_title,
+        rawText: raw.raw_text,
+        languageCode: raw.language_code,
+        mediaType: raw.media_type,
+        metadata: raw.metadata ?? {},
+        contentFingerprint: raw.content_fingerprint,
+        unavailableAt: raw.deleted_or_unavailable_at,
+        currentRevisionId: raw.current_revision_id,
+        revisions: revisionsByRaw.get(raw.id) ?? [],
+      } : null,
+      source: identity && source ? {
+        name: source.display_name,
+        authorityTier: source.authority_tier,
+        sourceRole: source.source_role,
+        territory: source.territory,
+        languages: source.languages ?? [],
+        platform: identity.platform,
+        platformIdentityId: identity.platform_identity_id,
+        handle: identity.handle,
+        canonicalUrl: identity.canonical_url,
+        connectorType: identity.connector_type,
+        pollClass: identity.poll_class,
+        accessMode: identity.access_mode,
+        active: identity.active && source.active,
+      } : null,
+      claim: claim ? {
+        ...claim,
+        evidencePointers: claimEvidenceByClaim.get(claim.id) ?? [],
+      } : null,
+    };
+  });
+
+  return { generatedAt: new Date().toISOString(), event, entity, evidence, timeline: timeline ?? [] };
+}
+
 Deno.serve(async (request): Promise<Response> => {
   try {
     if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: corsHeaders });
     if (request.method !== 'POST') return new Response(null, { status: 405, headers: { ...corsHeaders, allow: 'POST, OPTIONS' } });
     const auth = await requireOperator(request);
     if (!auth.ok) return auth.response;
-    const body = await request.json().catch(() => ({})) as { action?: string; limit?: number };
+    const body = await request.json().catch(() => ({})) as { action?: string; limit?: number; eventId?: string };
     if (body.action === 'overview') return json(200, await overview(auth.user, auth.operator));
     if (body.action === 'feed') return json(200, await feed(Number(body.limit ?? 25)));
+    if (body.action === 'eventDetail') {
+      if (typeof body.eventId !== 'string' || !UUID_PATTERN.test(body.eventId)) return json(400, { error: 'invalid_event_id' });
+      const detail = await eventDetail(body.eventId);
+      return detail ? json(200, detail) : json(404, { error: 'event_not_found' });
+    }
     return json(400, { error: 'unsupported_action' });
   } catch (error) {
     console.error('cinerelay-console-api failure', error);
