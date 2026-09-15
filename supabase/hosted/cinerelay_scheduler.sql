@@ -71,9 +71,12 @@ select cron.schedule(
   $job$
 );
 
+-- Legacy worker/action names are retained for compatibility, but this is now the
+-- authoritative uploads-playlist discovery path. The worker itself uses 5-minute
+-- hot polling for degraded WebSub sources and 15-minute normal polling otherwise.
 select cron.schedule(
   'cinerelay-youtube-fallback',
-  '*/15 * * * *',
+  '*/5 * * * *',
   $job$
   select net.http_post(
     url := (select decrypted_secret from vault.decrypted_secrets where name = 'cinerelay_project_url' order by created_at desc limit 1)
