@@ -13,6 +13,7 @@ import {
 import {
   HUB_RETRY_POLICY,
   decideHubRetry,
+  decideHubTransportRetry,
   failedRenewalRetryAt,
   planSubscription,
   planUnsubscription,
@@ -28,6 +29,7 @@ const supabase = createClient(supabaseUrl, serviceRoleKey, { auth: { persistSess
 const callbackBaseUrl = `${supabaseUrl.replace(/\/$/, '')}/functions/v1/youtube-websub`;
 
 type HubRequest = { url: string; headers: Record<string, string>; body: string };
+type HubPostResult = { ok: boolean; status: number | null; attempts: number; transportError: boolean };
 type SubscriptionRow = { id: string; generation: number; state: string; requested_at: string | null; verified_at: string | null; expires_at: string | null; renew_after: string | null };
 
 function authorized(request: Request): boolean {
@@ -42,23 +44,31 @@ function response(status: number, body: Record<string, unknown>): Response {
   return new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } });
 }
 
-async function postHubWithRetry(request: HubRequest): Promise<{ response: Response; attempts: number }> {
-  let lastResponse: Response | null = null;
+async function pause(delayMs: number): Promise<void> {
+  if (delayMs <= 0) return;
+  await new Promise((resolve) => setTimeout(resolve, delayMs));
+}
+
+async function postHubWithRetry(request: HubRequest): Promise<HubPostResult> {
   for (let attempt = 1; attempt <= HUB_RETRY_POLICY.maxAttempts; attempt += 1) {
-    const hubResponse = await fetch(request.url, {
-      method: 'POST',
-      headers: request.headers,
-      body: request.body,
-      signal: AbortSignal.timeout(15_000),
-    });
-    lastResponse = hubResponse;
-    if (hubResponse.ok) return { response: hubResponse, attempts: attempt };
-    const retry = decideHubRetry({ attempt, status: hubResponse.status });
-    if (!retry.retry) return { response: hubResponse, attempts: attempt };
-    await new Promise((resolve) => setTimeout(resolve, retry.delayMs));
+    try {
+      const hubResponse = await fetch(request.url, {
+        method: 'POST',
+        headers: request.headers,
+        body: request.body,
+        signal: AbortSignal.timeout(15_000),
+      });
+      if (hubResponse.ok) return { ok: true, status: hubResponse.status, attempts: attempt, transportError: false };
+      const retry = decideHubRetry({ attempt, status: hubResponse.status });
+      if (!retry.retry) return { ok: false, status: hubResponse.status, attempts: attempt, transportError: false };
+      await pause(retry.delayMs);
+    } catch {
+      const retry = decideHubTransportRetry(attempt);
+      if (!retry.retry) return { ok: false, status: null, attempts: attempt, transportError: true };
+      await pause(retry.delayMs);
+    }
   }
-  if (!lastResponse) throw new Error('Hub retry loop completed without a response');
-  return { response: lastResponse, attempts: HUB_RETRY_POLICY.maxAttempts };
+  return { ok: false, status: null, attempts: HUB_RETRY_POLICY.maxAttempts, transportError: true };
 }
 
 async function quotaAllowed(): Promise<boolean> {
@@ -114,7 +124,7 @@ Deno.serve(async (request) => {
       if (!active) return response(409, { error: 'no_active_subscription' });
       const plan = await planUnsubscription({ sourceIdentityId, channelId, generation: Number(active.generation), callbackBaseUrl, masterSecret: masterSecret! });
       const hub = await postHubWithRetry(plan.hubRequest);
-      if (!hub.response.ok) return response(502, { error: 'hub_unsubscribe_rejected', status: hub.response.status, attempts: hub.attempts });
+      if (!hub.ok) return response(502, { error: 'hub_unsubscribe_rejected', status: hub.status, attempts: hub.attempts, transportError: hub.transportError });
       const { error } = await supabase.from('connector_subscriptions').update({ state: 'UNSUBSCRIBING', last_error: null }).eq('id', active.id);
       if (error) throw error;
       return response(202, { action, generation: Number(active.generation), hub: YOUTUBE_WEBSUB_HUB_URL, hubAttempts: hub.attempts });
@@ -155,15 +165,17 @@ Deno.serve(async (request) => {
     if (insertError) throw insertError;
 
     const hub = await postHubWithRetry(plan.hubRequest);
-    if (!hub.response.ok) {
-      await supabase.from('connector_subscriptions').update({ state: 'ERROR', last_error: `hub request failed with ${hub.response.status} after ${hub.attempts} attempt(s)` }).eq('provider', YOUTUBE_WEBSUB_PROVIDER).eq('source_identity_id', sourceIdentityId).eq('generation', plan.generation);
+    if (!hub.ok) {
+      const failureLabel = hub.transportError ? 'hub transport failure' : `hub request failed with ${hub.status}`;
+      const { error: failError } = await supabase.from('connector_subscriptions').update({ state: 'ERROR', last_error: `${failureLabel} after ${hub.attempts} attempt(s)` }).eq('provider', YOUTUBE_WEBSUB_PROVIDER).eq('source_identity_id', sourceIdentityId).eq('generation', plan.generation);
+      if (failError) throw failError;
       let retryAt: string | null = null;
       if (action === 'renew' && activeRenewal) {
         retryAt = failedRenewalRetryAt(new Date());
         const { error: deferError } = await supabase.from('connector_subscriptions').update({ renew_after: retryAt }).eq('id', activeRenewal.id).eq('state', 'ACTIVE');
         if (deferError) throw deferError;
       }
-      return response(502, { error: 'hub_subscribe_rejected', status: hub.response.status, attempts: hub.attempts, retryAt });
+      return response(502, { error: 'hub_subscribe_rejected', status: hub.status, attempts: hub.attempts, transportError: hub.transportError, retryAt });
     }
 
     return response(202, {
