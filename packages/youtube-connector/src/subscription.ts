@@ -21,6 +21,7 @@ export type SubscriptionPlan = {
 
 export const HUB_RETRY_POLICY = Object.freeze({
   maxAttempts: 3,
+  attemptTimeoutMs: 10_000,
   delaysMs: [250, 750] as const,
   failedRenewalBackoffMs: 30 * 60 * 1000,
 });
@@ -34,6 +35,11 @@ export type HubRetryDecision = {
 
 function retryDelayForAttempt(attempt: number): number {
   return HUB_RETRY_POLICY.delaysMs[Math.min(attempt - 1, HUB_RETRY_POLICY.delaysMs.length - 1)] ?? 0;
+}
+
+export function maximumHubRetryWindowMs(): number {
+  return HUB_RETRY_POLICY.maxAttempts * HUB_RETRY_POLICY.attemptTimeoutMs
+    + HUB_RETRY_POLICY.delaysMs.reduce((total, delay) => total + delay, 0);
 }
 
 export function decideHubTransportRetry(attempt: number): HubRetryDecision {
