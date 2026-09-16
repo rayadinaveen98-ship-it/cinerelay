@@ -1,4 +1,11 @@
 import { createClient } from '@supabase/supabase-js';
+// @deno-types="../../../packages/domain/dist/newsroom-filter.d.ts"
+import {
+  newsroomClipFamilyKey,
+  newsroomNoiseReason,
+  normalizedNewsroomTitleKey,
+  type NewsroomFilterReason,
+} from '../../../packages/domain/dist/newsroom-filter.js';
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL');
 const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
@@ -16,32 +23,6 @@ const corsHeaders = {
 };
 
 const ACTIVE_EVENT_STATUSES = ['ACTIVE', 'NEEDS_REVIEW'];
-const ARCHIVE_NOISE_PATTERNS = [
-  /\bmovie\s+scenes?\b/i,
-  /\b(?:comedy|fight|action|emotional)\s+scenes?\b/i,
-  /\bfull\s+movie\b/i,
-];
-const CURRENT_SIGNAL_PATTERNS = [
-  /\breleas(?:e|ed|es|ing)\b/i,
-  /\btrailer\b/i,
-  /\bteaser\b/i,
-  /\bglimpse\b/i,
-  /\bfirst\s+look\b/i,
-  /\bposter\b/i,
-  /\bannounc(?:e|ed|ement)\b/i,
-  /\blaunch\b/i,
-  /\bpre[-\s]?release\b/i,
-  /\bpress\s+meet\b/i,
-  /\bpremiere\b/i,
-  /\bstream(?:ing|s)?\b/i,
-  /\bott\b/i,
-  /\bshoot(?:ing)?\b/i,
-  /\bwrapped?\b/i,
-  /\bmuhur(?:tham|at)\b/i,
-  /\bpooja\b/i,
-  /\btitle\s+(?:reveal|announcement|launch)\b/i,
-  /\b(?:release|launch)\s+date\b/i,
-];
 
 type AuthenticatedUser = { id: string; email: string | null };
 type EventRow = {
@@ -56,7 +37,7 @@ type EventRow = {
   detected_at: string | null;
 };
 
-type FilterReason = 'empty_content' | 'archive_or_library_clip' | 'duplicate_title';
+type FilterReason = NewsroomFilterReason | 'duplicate_title';
 
 function json(status: number, body: Record<string, unknown>): Response {
   return new Response(JSON.stringify(body), {
@@ -81,23 +62,6 @@ async function optionalUser(request: Request): Promise<AuthenticatedUser | null 
 function limitOf(value: unknown): number {
   const parsed = typeof value === 'number' ? value : Number(value);
   return Number.isFinite(parsed) ? Math.max(1, Math.min(100, Math.trunc(parsed))) : 50;
-}
-
-function noiseReason(row: { raw_title?: string | null; raw_text?: string | null }): FilterReason | null {
-  const title = (row.raw_title ?? '').trim();
-  const body = (row.raw_text ?? '').trim();
-  if (!title && !body) return 'empty_content';
-  const looksArchived = ARCHIVE_NOISE_PATTERNS.some((pattern) => pattern.test(title));
-  const titleHasCurrentIntent = CURRENT_SIGNAL_PATTERNS.some((pattern) => pattern.test(title));
-  return looksArchived && !titleHasCurrentIntent ? 'archive_or_library_clip' : null;
-}
-
-function normalizedTitleKey(value: string | null | undefined): string {
-  return (value ?? '')
-    .normalize('NFKC')
-    .toLocaleLowerCase('en-US')
-    .replace(/\s+/g, ' ')
-    .trim();
 }
 
 function newsroomState(verificationState: string | null, authorityTier: number | null, conflictCount: number): string {
@@ -157,6 +121,7 @@ async function newsroom(userId: string | null, limit: number) {
 
   const selected: typeof raws = [];
   const seenTitleKeys = new Set<string>();
+  const seenClipFamilyKeys = new Set<string>();
   const filterCounts: Record<FilterReason, number> = {
     empty_content: 0,
     archive_or_library_clip: 0,
@@ -168,13 +133,13 @@ async function newsroom(userId: string | null, limit: number) {
     const source = identity ? sourceMap.get(identity.source_id) : undefined;
     if (!identity || !source) continue;
 
-    const reason = noiseReason(raw);
+    const reason = newsroomNoiseReason(raw);
     if (reason) {
       filterCounts[reason] += 1;
       continue;
     }
 
-    const normalizedTitle = normalizedTitleKey(raw.raw_title);
+    const normalizedTitle = normalizedNewsroomTitleKey(raw.raw_title);
     if (normalizedTitle) {
       const duplicateKey = `${raw.source_identity_id}:${normalizedTitle}`;
       if (seenTitleKeys.has(duplicateKey)) {
@@ -182,6 +147,16 @@ async function newsroom(userId: string | null, limit: number) {
         continue;
       }
       seenTitleKeys.add(duplicateKey);
+    }
+
+    const clipFamily = newsroomClipFamilyKey(raw.raw_title);
+    if (clipFamily) {
+      const clipFamilyKey = `${raw.source_identity_id}:${clipFamily}`;
+      if (seenClipFamilyKeys.has(clipFamilyKey)) {
+        filterCounts.duplicate_title += 1;
+        continue;
+      }
+      seenClipFamilyKeys.add(clipFamilyKey);
     }
 
     selected.push(raw);
