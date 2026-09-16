@@ -23,12 +23,14 @@ The client reads only through authenticated Edge APIs. No service-role key, FCM 
 ## Stack
 
 - Android API 26+;
-- target/compile API 37;
+- stable target/compile API 36 (Android 16);
 - Kotlin/Compose with AGP 9.4;
 - Material 3;
 - OkHttp;
 - Firebase Cloud Messaging;
 - Supabase Auth HTTP endpoints + authenticated CineRelay Edge APIs.
+
+Android 17 / API 37 is still a preview SDK at this checkpoint, so the installable canary intentionally stays on the latest stable platform instead of depending on preview tooling.
 
 ## Public configuration
 
