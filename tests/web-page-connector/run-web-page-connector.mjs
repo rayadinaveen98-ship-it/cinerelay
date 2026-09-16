@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import {
+  SELF_SELECTOR,
   WEB_PAGE_PARSER_VERSION,
   assessPageDrift,
   buildPageConditionalHeaders,
@@ -39,6 +40,26 @@ assert.equal(parsed.items[0].publishedAt, '2026-09-16T04:00:00.000Z');
 assert.equal(parsed.items[0].author, 'Example Studio');
 assert.equal(parsed.items[1].canonicalUrl, 'https://studio.example.com/news/orbit-first-look');
 assert.match(parsed.structureFingerprint, /^[a-f0-9]{8}$/);
+
+const anchorOnlyHtml = `
+  <nav><a href="/about">About</a></nav>
+  <main>
+    <a href="/news/entertainment/orbit-trailer?utm_source=home">Orbit Trailer Released</a>
+    <a href="/news/entertainment/orbit-first-look">Orbit First Look</a>
+    <a href="https://other.example.com/news/nope">External</a>
+  </main>`;
+const anchorOnly = parseWebPage(anchorOnlyHtml, 'https://studio.example.com/', {
+  profileVersion: 'anchor-discovery-v1',
+  itemSelector: 'a[href]',
+  linkSelector: SELF_SELECTOR,
+  titleSelector: SELF_SELECTOR,
+  includeUrlPattern: '^https://studio\\.example\\.com/news/entertainment/[^/?#]+$',
+  minItems: 2,
+});
+assert.equal(anchorOnly.items.length, 2);
+assert.equal(anchorOnly.items[0].canonicalUrl, 'https://studio.example.com/news/entertainment/orbit-trailer');
+assert.equal(anchorOnly.items[0].title, 'Orbit Trailer Released');
+assert.equal(anchorOnly.items[1].title, 'Orbit First Look');
 
 assert.equal(canonicalizePageUrl('/news/test?utm_medium=social&x=1#section', 'https://studio.example.com/news/'), 'https://studio.example.com/news/test?x=1');
 
