@@ -2,7 +2,7 @@
 
 Date: 2026-09-16
 
-State: **IMPLEMENTATION IN REVIEW / FRESH CI PENDING / NO HOSTED P5.4 DEPLOYMENT**
+State: **IMPLEMENTATION IN REVIEW / CORRECTED CI PENDING / NO HOSTED P5.4 DEPLOYMENT**
 
 Parent checkpoint:
 
@@ -122,12 +122,18 @@ The stored `input_snapshot` includes the event id/entity id, event type, verific
 
 `refresh_creator_radar(limit)` is bounded to `1..500` events and uses `FOR UPDATE SKIP LOCKED`.
 
-An event is refreshed when:
+The staleness contract is **input-driven first**, not timestamp-only. An event is refreshed when any scorer input differs from the stored snapshot:
 
-- no Radar entry exists;
-- engine version changed;
-- canonical event was updated after the score was generated;
-- newer event evidence was attached after the score was generated.
+- event type;
+- verification state;
+- priority band;
+- event status;
+- evidence count;
+- engine version.
+
+Timestamps remain an additional signal for event/evidence changes that occur after generation.
+
+This is deliberate because PostgreSQL `now()` is transaction-stable. CI #319 proved that a timestamp-only selector can miss a factual change made later in the same transaction. The corrected implementation compares current factual scorer inputs directly and uses `clock_timestamp()` for actual generation time.
 
 An unchanged event is not rescored. Repeat refresh therefore returns `0` once the current backlog is clean.
 
@@ -172,8 +178,8 @@ P5.4 does not yet implement:
 
 Before hosted promotion:
 
-1. fresh migration applies cleanly;
-2. all Creator Radar pgTAP assertions pass;
+1. corrected fresh migration applies cleanly;
+2. all Creator Radar pgTAP assertions pass, including same-transaction stale-rescore proof;
 3. existing Phase-1..P5.3 tests remain green;
 4. DB lint passes;
 5. worker and scheduler type-check;
