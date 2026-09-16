@@ -125,6 +125,7 @@ async function newsroom(userId: string | null, limit: number) {
   const filterCounts: Record<FilterReason, number> = {
     empty_content: 0,
     archive_or_library_clip: 0,
+    celebrity_lifestyle: 0,
     duplicate_title: 0,
   };
 
@@ -133,7 +134,7 @@ async function newsroom(userId: string | null, limit: number) {
     const source = identity ? sourceMap.get(identity.source_id) : undefined;
     if (!identity || !source) continue;
 
-    const reason = newsroomNoiseReason(raw);
+    const reason = newsroomNoiseReason(raw, { sourceRole: source.source_role ?? null });
     if (reason) {
       filterCounts[reason] += 1;
       continue;
