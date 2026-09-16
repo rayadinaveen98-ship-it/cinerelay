@@ -157,7 +157,7 @@ class BackendClient(
     private fun execute(request: Request): JsonResponse {
         try {
             http.newCall(request).execute().use { response ->
-                val raw = response.body.string()
+                val raw = response.body?.string().orEmpty()
                 val json = if (raw.isBlank()) JSONObject() else runCatching { JSONObject(raw) }.getOrElse { JSONObject().put("raw", raw) }
                 val error = json.optNullableString("error")
                     ?: json.optNullableString("msg")
