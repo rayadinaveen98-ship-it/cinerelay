@@ -57,6 +57,15 @@ verify_jwt = false
 [functions.feed-poll-worker]
 verify_jwt = false
 
+[functions.page-poll-worker]
+verify_jwt = false
+
+# Threads public-profile polling is an internal server-side official API connector.
+# The worker validates the independent internal secret and keeps the Meta access
+# token exclusively in hosted Edge Function secrets.
+[functions.threads-profile-poll-worker]
+verify_jwt = false
+
 # Database cron calls only this dispatcher. It validates a database-generated
 # Vault token through verify_scheduler_token() and then forwards to a strict
 # allow-list of internal workers using the existing internal admin secret.
@@ -73,4 +82,7 @@ verify_jwt = false
 # Review mutations use the same Auth + operator allowlist boundary as the read
 # console, but live in a separate function to isolate privileged write actions.
 [functions.cinerelay-review-api]
+verify_jwt = false
+
+[functions.cinerelay-source-discovery-api]
 verify_jwt = false
