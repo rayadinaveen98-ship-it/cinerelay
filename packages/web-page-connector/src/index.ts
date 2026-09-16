@@ -163,11 +163,12 @@ export function parseWebPage(html: string, pageUrl: string, profile: WebPagePars
 
     const stableId = cleanText(profile.itemIdAttribute ? item.getAttribute(profile.itemIdAttribute) : '') || canonicalUrl;
     if (!stableId || seen.has(stableId)) continue;
-    seen.add(stableId);
 
     const linkNode = selectedNode(item, profile.linkSelector);
     const title = selectedText(item, profile.titleSelector) || cleanText(linkNode?.innerText);
     if (!title) continue;
+    seen.add(stableId);
+
     const text = selectedText(item, profile.summarySelector);
     const dateNode = selectedNode(item, profile.dateSelector);
     const dateRaw = dateNode
