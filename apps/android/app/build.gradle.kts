@@ -66,14 +66,16 @@ android {
 }
 
 dependencies {
-    val composeBom = platform("androidx.compose:compose-bom:2026.08.00")
+    // Keep the V0.1 canary on the last stable Compose generation that supports compileSdk 36.
+    // Compose 1.12+ moved its Android floor to compileSdk 37.
+    val composeBom = platform("androidx.compose:compose-bom:2026.04.01")
     implementation(composeBom)
 
-    implementation("androidx.core:core-ktx:1.19.0")
-    implementation("androidx.activity:activity-compose:1.13.0")
-    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.11.0")
-    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.11.0")
-    implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.11.0")
+    implementation("androidx.core:core-ktx:1.17.0")
+    implementation("androidx.activity:activity-compose:1.12.4")
+    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.10.0")
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.10.0")
+    implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.10.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.11.0")
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.ui:ui-tooling-preview")
@@ -82,8 +84,9 @@ dependencies {
     implementation("androidx.compose.material:material-icons-extended")
     debugImplementation("androidx.compose.ui:ui-tooling")
 
-    implementation(platform("com.squareup.okhttp3:okhttp-bom:5.5.0"))
-    implementation("com.squareup.okhttp3:okhttp")
+    // OkHttp 5.5 Android metadata requires compileSdk 37. 4.12 remains stable and
+    // fully adequate for this canary's HTTPS/Auth/Edge API traffic on minSdk 26+.
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
 
     implementation(platform("com.google.firebase:firebase-bom:34.19.0"))
     implementation("com.google.firebase:firebase-messaging")
