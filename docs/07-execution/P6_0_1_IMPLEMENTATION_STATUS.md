@@ -1,159 +1,157 @@
-# P6.0.1 Implementation Status — Android V0.1 Canary
+# P6.0.1 Implementation Status — Android V0.1.1 Guest-First Canary
 
 Date: 2026-09-16
 
-State: **ENGINEERING APK COMPLETE / HOSTED MOBILE API DEPLOYED / REAL FIREBASE DEVICE CANARY PENDING**
+State: **GUEST-FIRST APK COMPLETE / HOSTED MOBILE API V2 DEPLOYED / REAL FIREBASE DEVICE CANARY PENDING**
 
-Branch:
+Branch: `phase-6/android-v0.1-canary`
 
-`phase-6/android-v0.1-canary`
+Parent: `phase-5/evidence-backed-summaries` @ `30517d8c5c3605c23d5e1b60f0e82a59f3ddf284`
 
-Parent:
+Draft PR: `#16 — Phase 6 P6.0.1: Android V0.1 canary`
 
-`phase-5/evidence-backed-summaries` @ `30517d8c5c3605c23d5e1b60f0e82a59f3ddf284`
+Guest-first engineering head: `98374e239f298411a955bba6bccec0a0b58a5063`
 
-Draft PR:
+## V0.1.1 first-run experience
 
-`#16 — Phase 6 P6.0.1: Android V0.1 canary`
+The original V0.1 engineering canary proved the native app/runtime but opened on an authentication wall. V0.1.1 corrects that product behavior.
 
-Engineering checkpoint:
+Fresh installs now:
 
-`091a0fa832bc2ea6570a0f48c997fed74b1ad0ee`
+1. open directly into **Live** as a guest;
+2. load real hosted CineRelay canonical events immediately;
+3. allow **Creator Radar** guest browsing;
+4. expose source/evidence links without requiring an account;
+5. ask for authentication only when the user chooses a personal feature.
 
-## Implemented
+Personal features remain authenticated:
 
-### Visible Android product
+- Following;
+- Alerts;
+- follow/unfollow mutation;
+- device registration / push canary;
+- user-specific counters and delivery history.
 
-- standalone native Gradle Android project in `apps/android`;
-- package `com.cinerelay.app`;
-- stable Android 16 API 36 compile/target baseline, min API 26;
-- Kotlin + Jetpack Compose + Material 3;
-- dark-first CineRelay signal-room theme;
-- authenticated sign-in screen;
-- Live feed;
-- Following feed;
-- Creator Radar feed;
-- Alerts history;
-- verification badges;
-- evidence/source metadata and source links;
-- evidence/conflict counts;
-- follow/unfollow actions;
-- Creator Radar score/opportunity labels;
-- session refresh/sign-out;
-- visible real-device FCM canary state.
+Guest taps on Follow, Following or Alerts receive a CineRelay account sheet rather than a hard failure.
 
-### Mobile backend boundary
+## Authentication UX
 
-- hosted `cinerelay-mobile-api` Edge function;
-- independent bearer validation through `auth.getUser()`;
-- shaped `bootstrap`, `live`, `following`, `radar`, `alerts`, `setFollow` actions;
-- P5.5 READY summary reuse where available;
-- P5.4 Radar reuse where available;
-- no direct Android access to service-owned internal tables.
+The in-app auth sheet supports:
 
-### Push bridge
+- **Create account**;
+- **Sign in**;
+- switching between both modes;
+- email/password validation;
+- automatic session persistence after successful auth;
+- email-confirmation-required responses without pretending the user is signed in;
+- closing the sheet at any time and continuing as a guest.
 
-- existing P5.2 device registration API reused;
-- Firebase token acquisition when client config exists;
-- automatic token re-registration on rotation;
-- Android 13+ notification permission requested only when enabling alerts;
-- foreground Firebase message handling;
-- notification channel configured;
-- no fake Firebase success when configuration is absent.
+Existing valid sessions still resume directly into authenticated CineRelay.
 
-## Green CI proof
+Signing out returns to Guest Live instead of returning to a login wall.
 
-### CineRelay CI #344
+## Guest/mobile API trust boundary
 
-Run `35104494874` — all four jobs PASS on engineering head `091a0fa832bc2ea6570a0f48c997fed74b1ad0ee`:
+Hosted `cinerelay-mobile-api` v2 distinguishes public read-only actions from account-owned actions.
+
+Public read-only:
+
+- `live`;
+- `radar`.
+
+Authentication required:
+
+- `bootstrap`;
+- `following`;
+- `alerts`;
+- `setFollow`.
+
+If no bearer is present on a public action, the API serves a guest projection and never queries user follow state.
+
+If an `Authorization` header is present but invalid, the request returns `401 invalid_session`; it is never silently downgraded to guest access.
+
+## CI proof
+
+### CineRelay CI #353
+
+Run `35107312490` — all four jobs PASS on head `98374e239f298411a955bba6bccec0a0b58a5063`:
 
 - intelligence/connectors;
 - database migrations + pgTAP + lint;
 - Edge functions;
 - web console.
 
-### Android Canary CI #10
+### Android Canary CI #19
 
-Run `35104494966` — all jobs PASS:
+Run `35107312714` — both jobs PASS:
 
-- `cinerelay-mobile-api` type-check and deployment bundle;
+- guest-aware mobile API Deno type-check;
+- deployment-native mobile API bundle;
 - JDK 17 / Gradle 9.6 / stable API 36 setup;
 - privileged-secret source scan;
-- `:app:assembleDebug`;
+- `:app:assembleDebug` for V0.1.1;
 - APK contract/secret scan;
-- APK SHA-256 generation;
-- installable APK artifact upload.
+- checksum generation;
+- installable APK upload.
 
-## Exact artifacts
+## Exact V0.1.1 artifacts
 
-Android APK artifact:
+Android APK:
 
-- name: `cinerelay-android-v0.1-canary-apk`;
-- artifact ID: `10449931862`;
-- archive digest: `sha256:fe040aaee90fbda37c549001519e6eeb2be92281dcf0d8c94a328ac390072e06`;
-- extracted APK SHA-256: `c16bca0724fe22bce5b242b6e79ffbae994ffb8789c2b72f4a18367839585948`;
-- extracted size: `20,649,257` bytes.
+- artifact: `cinerelay-android-v0.1.1-canary-apk`;
+- artifact ID: `10451365825`;
+- archive digest: `sha256:683ba036ceaa504df776303b5f45db2d13feebacf8801e8b8a7bdb82d90823fc`;
+- extracted APK SHA-256: `f6038cbd5b88340b76b35fbc9433c3d22b2fe7c7b00b6740394fea751066fe01`;
+- extracted size: `20,665,641` bytes.
 
-Mobile API artifact:
+Mobile API bundle:
 
-- name: `cinerelay-mobile-api-deploy-bundle`;
-- artifact ID: `10449538338`;
-- archive digest: `sha256:2405fbdf032e88b95f4a9fec0324bd4aae6e951ff5d172ffeeaac6d998b5b9fa`.
+- artifact ID: `10450528647`;
+- archive digest: `sha256:3362f93d9500b948ec73c02581edfe8003f95c8be22078b472037c0cbe35270d`;
+- bundled `index.js` SHA-256: `3667a60237e5d65769339499e6063027398847d2f4b5867a4bdee49060340249`.
 
-## Hosted mobile API
+## Hosted v2 proof
 
-The exact CI-built deployment-native bundle is live:
+The exact CI-built bundle is deployed as:
 
 - function: `cinerelay-mobile-api`;
 - function ID: `c71305b1-b602-4b95-bb29-0914be6ebc80`;
-- version: `1`;
+- version: `2`;
 - status: `ACTIVE`;
-- hosted bundle SHA: `b241078fe866f0c2acbe4df93231e1eb84095046d1b8dfdcc8edcabeaba62dda`;
-- `verify_jwt=false` by design, with mandatory in-function `auth.getUser()` bearer validation before user-specific work.
+- hosted bundle SHA: `59eb5eda65340cb238055bd16c8ae0cb7034d9885a53d61e54a1dafbdd0160f1`.
 
-Hosted runtime verification:
+Direct hosted probes:
 
-- missing bearer -> HTTP `401`, `authentication_required`;
-- deliberately invalid bearer -> HTTP `401`, `invalid_session`;
-- before/after both probes: `user_entity_follows=0`, `alert_deliveries=0`, `push_device_registrations=0`.
+- guest `live` -> HTTP `200`, `guest=true`, real event payload returned;
+- guest `radar` -> HTTP `200`, `guest=true` (empty items is currently valid because no hosted Radar projection is materialized);
+- guest `following` -> HTTP `401`, `authentication_required`;
+- guest `alerts` -> HTTP `401`, `authentication_required`;
+- invalid bearer on `live` -> HTTP `401`, `invalid_session`.
 
-Therefore the tested authentication-failure paths are zero-side-effect.
+Before and after probes:
 
-## Advisor review
+- `user_entity_follows = 0`;
+- `alert_deliveries = 0`;
+- `push_device_registrations = 0`.
 
-No P6.0.1-specific database security/performance regression appeared.
+Therefore guest browsing and rejected auth probes are zero-side-effect for personal state.
 
-Existing project findings remain the known service-owned RLS/no-policy INFO set, old `record_youtube_websub_delivery` search-path warning, leaked-password-protection setting, old unindexed-FK backlog, and unused-index informational findings.
+## Firebase state
 
-P6.0.1 adds no database schema or index migration.
+Firebase client/server credentials are still intentionally absent from the engineering canary.
 
-## Current Firebase state
+Still required before the remaining Phase-5 delivery exit gate can close:
 
-The engineering APK intentionally compiles without `google-services.json`.
-
-Normal CineRelay UI is buildable/installable and the hosted mobile API is active, but real push remains gated by external Firebase configuration and a physical device.
-
-Still required before the Phase-5 delivery exit gate can close:
-
-1. Firebase Android client config for package `com.cinerelay.app`;
+1. Firebase Android client config for `com.cinerelay.app`;
 2. hosted `CINERELAY_FCM_SERVICE_ACCOUNT` secret;
-3. physical Android install/sign-in;
-4. device token registration;
-5. one controlled exactly-once push delivery;
-6. transient retry/recovery proof;
-7. explicit `UNREGISTERED` token deactivation proof;
-8. final security/advisor recheck.
+3. physical Android device registration;
+4. controlled exactly-once push delivery;
+5. transient retry/recovery proof;
+6. explicit `UNREGISTERED` token deactivation proof;
+7. final security/advisor recheck.
 
 No production push cron is enabled before this gate passes.
 
-## Next product step
+Design: `docs/07-execution/PHASE6_P6_0_1_ANDROID_CANARY_DESIGN.md`
 
-With the V0.1 engineering APK and mobile API foundation proven, the next Phase-6 product slices can build on this app rather than scaffolding again: title/timeline detail, search, source pages, offline/cache, richer filters, deep links, launcher/brand polish and preference editing.
-
-Hosted proof:
-
-`docs/07-execution/PHASE6_P6_0_1_HOSTED_ENGINEERING_PROOF_2026-09-16.md`
-
-Design:
-
-`docs/07-execution/PHASE6_P6_0_1_ANDROID_CANARY_DESIGN.md`
+Hosted V0.1 proof: `docs/07-execution/PHASE6_P6_0_1_HOSTED_ENGINEERING_PROOF_2026-09-16.md`
