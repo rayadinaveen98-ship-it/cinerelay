@@ -197,14 +197,23 @@ begin
     select e.id
     from public.events e
     left join public.creator_radar_entries r on r.event_id = e.id
+    left join lateral (
+      select count(*)::integer as evidence_count,
+             max(ee.added_at) as last_evidence_at
+      from public.event_evidence ee
+      where ee.event_id = e.id
+    ) evidence_state on true
     where r.event_id is null
        or r.engine_version <> 'creator-radar-v1'
+       or (r.input_snapshot->>'eventType') is distinct from e.event_type
+       or (r.input_snapshot->>'verificationState') is distinct from e.verification_state
+       or (r.input_snapshot->>'priorityBand') is distinct from e.priority_band
+       or (r.input_snapshot->>'eventStatus') is distinct from e.status
+       or coalesce((r.input_snapshot->>'evidenceCount')::integer, -1)
+          <> coalesce(evidence_state.evidence_count, 0)
        or r.generated_at < greatest(
             e.updated_at,
-            coalesce(
-              (select max(ee.added_at) from public.event_evidence ee where ee.event_id = e.id),
-              e.updated_at
-            )
+            coalesce(evidence_state.last_evidence_at, e.updated_at)
           )
     order by e.detected_at desc nulls last, e.created_at desc, e.id asc
     for update of e skip locked
@@ -228,7 +237,7 @@ begin
       v_calc.reason_codes,
       v_calc.input_snapshot,
       'creator-radar-v1',
-      now()
+      clock_timestamp()
     )
     on conflict (event_id) do update
       set creator_score = excluded.creator_score,
@@ -237,7 +246,7 @@ begin
           input_snapshot = excluded.input_snapshot,
           engine_version = excluded.engine_version,
           generated_at = excluded.generated_at,
-          updated_at = now();
+          updated_at = clock_timestamp();
 
     v_refreshed := v_refreshed + 1;
   end loop;
