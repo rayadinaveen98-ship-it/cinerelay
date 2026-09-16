@@ -99,7 +99,7 @@ Deno.serve(async (request) => {
     const rawIds = [...new Set(evidence.map((row) => row.raw_item_id).filter(Boolean))];
     const { data: raws, error: rawError } = await admin
       .from('raw_items')
-      .select('id,source_identity_id,canonical_url,raw_title,published_at,received_at')
+      .select('id,source_identity_id,canonical_url,raw_title,published_at,first_seen_at')
       .in('id', rawIds);
     if (rawError) throw rawError;
 
@@ -138,7 +138,7 @@ Deno.serve(async (request) => {
           title: raw?.raw_title ?? null,
           canonicalUrl: raw?.canonical_url ?? null,
           publishedAt: raw?.published_at ?? null,
-          receivedAt: raw?.received_at ?? null,
+          receivedAt: raw?.first_seen_at ?? null,
         };
       })
       .sort((left, right) => {
