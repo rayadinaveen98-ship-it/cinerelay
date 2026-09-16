@@ -9,7 +9,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  mobile-api:
+  mobile-apis:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -22,25 +22,29 @@ jobs:
           deno-version: v2.x
       - name: Type-check guest-aware mobile API
         run: deno check --config supabase/functions/cinerelay-mobile-api/deno.json supabase/functions/cinerelay-mobile-api/index.ts
-      - name: Build deployment-native mobile API bundle
+      - name: Type-check evidence detail API
+        run: deno check --config supabase/functions/cinerelay-evidence-api/deno.json supabase/functions/cinerelay-evidence-api/index.ts
+      - name: Build deployment-native mobile API bundles
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p mobile-api-deploy/cinerelay-mobile-api
-          npx --yes esbuild@0.25.9 supabase/functions/cinerelay-mobile-api/index.ts \
-            --bundle \
-            --format=esm \
-            --platform=neutral \
-            --main-fields=module,main \
-            --target=es2022 \
-            --minify \
-            --external:@supabase/supabase-js \
-            --outfile=mobile-api-deploy/cinerelay-mobile-api/index.js
-          cp supabase/functions/cinerelay-mobile-api/deno.json mobile-api-deploy/cinerelay-mobile-api/deno.json
+          for fn in cinerelay-mobile-api cinerelay-evidence-api; do
+            mkdir -p "mobile-api-deploy/$fn"
+            npx --yes esbuild@0.25.9 "supabase/functions/$fn/index.ts" \
+              --bundle \
+              --format=esm \
+              --platform=neutral \
+              --main-fields=module,main \
+              --target=es2022 \
+              --minify \
+              --external:@supabase/supabase-js \
+              --outfile="mobile-api-deploy/$fn/index.js"
+            cp "supabase/functions/$fn/deno.json" "mobile-api-deploy/$fn/deno.json"
+          done
       - name: Upload deployment-native mobile API bundle
         uses: actions/upload-artifact@v4
         with:
-          name: cinerelay-mobile-api-deploy-bundle
+          name: cinerelay-mobile-apis-v0.2-deploy-bundle
           path: mobile-api-deploy
           if-no-files-found: error
           retention-days: 7
@@ -77,7 +81,7 @@ jobs:
             echo 'Privileged server credential marker found in Android source' >&2
             exit 1
           fi
-      - name: Build CineRelay V0.1.1 Canary APK
+      - name: Build CineRelay V0.2 Canary APK
         run: gradle -p apps/android --no-daemon --stacktrace :app:assembleDebug
       - name: Verify APK and package contract
         shell: bash
@@ -91,13 +95,13 @@ jobs:
             echo 'Privileged credential marker found in APK' >&2
             exit 1
           fi
-          sha256sum "$APK" | tee apps/android/app/build/outputs/apk/debug/CineRelay-v0.1.1-canary.sha256
+          sha256sum "$APK" | tee apps/android/app/build/outputs/apk/debug/CineRelay-v0.2.0-canary.sha256
       - name: Upload installable CineRelay APK
         uses: actions/upload-artifact@v4
         with:
-          name: cinerelay-android-v0.1.1-canary-apk
+          name: cinerelay-android-v0.2.0-canary-apk
           path: |
             apps/android/app/build/outputs/apk/debug/app-debug.apk
-            apps/android/app/build/outputs/apk/debug/CineRelay-v0.1.1-canary.sha256
+            apps/android/app/build/outputs/apk/debug/CineRelay-v0.2.0-canary.sha256
           if-no-files-found: error
           retention-days: 7
