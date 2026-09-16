@@ -81,16 +81,13 @@ function limitOf(value: unknown): number {
   return Number.isFinite(parsed) ? Math.max(1, Math.min(100, Math.trunc(parsed))) : 50;
 }
 
-function textOf(row: { raw_title?: string | null; raw_text?: string | null }): string {
-  return `${row.raw_title ?? ''}\n${row.raw_text ?? ''}`.trim();
-}
-
 function noiseReason(row: { raw_title?: string | null; raw_text?: string | null }): string | null {
-  const text = textOf(row);
-  if (!text) return 'empty_content';
-  const looksArchived = ARCHIVE_NOISE_PATTERNS.some((pattern) => pattern.test(text));
-  const hasCurrentIntent = CURRENT_SIGNAL_PATTERNS.some((pattern) => pattern.test(text));
-  return looksArchived && !hasCurrentIntent ? 'archive_or_library_clip' : null;
+  const title = (row.raw_title ?? '').trim();
+  const body = (row.raw_text ?? '').trim();
+  if (!title && !body) return 'empty_content';
+  const looksArchived = ARCHIVE_NOISE_PATTERNS.some((pattern) => pattern.test(title));
+  const titleHasCurrentIntent = CURRENT_SIGNAL_PATTERNS.some((pattern) => pattern.test(title));
+  return looksArchived && !titleHasCurrentIntent ? 'archive_or_library_clip' : null;
 }
 
 function newsroomState(verificationState: string | null, authorityTier: number | null, conflictCount: number): string {
