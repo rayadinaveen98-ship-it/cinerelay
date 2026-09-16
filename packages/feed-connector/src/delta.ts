@@ -1,10 +1,10 @@
-import type { FeedEntry } from './index.js';
+export type FeedDeltaItem = { stableId: string };
 
-export type FeedDeltaPlan = {
+export type FeedDeltaPlan<T extends FeedDeltaItem> = {
   baseline: boolean;
   gapExceededWindow: boolean;
   newestEntryId: string | null;
-  newEntries: FeedEntry[];
+  newEntries: T[];
 };
 
 /**
@@ -14,7 +14,7 @@ export type FeedDeltaPlan = {
  * outside the fetched window, the whole window is recovered and the caller can
  * surface a visible gap health state.
  */
-export function planFeedDelta(entries: FeedEntry[], lastEntryId?: string | null): FeedDeltaPlan {
+export function planFeedDelta<T extends FeedDeltaItem>(entries: T[], lastEntryId?: string | null): FeedDeltaPlan<T> {
   const newestEntryId = entries[0]?.stableId ?? null;
   if (entries.length === 0) {
     return { baseline: !lastEntryId, gapExceededWindow: false, newestEntryId: null, newEntries: [] };
