@@ -8,6 +8,7 @@ import {
   parseRetryAfterSeconds,
   pollIntervalMs,
 } from '../../packages/feed-connector/dist/index.js';
+import { planFeedDelta } from '../../packages/feed-connector/dist/delta.js';
 
 const rss = await readFile(new URL('../../packages/source-fixtures/feeds/rss-official-sample.xml', import.meta.url), 'utf8');
 const atom = await readFile(new URL('../../packages/source-fixtures/feeds/atom-official-sample.xml', import.meta.url), 'utf8');
@@ -51,6 +52,24 @@ assert.equal(nextFeedCheckAt({ now, pollClass: 'HOT_5M', retryAfterSeconds: 120 
 assert.equal(parseRetryAfterSeconds('120', now), 120);
 assert.equal(parseRetryAfterSeconds('Wed, 16 Sep 2026 00:05:00 GMT', now), 300);
 assert.equal(FEED_PARSER_VERSION, 'feed-parser-v1');
+
+const baseline = planFeedDelta(parsedRss.entries, null);
+assert.equal(baseline.baseline, true);
+assert.equal(baseline.newEntries.length, 0);
+assert.equal(baseline.newestEntryId, 'studio-news-001');
+
+const unchanged = planFeedDelta(parsedRss.entries, 'studio-news-001');
+assert.equal(unchanged.baseline, false);
+assert.equal(unchanged.gapExceededWindow, false);
+assert.equal(unchanged.newEntries.length, 0);
+
+const oneNew = planFeedDelta(parsedRss.entries, 'https://studio.example.com/news/astra-first-look');
+assert.equal(oneNew.gapExceededWindow, false);
+assert.deepEqual(oneNew.newEntries.map((entry) => entry.stableId), ['studio-news-001']);
+
+const gap = planFeedDelta(parsedRss.entries, 'older-item-not-in-window');
+assert.equal(gap.gapExceededWindow, true);
+assert.equal(gap.newEntries.length, 2);
 
 assert.throws(() => parseFeedXml('<html></html>'), /unsupported_feed_format/);
 assert.throws(() => parseFeedXml('  '), /empty_feed/);
