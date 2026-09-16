@@ -49,6 +49,10 @@ Canonical CI:
 Hosted runtime:
 
 - `cinerelay-source-discovery-api` v2 ACTIVE;
+- function id `3db7fb55-c25e-461c-90aa-07358ab1d855`;
+- bundle SHA `ed314d2aa7ac8abd813dcee36f4a31438fcc85c393d918af4c00771279488b5e`;
+- deployed from CI #279 artifact `10440103147`;
+- artifact digest `sha256:fc1464343ad8bb36d56bb8c8d07cc77d565d1bb01bf3cb403917dac4d217d1b8`;
 - promotion RPC exists;
 - authenticated direct execution denied;
 - trusted media sources created by deployment: `0`;
