@@ -19,7 +19,7 @@ Source identity:
 
 - `platform = THREADS`
 - `connector_type = THREADS_PROFILE_API`
-- `access_mode = OFFICIAL_API`
+- `access_mode = API` (the existing CineRelay contract for official programmatic APIs)
 - `handle` is mandatory and curated
 - poll class uses the normal CineRelay adaptive classes
 
