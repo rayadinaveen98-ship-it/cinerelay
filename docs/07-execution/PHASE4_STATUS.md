@@ -14,7 +14,8 @@ Phase-4 stack:
 - `phase-4/first-party-pages` — draft PR #5 stacked on #4 — P4.2 first-party HTML/newsrooms;
 - `phase-4/source-discovery-candidates` — draft PR #6 stacked on #5 — P4.3 curated candidate workflow;
 - `phase-4/threads-public-profiles` — draft PR #7 stacked on #6 — P4.4 official Threads public-profile API;
-- `phase-4/instagram-professional` — draft PR #8 stacked on #7 — P4.5 Instagram Professional / Business Discovery.
+- `phase-4/instagram-professional` — draft PR #8 stacked on #7 — P4.5 Instagram Professional / Business Discovery;
+- `phase-4/trusted-trade-media` — draft PR #9 stacked on #8 — P4.6 audited trusted media RSS onboarding.
 
 The stack must remain ordered. Child PRs must not bypass their parents to `main`.
 
@@ -100,9 +101,7 @@ Hosted migration:
 
 `20260916075220_source_discovery_candidates`
 
-Hosted API:
-
-`cinerelay-source-discovery-api` v1 ACTIVE
+Hosted API began as `cinerelay-source-discovery-api` v1. P4.6 later advances the same API to v2 while preserving the P4.3 rule that approval alone creates no trusted source and assigns no authority.
 
 Proven with a real Netflix Newsroom candidate:
 
@@ -111,7 +110,7 @@ Proven with a real Netflix Newsroom candidate:
 - audit persistence;
 - approval does not create a trusted source;
 - approval does not assign authority;
-- there is no automatic promotion API action.
+- promotion is a separate later operator action, never an approval side effect.
 
 Full proof:
 
@@ -205,6 +204,8 @@ Canonical migration-reconciliation CI:
 - fresh migrations + pgTAP + DB lint PASS;
 - Instagram connector and Edge deployment-native bundle PASS.
 
+Final documentation-complete P4.5 head `ee5745b80227cf9ca5cd99470f6f07c51275265e` passed CineRelay CI #273 / run `35079201794` with all four jobs green.
+
 Remaining production gate:
 
 1. authorize a Professional Instagram account linked to a Facebook Page;
@@ -223,6 +224,62 @@ Full proof:
 
 ---
 
+## P4.6 — Audited trusted trade/media RSS onboarding
+
+**Engineering complete / hosted foundation deployed / rights-compatible real-media canary pending.**
+
+P4.6 adds an explicit second trust decision after P4.3 review. `APPROVED` remains non-promoting. Only an authenticated operator action can invoke the service-role-only promotion path.
+
+First-slice policy:
+
+- only `RSS_ATOM` candidates;
+- Tier 3 -> `TRADE_MEDIA`;
+- Tier 4 -> `GENERAL_MEDIA`;
+- Tier 1/2 rejected;
+- `HOT_5M` rejected;
+- exact canonical registry duplicates rejected;
+- unapproved candidates rejected;
+- double promotion rejected;
+- public-page candidates rejected by this RSS-only promotion path.
+
+Promotion is atomic across source creation, RSS identity creation, existing generic-feed registration, source health initialization, candidate `PROMOTED` state, and audit persistence.
+
+Canonical hosted migration:
+
+`20260916094320_trusted_media_feed_promotion`
+
+Canonical reconciliation CI:
+
+- head `c614873f634f57568fe973327e75105cfd45d077`;
+- CineRelay CI #279 / run `35081067614`;
+- all four jobs PASS;
+- fresh migrations + pgTAP + DB lint PASS;
+- web console PASS;
+- source-discovery API type-check + deployment-native bundle PASS.
+
+Hosted runtime:
+
+- `cinerelay-source-discovery-api` v2 ACTIVE;
+- promotion RPC exists;
+- authenticated direct RPC execution denied;
+- media sources created by deployment `0`;
+- promoted candidates created by deployment `0`;
+- media identities created by deployment `0`.
+
+The exact v2 runtime was deployed from CI #279 artifact `10440103147`, digest `sha256:fc1464343ad8bb36d56bb8c8d07cc77d565d1bb01bf3cb403917dac4d217d1b8`.
+
+Canary rights gate:
+
+The Indian Express entertainment/Telugu RSS feed was researched as a publisher-owned India-focused candidate, but its own RSS directory states RSS consumption is strictly for personal and non-commercial use unless relevant permission/licensing is obtained. It is therefore not enrolled into CineRelay production monitoring as the P4.6 canary.
+
+Remaining production-canary gate: select a publisher-owned/trusted-media RSS source whose stated terms or explicit permission are compatible with CineRelay's intended use, then prove separate approval, explicit Tier-3/4 promotion, zero-history baseline, duplicate-free unchanged repeat, and one genuinely new item through the normal evidence pipeline while preserving lower media authority.
+
+Full proof:
+
+`docs/07-execution/PHASE4_P4_6_HOSTED_ENGINEERING_PROOF_2026-09-16.md`
+
+---
+
 ## Current release chain
 
 1. P4.1 waits for one genuine post-baseline Disney feed item.
@@ -230,8 +287,9 @@ Full proof:
 3. P4.3 trust-boundary proof is complete but remains stacked behind its parents.
 4. P4.4 hosted foundation is complete and deliberately dormant until real Threads authorization + official-post proof.
 5. P4.5 hosted foundation is complete and deliberately dormant until real Instagram Professional authorization + official-media proof.
+6. P4.6 hosted trust-promotion foundation is complete; no media source was auto-trusted. It waits for a rights-compatible real media RSS canary and baseline/idempotency/new-item proof.
 
-The hosted P4.1/P4.2 schedulers continue watching their official canaries automatically while later Phase-4 engineering proceeds. P4.4/P4.5 remain dormant rather than generating credential failures before their external authorization gates are satisfied.
+The hosted P4.1/P4.2 schedulers continue watching their official canaries automatically while later Phase-4 engineering proceeds. P4.4/P4.5 remain dormant rather than generating credential failures before their external authorization gates are satisfied. P4.6 remains operationally available to operators but has zero promoted media sources until the rights/evidence gate is satisfied.
 
 ## Guardrails
 
@@ -241,7 +299,9 @@ The hosted P4.1/P4.2 schedulers continue watching their official canaries automa
 - conditional HTTP and polite source-specific cadence for public pages/feeds;
 - provider/parser/auth failures must become visible health errors;
 - parsing uncertainty fails closed rather than silently advancing state;
-- do not auto-promote discovered identities to trusted authority;
+- candidate approval never auto-promotes trust;
+- trusted-media promotion cannot assign Tier 1/2;
+- public availability does not by itself establish reuse rights;
 - synthetic canaries prove transport mechanics only, never official evidence;
 - source count is not a success metric; precision, recall, latency, idempotency and connector health are.
 
