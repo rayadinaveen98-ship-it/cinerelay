@@ -51,8 +51,8 @@ declare
   v_access_mode text;
   v_connector_type text;
 begin
-  if p_feed_url is null or p_feed_url !~* '^https?://' then
-    raise exception 'feed_url_must_be_http';
+  if p_feed_url is null or p_feed_url !~* '^https://' then
+    raise exception 'feed_url_must_be_https';
   end if;
 
   select access_mode, connector_type
@@ -67,6 +67,10 @@ begin
 
   if v_access_mode <> 'FEED' then
     raise exception 'source_identity_access_mode_must_be_feed';
+  end if;
+
+  if v_connector_type <> 'RSS_ATOM' then
+    raise exception 'source_identity_connector_type_must_be_rss_atom';
   end if;
 
   insert into public.feed_source_state (
