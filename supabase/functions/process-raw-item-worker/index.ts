@@ -172,12 +172,15 @@ async function persistEvent(rawItemId: string, event: Record<string, unknown>): 
 async function processJob(job: Record<string, unknown>, workerId: string): Promise<{ resolution: string; eventId?: string }> {
   const payload = job.payload as Record<string, unknown> | undefined;
   const rawItemId = typeof payload?.rawItemId === 'string' ? payload.rawItemId : '';
-  const sourceIdentityId = typeof payload?.sourceIdentityId === 'string' ? payload.sourceIdentityId : '';
-  if (!rawItemId || !sourceIdentityId) throw new Error('invalid_job_payload');
+  const payloadSourceIdentityId = typeof payload?.sourceIdentityId === 'string' ? payload.sourceIdentityId : '';
+  if (!rawItemId) throw new Error('invalid_job_payload');
 
   const raw = await loadRawItem(rawItemId);
   if (!raw) throw new Error('raw_item_not_found');
-  if (String(raw.source_identity_id) !== sourceIdentityId) throw new Error('source_identity_mismatch');
+  const rawSourceIdentityId = typeof raw.source_identity_id === 'string' ? raw.source_identity_id : String(raw.source_identity_id ?? '');
+  if (!rawSourceIdentityId) throw new Error('raw_source_identity_missing');
+  if (payloadSourceIdentityId && payloadSourceIdentityId !== rawSourceIdentityId) throw new Error('source_identity_mismatch');
+  const sourceIdentityId = payloadSourceIdentityId || rawSourceIdentityId;
 
   const source = await loadSource(sourceIdentityId);
   const fixtureItem = {

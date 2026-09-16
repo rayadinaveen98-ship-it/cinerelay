@@ -1,0 +1,7 @@
+{
+  "compilerOptions": {"strict": true},
+  "imports": {
+    "@supabase/supabase-js": "npm:@supabase/supabase-js@2",
+    "fast-xml-parser": "npm:fast-xml-parser@5.2.5"
+  }
+}

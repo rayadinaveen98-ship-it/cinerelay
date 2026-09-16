@@ -1,0 +1,9 @@
+{
+  "name": "@cinerelay/feed-connector",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "fast-xml-parser": "5.2.5"
+  }
+}

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>Example Platform Press</title>
+  <link href="https://platform.example.com/press" rel="alternate" />
+  <updated>2026-09-15T10:15:00Z</updated>
+  <entry>
+    <id>tag:platform.example.com,2026:press-101</id>
+    <title>Festival release date confirmed</title>
+    <link href="https://platform.example.com/press/festival-release" rel="alternate" />
+    <published>2026-09-15T10:00:00Z</published>
+    <updated>2026-09-15T10:15:00Z</updated>
+    <author><name>Example Platform</name></author>
+    <category term="Release" />
+    <summary type="html"><![CDATA[<p>The film will stream from October 2.</p>]]></summary>
+  </entry>
+</feed>
