@@ -75,6 +75,8 @@ export type SourceDiscoveryBootstrap = z.infer<typeof BootstrapSchema>;
 export type SourceDiscoveryItem = SourceDiscoveryBootstrap['items'][number];
 export type CandidateKind = z.infer<typeof CandidateSchema>['candidate_kind'];
 export type CandidateReviewStatus = 'REVIEWING' | 'APPROVED' | 'REJECTED' | 'DUPLICATE';
+export type MediaAuthorityTier = 3 | 4;
+export type MediaPollClass = 'ACTIVE_15M' | 'NORMAL_60M' | 'COLD_6H' | 'DAILY';
 
 async function invoke<T>(body: Record<string, unknown>, schema: z.ZodType<T>): Promise<T> {
   const { data, error } = await supabase.functions.invoke('cinerelay-source-discovery-api', { body });
@@ -112,4 +114,13 @@ export function reviewSourceCandidate(input: {
   duplicateSourceIdentityId?: string;
 }) {
   return invoke({ action: 'review', ...input }, ActionSchema);
+}
+
+export function promoteMediaFeedCandidate(input: {
+  candidateId: string;
+  authorityTier: MediaAuthorityTier;
+  pollClass: MediaPollClass;
+  reason: string;
+}) {
+  return invoke({ action: 'promoteMediaFeed', ...input }, ActionSchema);
 }

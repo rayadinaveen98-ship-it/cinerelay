@@ -19,6 +19,7 @@ const CANDIDATE_KINDS = new Set(['YOUTUBE_CHANNEL', 'RSS_ATOM', 'PUBLIC_WEB', 'I
 const DISCOVERY_METHODS = new Set(['OPERATOR', 'OFFICIAL_LINK', 'CONNECTOR_HINT', 'IMPORT']);
 const EVIDENCE_TYPES = new Set(['OFFICIAL_LINK', 'PROFILE_BIO_LINK', 'PAGE_METADATA', 'CONNECTOR_HINT', 'OPERATOR_NOTE', 'OTHER']);
 const REVIEW_STATUSES = new Set(['REVIEWING', 'APPROVED', 'REJECTED', 'DUPLICATE']);
+const MEDIA_POLL_CLASSES = new Set(['ACTIVE_15M', 'NORMAL_60M', 'COLD_6H', 'DAILY']);
 
 function json(status: number, body: Record<string, unknown>): Response {
   return new Response(JSON.stringify(body), {
@@ -258,6 +259,25 @@ async function review(actorId: string, body: Record<string, unknown>) {
   return data as Record<string, unknown>;
 }
 
+async function promoteMediaFeed(actorId: string, body: Record<string, unknown>) {
+  if (typeof body.candidateId !== 'string' || !UUID_PATTERN.test(body.candidateId)) throw new Error('invalid_candidate_id');
+  const authorityTier = Number(body.authorityTier);
+  if (authorityTier !== 3 && authorityTier !== 4) throw new Error('media_authority_tier_must_be_3_or_4');
+  const pollClass = upperChoice(body.pollClass ?? 'NORMAL_60M', MEDIA_POLL_CLASSES, 'invalid_media_feed_poll_class');
+  const reason = reasonOf(body.reason);
+  if (!reason) throw new Error('valid_reason_required');
+
+  const { data, error } = await admin.rpc('operator_promote_media_feed_candidate', {
+    p_actor_id: actorId,
+    p_candidate_id: body.candidateId,
+    p_authority_tier: authorityTier,
+    p_poll_class: pollClass,
+    p_reason: reason,
+  });
+  if (error) throw new Error(error.message);
+  return data as Record<string, unknown>;
+}
+
 Deno.serve(async (request): Promise<Response> => {
   try {
     if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: corsHeaders });
@@ -276,6 +296,7 @@ Deno.serve(async (request): Promise<Response> => {
     }
     if (action === 'submit') return json(200, { ok: true, result: await submit(body) });
     if (action === 'review') return json(200, { ok: true, result: await review(auth.user.id, body) });
+    if (action === 'promoteMediaFeed') return json(200, { ok: true, result: await promoteMediaFeed(auth.user.id, body) });
     return json(400, { error: 'unsupported_action' });
   } catch (error) {
     console.error('cinerelay-source-discovery-api failure', error);
