@@ -119,3 +119,5 @@ The next Phase-5 slice should implement Creator Radar / Creator Intelligence as 
 Hosted proof:
 
 `docs/07-execution/PHASE5_P5_3_HOSTED_ENGINEERING_PROOF_2026-09-16.md`
+
+Repository-complete gate: after the hosted proof/status documentation is committed, the documentation head must pass all four CineRelay CI jobs once more. That final run is documentation validation only; deployed runtime bytes remain pinned to canonical CI #313 unless runtime source changes.
