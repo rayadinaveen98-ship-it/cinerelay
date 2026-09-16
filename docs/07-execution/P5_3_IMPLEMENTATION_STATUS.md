@@ -109,3 +109,5 @@ Hosted proof:
 Design:
 
 `docs/07-execution/PHASE5_P5_3_DIGEST_COMPOSITION_DESIGN.md`
+
+Final checkpoint rule: the latest documentation head must also pass all four CineRelay CI jobs before this slice is considered repository-complete.
