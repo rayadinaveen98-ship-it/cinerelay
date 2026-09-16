@@ -24,11 +24,13 @@ jobs:
         run: deno check --config supabase/functions/cinerelay-mobile-api/deno.json supabase/functions/cinerelay-mobile-api/index.ts
       - name: Type-check evidence detail API
         run: deno check --config supabase/functions/cinerelay-evidence-api/deno.json supabase/functions/cinerelay-evidence-api/index.ts
+      - name: Type-check fast newsroom API
+        run: deno check --config supabase/functions/cinerelay-newsroom-api/deno.json supabase/functions/cinerelay-newsroom-api/index.ts
       - name: Build deployment-native mobile API bundles
         shell: bash
         run: |
           set -euo pipefail
-          for fn in cinerelay-mobile-api cinerelay-evidence-api; do
+          for fn in cinerelay-mobile-api cinerelay-evidence-api cinerelay-newsroom-api; do
             mkdir -p "mobile-api-deploy/$fn"
             npx --yes esbuild@0.25.9 "supabase/functions/$fn/index.ts" \
               --bundle \
