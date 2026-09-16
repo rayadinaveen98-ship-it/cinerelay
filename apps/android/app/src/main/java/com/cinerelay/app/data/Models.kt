@@ -19,6 +19,31 @@ data class Evidence(
     val publishedAt: String?,
 )
 
+data class EvidenceDetail(
+    val rawItemId: String,
+    val role: String,
+    val weight: Int,
+    val sourceName: String?,
+    val authorityTier: Int?,
+    val sourceRole: String?,
+    val platform: String?,
+    val handle: String?,
+    val title: String?,
+    val canonicalUrl: String?,
+    val publishedAt: String?,
+    val receivedAt: String?,
+)
+
+data class EvidenceBundle(
+    val eventId: String,
+    val headline: String,
+    val verificationState: String,
+    val detectedAt: String?,
+    val evidenceCount: Int,
+    val conflictingEvidenceCount: Int,
+    val items: List<EvidenceDetail>,
+)
+
 data class RadarSignal(
     val score: Int,
     val label: String,
