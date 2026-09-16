@@ -1,6 +1,6 @@
 import { parse, type HTMLElement } from 'node-html-parser';
 
-export const WEB_PAGE_PARSER_VERSION = 'first-party-html-v1';
+export const WEB_PAGE_PARSER_VERSION = 'first-party-html-v2';
 export const SELF_SELECTOR = '@self';
 
 export type PagePollClass = 'HOT_5M' | 'ACTIVE_15M' | 'NORMAL_60M' | 'COLD_6H' | 'DAILY';
@@ -88,6 +88,17 @@ function selectedAttribute(item: HTMLElement, selector: string, attribute: strin
   return cleanText(selectedNode(item, selector)?.getAttribute(attribute));
 }
 
+function selectedTitle(item: HTMLElement, profile: WebPageParserProfile): string {
+  const titleNode = selectedNode(item, profile.titleSelector);
+  const linkNode = selectedNode(item, profile.linkSelector);
+  return selectedText(item, profile.titleSelector)
+    || cleanText(titleNode?.getAttribute('aria-label'))
+    || cleanText(titleNode?.getAttribute('title'))
+    || cleanText(linkNode?.innerText)
+    || cleanText(linkNode?.getAttribute('aria-label'))
+    || cleanText(linkNode?.getAttribute('title'));
+}
+
 function parseDate(value: string): string | null {
   if (!value) return null;
   const parsed = new Date(value);
@@ -164,8 +175,7 @@ export function parseWebPage(html: string, pageUrl: string, profile: WebPagePars
     const stableId = cleanText(profile.itemIdAttribute ? item.getAttribute(profile.itemIdAttribute) : '') || canonicalUrl;
     if (!stableId || seen.has(stableId)) continue;
 
-    const linkNode = selectedNode(item, profile.linkSelector);
-    const title = selectedText(item, profile.titleSelector) || cleanText(linkNode?.innerText);
+    const title = selectedTitle(item, profile);
     if (!title) continue;
     seen.add(stableId);
 
