@@ -15,7 +15,7 @@
     "test:contracts": "npm run build && node scripts/validate-contracts.mjs",
     "test:benchmark": "npm run build && node tests/benchmark/run-benchmark.mjs",
     "test:youtube": "npm run build:youtube && node tests/youtube-connector/run-youtube-connector.mjs && node tests/youtube-connector/run-youtube-planning.mjs",
-    "test:feed": "npm run build:feed && node tests/feed-connector/run-feed-connector.mjs",
+    "test:feed": "npm run build:feed && node tests/feed-connector/run-feed-connector.mjs && node tests/feed-connector/run-processing-contract.mjs",
     "ci": "npm run lint && npm run test:contracts && npm run test:benchmark && npm run test:youtube && npm run test:feed"
   },
   "dependencies": {
