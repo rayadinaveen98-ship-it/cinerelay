@@ -21,6 +21,7 @@ import kotlinx.coroutines.withContext
 
 enum class AppTab { LIVE, FOLLOWING, RADAR, ALERTS }
 enum class AuthMode { SIGN_IN, CREATE_ACCOUNT }
+enum class NewsroomFilter { ALL, VERIFIED, DEVELOPING, UNCONFIRMED, CONFLICT_RUMOR }
 
 data class CineRelayUiState(
     val authenticated: Boolean = false,
@@ -32,6 +33,8 @@ data class CineRelayUiState(
     val notice: String? = null,
     val error: String? = null,
     val bootstrap: Bootstrap? = null,
+    val newsroomFilter: NewsroomFilter = NewsroomFilter.ALL,
+    val newsroomFilterCounts: Map<NewsroomFilter, Int> = emptyMap(),
     val newsroomSignals: List<NewsroomSignal> = emptyList(),
     val events: List<EventCard> = emptyList(),
     val alerts: List<AlertItem> = emptyList(),
@@ -42,6 +45,7 @@ class CineRelayViewModel(application: Application) : AndroidViewModel(applicatio
     private val app = application as CineRelayApplication
     private val backend = app.backendClient
     private val pushManager = PushManager(application, app.sessionStore, backend)
+    private var latestNewsroomSignals: List<NewsroomSignal> = emptyList()
 
     private val existingSession = backend.currentSession()
     private val _state = MutableStateFlow(
@@ -68,6 +72,14 @@ class CineRelayViewModel(application: Application) : AndroidViewModel(applicatio
     fun switchAuthMode(mode: AuthMode) {
         if (_state.value.authBusy) return
         _state.value = _state.value.copy(authMode = mode, error = null, notice = null)
+    }
+
+    fun setNewsroomFilter(filter: NewsroomFilter) {
+        if (_state.value.newsroomFilter == filter) return
+        _state.value = _state.value.copy(
+            newsroomFilter = filter,
+            newsroomSignals = filterNewsroom(latestNewsroomSignals, filter),
+        )
     }
 
     fun signIn(email: String, password: String) {
@@ -120,6 +132,7 @@ class CineRelayViewModel(application: Application) : AndroidViewModel(applicatio
 
     fun signOut() {
         backend.signOut()
+        latestNewsroomSignals = emptyList()
         _state.value = CineRelayUiState(
             tab = AppTab.LIVE,
             notice = "Signed out. You can keep exploring as a guest.",
@@ -155,12 +168,16 @@ class CineRelayViewModel(application: Application) : AndroidViewModel(applicatio
                 }
             }.onSuccess { result ->
                 _state.value = when (result) {
-                    is LoadResult.Newsroom -> _state.value.copy(
-                        loading = false,
-                        newsroomSignals = result.items,
-                        events = emptyList(),
-                        alerts = emptyList(),
-                    )
+                    is LoadResult.Newsroom -> {
+                        latestNewsroomSignals = result.items
+                        _state.value.copy(
+                            loading = false,
+                            newsroomFilterCounts = newsroomCounts(result.items),
+                            newsroomSignals = filterNewsroom(result.items, _state.value.newsroomFilter),
+                            events = emptyList(),
+                            alerts = emptyList(),
+                        )
+                    }
                     is LoadResult.Events -> _state.value.copy(
                         loading = false,
                         newsroomSignals = emptyList(),
@@ -188,11 +205,12 @@ class CineRelayViewModel(application: Application) : AndroidViewModel(applicatio
             val desired = !card.followed
             runCatching { withContext(Dispatchers.IO) { backend.setFollow(card.entityId, desired) } }
                 .onSuccess {
+                    latestNewsroomSignals = latestNewsroomSignals.map { signal ->
+                        val event = signal.canonicalEvent
+                        if (event?.entityId == card.entityId) signal.copy(canonicalEvent = event.copy(followed = desired)) else signal
+                    }
                     _state.value = _state.value.copy(
-                        newsroomSignals = _state.value.newsroomSignals.map { signal ->
-                            val event = signal.canonicalEvent
-                            if (event?.entityId == card.entityId) signal.copy(canonicalEvent = event.copy(followed = desired)) else signal
-                        },
+                        newsroomSignals = filterNewsroom(latestNewsroomSignals, _state.value.newsroomFilter),
                         events = _state.value.events.map { item ->
                             if (item.entityId == card.entityId) item.copy(followed = desired) else item
                         },
@@ -252,6 +270,7 @@ class CineRelayViewModel(application: Application) : AndroidViewModel(applicatio
     private fun handleFailure(error: Throwable) {
         if (error is ApiException && error.statusCode == 401 && _state.value.authenticated) {
             backend.signOut()
+            latestNewsroomSignals = emptyList()
             _state.value = CineRelayUiState(
                 authenticated = false,
                 tab = AppTab.LIVE,
@@ -273,6 +292,22 @@ class CineRelayViewModel(application: Application) : AndroidViewModel(applicatio
         data class Events(val items: List<EventCard>) : LoadResult
         data class Alerts(val items: List<AlertItem>) : LoadResult
     }
+}
+
+private fun filterNewsroom(items: List<NewsroomSignal>, filter: NewsroomFilter): List<NewsroomSignal> = when (filter) {
+    NewsroomFilter.ALL -> items
+    NewsroomFilter.VERIFIED -> items.filter { it.state == "VERIFIED" }
+    NewsroomFilter.DEVELOPING -> items.filter { it.state == "DEVELOPING" }
+    NewsroomFilter.UNCONFIRMED -> items.filter { it.state == "UNCONFIRMED" }
+    NewsroomFilter.CONFLICT_RUMOR -> items.filter { it.state == "CONFLICT_RUMOR" }
+}
+
+private fun newsroomCounts(items: List<NewsroomSignal>): Map<NewsroomFilter, Int> = buildMap {
+    put(NewsroomFilter.ALL, items.size)
+    put(NewsroomFilter.VERIFIED, items.count { it.state == "VERIFIED" })
+    put(NewsroomFilter.DEVELOPING, items.count { it.state == "DEVELOPING" })
+    put(NewsroomFilter.UNCONFIRMED, items.count { it.state == "UNCONFIRMED" })
+    put(NewsroomFilter.CONFLICT_RUMOR, items.count { it.state == "CONFLICT_RUMOR" })
 }
 
 private fun AppTab.requiresAccount(): Boolean = this == AppTab.FOLLOWING || this == AppTab.ALERTS
