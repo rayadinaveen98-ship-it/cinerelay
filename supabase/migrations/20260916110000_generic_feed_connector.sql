@@ -12,6 +12,7 @@ create table if not exists public.feed_source_state (
   parser_version text not null default 'feed-parser-v1',
   last_entry_id text,
   consecutive_not_modified integer not null default 0 check (consecutive_not_modified >= 0),
+  gap_count integer not null default 0 check (gap_count >= 0),
   updated_at timestamptz not null default now()
 );
 
