@@ -77,9 +77,34 @@ export type CandidateKind = z.infer<typeof CandidateSchema>['candidate_kind'];
 export type CandidateReviewStatus = 'REVIEWING' | 'APPROVED' | 'REJECTED' | 'DUPLICATE';
 export type MediaAuthorityTier = 3 | 4;
 export type MediaPollClass = 'ACTIVE_15M' | 'NORMAL_60M' | 'COLD_6H' | 'DAILY';
+export type PublicPageAuthorityTier = 3 | 4 | 5;
+export type PublicPagePollClass = 'NORMAL_60M' | 'COLD_6H' | 'DAILY';
+export type PublicPageParserProfile = {
+  profileVersion: string;
+  itemSelector: string;
+  linkSelector: string;
+  titleSelector?: string;
+  summarySelector?: string;
+  dateSelector?: string;
+  dateAttribute?: string;
+  authorSelector?: string;
+  itemIdAttribute?: string;
+  linkAttribute?: string;
+  includeUrlPattern?: string;
+  excludeUrlPattern?: string;
+  maxItems?: number;
+  minItems?: number;
+  order?: 'NEWEST_FIRST' | 'OLDEST_FIRST';
+};
 
 async function invoke<T>(body: Record<string, unknown>, schema: z.ZodType<T>): Promise<T> {
   const { data, error } = await supabase.functions.invoke('cinerelay-source-discovery-api', { body });
+  if (error) throw error;
+  return schema.parse(data);
+}
+
+async function invokePublicPage<T>(body: Record<string, unknown>, schema: z.ZodType<T>): Promise<T> {
+  const { data, error } = await supabase.functions.invoke('cinerelay-public-page-onboarding-api', { body });
   if (error) throw error;
   return schema.parse(data);
 }
@@ -123,4 +148,14 @@ export function promoteMediaFeedCandidate(input: {
   reason: string;
 }) {
   return invoke({ action: 'promoteMediaFeed', ...input }, ActionSchema);
+}
+
+export function promoteSelectedPublicPageCandidate(input: {
+  candidateId: string;
+  authorityTier: PublicPageAuthorityTier;
+  pollClass: PublicPagePollClass;
+  parserProfile: PublicPageParserProfile;
+  reason: string;
+}) {
+  return invokePublicPage({ action: 'promote', ...input }, ActionSchema);
 }
