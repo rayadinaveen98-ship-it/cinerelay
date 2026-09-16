@@ -6,18 +6,20 @@ Date: 2026-09-16
 
 P4.2 first-party HTML/newsroom connector foundation is implemented and hosted.
 
-Engineering proof completed so far:
+Engineering proof completed:
 
 - declarative first-party HTML parser profiles;
 - fail-closed parser drift detection;
 - first-poll anti-backlog baseline;
-- body-level duplicate suppression;
+- conditional/full-body duplicate suppression;
 - shared per-domain throttling/backoff;
 - hosted service-role-only page state;
 - hosted `page-poll-worker` and scheduler dispatch;
+- automatic hosted cron heartbeat;
+- hosted two-version synthetic new-item transport proof;
 - one India-first official production canary.
 
-A genuine post-baseline official page item is still required before P4.2 can be release-closed. The hosted baseline and unchanged-repeat proofs do not substitute for that real new-item gate.
+A genuine post-baseline official page item is still required before P4.2 can be release-closed. Synthetic transport proof deliberately does not substitute for that authority/evidence gate.
 
 ## Green engineering baseline
 
@@ -71,6 +73,17 @@ Hosted page cron:
 
 The five-minute job is only a scheduler heartbeat. External page requests remain gated by `page_source_state.next_check_at`, the source poll class, shared domain spacing and provider backoff.
 
+### Automatic scheduler proof — PASS
+
+The first automatic page cron invocation ran at `2026-09-16 07:15:00 UTC`:
+
+- pg_cron status `succeeded`
+- return message `1 row`
+- both registered page sources were not due at that instant
+- no forced early external request occurred
+
+This proves the cron is a dispatcher heartbeat rather than a fixed five-minute provider poll.
+
 ## Official India-first production canary
 
 Source:
@@ -119,7 +132,7 @@ The stored profile was corrected and versioned as:
 
 The drift/failure history was intentionally preserved for auditability.
 
-## Corrected baseline poll — PASS
+## Corrected official baseline poll — PASS
 
 Corrected hosted baseline at `2026-09-16 07:10:18 UTC`:
 
@@ -137,7 +150,7 @@ Corrected hosted baseline at `2026-09-16 07:10:18 UTC`:
 
 This proves the first-party page anti-backlog rule: onboarding a page with an existing archive establishes only a baseline and does not import its historical listing.
 
-## Unchanged full-body repeat — PASS
+## Official unchanged full-body repeat — PASS
 
 After the mandatory domain spacing window elapsed, only the source due time was advanced for the verification request.
 
@@ -155,6 +168,68 @@ Hosted repeat at `2026-09-16 07:11:04 UTC`:
 - source health `HEALTHY`
 
 About Amazon resent the page body rather than responding 304. CineRelay still produced no duplicate work, proving body-level idempotency independently of provider cache-validator behavior.
+
+## Hosted synthetic end-to-end page transport proof — PASS
+
+A temporary Tier-5 `TEST_CANARY` source used two immutable HTML fixtures committed to the repository. It existed only to prove engineering transport and never counted as official evidence.
+
+### V1 baseline
+
+At `2026-09-16 07:14:57 UTC`:
+
+- HTTP `200`
+- one fixture article parsed
+- baseline stable id `cinerelay-page-canary-a`
+- raw items `0`
+- revisions `0`
+- run `SUCCEEDED`
+- health `HEALTHY`
+- gap/drift counts `0 / 0`
+
+### V2 one-new-item delta
+
+The same temporary source was switched to the immutable V2 fixture after the domain spacing window.
+
+At `2026-09-16 07:16:10 UTC`:
+
+- HTTP `200`
+- V2 exposed baseline item A plus new item B
+- `itemsNew = 1`
+- raw items became exactly `1`
+- initial revisions became exactly `1`
+- processing jobs became exactly `1`
+- gap/drift remained `0 / 0`
+- source health remained `HEALTHY`
+
+The normal `PROCESS_RAW_ITEM` worker was then dispatched.
+
+At `2026-09-16 07:16:37 UTC` the job completed:
+
+- state `SUCCEEDED`
+- attempt count `1`
+- `last_error = null`
+- revision count remained `1`
+- resolution count `1`
+- latest resolution `UNRESOLVED`
+- event evidence `0`
+
+This is the truthful result for a Tier-5 synthetic item with no registered title scope: transport succeeds, resolution remains unresolved, and CineRelay does not fabricate canonical intelligence.
+
+### V2 unchanged repeat
+
+After the next domain spacing window, the V2 page was polled again:
+
+- HTTP `304`
+- items new `0`
+- items changed `0`
+- raw items stayed `1`
+- revisions stayed `1`
+- processing jobs stayed `1`
+- event evidence stayed `0`
+- health stayed `HEALTHY`
+- gap/drift stayed `0 / 0`
+
+The temporary production source, identity, page state, raw item and processing job were then deleted. Verification counts for all of those production test objects returned zero. Only the V1/V2 fixture files remain in Git as regression assets.
 
 ## Security/advisor verification
 
@@ -179,5 +254,7 @@ A genuinely new article must appear on the official About Amazon India Prime Vid
 7. a later unchanged page produces no duplicate raw item/revision/job/event;
 8. source/domain health remains observable;
 9. structural drift continues to fail closed rather than silently advancing the baseline.
+
+All of those transport/idempotency behaviors are already proven with the non-authoritative hosted canary; the remaining gate is specifically that the same path works on a genuinely new official item.
 
 PR #5 remains draft while this real official-new-item proof is pending. It is also intentionally stacked on PR #4 until the P4.1 release gate is satisfied.
