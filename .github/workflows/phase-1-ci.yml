@@ -55,7 +55,7 @@ jobs:
             echo 'VITE Supabase publishable key was not bound into the browser artifact' >&2
             exit 1
           fi
-          if grep -R -E 'SUPABASE_SERVICE_ROLE_KEY|CINERELAY_INTERNAL_ADMIN_SECRET|CINERELAY_WEBSUB_MASTER_SECRET|YOUTUBE_API_KEY|THREADS_PROFILE_DISCOVERY_ACCESS_TOKEN|INSTAGRAM_BUSINESS_DISCOVERY_ACCESS_TOKEN|INSTAGRAM_MANAGED_IG_USER_ID' apps/web/dist; then
+          if grep -R -E 'SUPABASE_SERVICE_ROLE_KEY|CINERELAY_INTERNAL_ADMIN_SECRET|CINERELAY_WEBSUB_MASTER_SECRET|YOUTUBE_API_KEY|THREADS_PROFILE_DISCOVERY_ACCESS_TOKEN|INSTAGRAM_BUSINESS_DISCOVERY_ACCESS_TOKEN|INSTAGRAM_MANAGED_IG_USER_ID|CINERELAY_FCM_SERVICE_ACCOUNT' apps/web/dist; then
             echo 'Forbidden privileged credential marker found in browser bundle' >&2
             exit 1
           fi
@@ -112,6 +112,10 @@ jobs:
         run: deno check --config supabase/functions/cinerelay-source-discovery-api/deno.json supabase/functions/cinerelay-source-discovery-api/index.ts
       - name: Type-check cinerelay-public-page-onboarding-api
         run: deno check --config supabase/functions/cinerelay-public-page-onboarding-api/deno.json supabase/functions/cinerelay-public-page-onboarding-api/index.ts
+      - name: Type-check cinerelay-device-registration-api
+        run: deno check --config supabase/functions/cinerelay-device-registration-api/deno.json supabase/functions/cinerelay-device-registration-api/index.ts
+      - name: Type-check push-delivery-worker
+        run: deno check --config supabase/functions/push-delivery-worker/deno.json supabase/functions/push-delivery-worker/index.ts
       - name: Build deployment-native Edge bundles
         shell: bash
         run: |
@@ -133,6 +137,8 @@ jobs:
             cinerelay-review-api
             cinerelay-source-discovery-api
             cinerelay-public-page-onboarding-api
+            cinerelay-device-registration-api
+            push-delivery-worker
           )
           for fn in "${functions[@]}"; do
             mkdir -p "edge-deploy/${fn}"

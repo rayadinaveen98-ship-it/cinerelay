@@ -97,3 +97,15 @@ verify_jwt = false
 # the supplied bearer token with auth.getUser() and checks operator_users itself.
 [functions.cinerelay-public-page-onboarding-api]
 verify_jwt = false
+
+# Device registration is a user-facing authenticated API. Gateway JWT verification
+# stays disabled for CORS consistency; the function validates the bearer session
+# with auth.getUser() and binds every mutation to that verified user id.
+[functions.cinerelay-device-registration-api]
+verify_jwt = false
+
+# Push delivery is an internal server-only worker. It requires the independent
+# x-cinerelay-internal-key and keeps the FCM service account exclusively in hosted
+# Edge secrets. No scheduler cron is enabled until the real-device canary passes.
+[functions.push-delivery-worker]
+verify_jwt = false
