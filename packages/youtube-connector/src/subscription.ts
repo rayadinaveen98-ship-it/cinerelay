@@ -19,6 +19,28 @@ export type SubscriptionPlan = {
   hubRequest: { url: string; headers: Record<string, string>; body: string; topic: string };
 };
 
+export const HUB_RETRY_POLICY = Object.freeze({
+  maxAttempts: 3,
+  delaysMs: [250, 750] as const,
+});
+
+const RETRYABLE_HUB_STATUSES = new Set([429, 500, 502, 503, 504]);
+
+export type HubRetryDecision = {
+  retry: boolean;
+  delayMs: number;
+};
+
+export function decideHubRetry(input: { attempt: number; status: number }): HubRetryDecision {
+  if (!Number.isSafeInteger(input.attempt) || input.attempt < 1) throw new Error('Hub retry attempt must be a positive integer');
+  if (!Number.isSafeInteger(input.status) || input.status < 100 || input.status > 599) throw new Error('Invalid hub HTTP status');
+  if (!RETRYABLE_HUB_STATUSES.has(input.status) || input.attempt >= HUB_RETRY_POLICY.maxAttempts) {
+    return { retry: false, delayMs: 0 };
+  }
+  const delayMs = HUB_RETRY_POLICY.delaysMs[Math.min(input.attempt - 1, HUB_RETRY_POLICY.delaysMs.length - 1)] ?? 0;
+  return { retry: true, delayMs };
+}
+
 function callbackUrlWithToken(baseUrl: string, token: string): string {
   const url = new URL(baseUrl);
   if (url.protocol !== 'https:' && url.hostname !== 'localhost' && url.hostname !== '127.0.0.1') throw new Error('Public WebSub callback must use HTTPS');
