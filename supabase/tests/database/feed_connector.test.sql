@@ -1,7 +1,7 @@
 begin;
 
 create extension if not exists pgtap with schema extensions;
-select plan(8);
+select plan(10);
 
 insert into public.sources (id, display_name, authority_tier, source_role)
 values ('41000000-0000-4000-8000-000000000001', 'Feed Test Studio', 1, 'STUDIO');
@@ -60,6 +60,16 @@ select results_eq(
   $$select feed_url || '|' || parser_version from public.feed_source_state where source_identity_id = '42000000-0000-4000-8000-000000000001'::uuid$$,
   array['https://studio.example.com/feed-v2.xml|feed-parser-v2'::text],
   're-registration updates feed URL and parser version without duplication'
+);
+
+select ok(
+  (select relrowsecurity from pg_class where oid = 'public.feed_source_state'::regclass),
+  'feed_source_state has RLS enabled'
+);
+
+select ok(
+  (select relrowsecurity from pg_class where oid = 'public.connector_domain_state'::regclass),
+  'connector_domain_state has RLS enabled'
 );
 
 select ok(
