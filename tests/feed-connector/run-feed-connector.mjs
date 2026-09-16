@@ -49,6 +49,34 @@ const now = new Date('2026-09-16T00:00:00Z');
 assert.equal(nextFeedCheckAt({ now, pollClass: 'ACTIVE_15M' }), '2026-09-16T00:15:00.000Z');
 assert.equal(nextFeedCheckAt({ now, pollClass: 'ACTIVE_15M', consecutiveFailures: 2 }), '2026-09-16T01:00:00.000Z');
 assert.equal(nextFeedCheckAt({ now, pollClass: 'HOT_5M', retryAfterSeconds: 120 }), '2026-09-16T00:02:00.000Z');
+
+// Hosted scheduler proof: cron starts on the 5-minute boundary while successful
+// worker invocations begin a second or two later. Healthy cadence must anchor to
+// that scheduler grid so a :01 next_check does not miss the :00 cron slot.
+const scheduledStart = new Date('2026-09-16T18:20:01.913Z');
+assert.equal(nextFeedCheckAt({ now: scheduledStart, pollClass: 'HOT_5M' }), '2026-09-16T18:25:00.000Z');
+assert.equal(nextFeedCheckAt({ now: scheduledStart, pollClass: 'ACTIVE_15M' }), '2026-09-16T18:35:00.000Z');
+
+// A baseline or scheduled run that starts within the normal dispatch window also
+// anchors to the same grid, preventing the observed 18:35:58 -> 18:40 slip.
+const nearBoundary = new Date('2026-09-16T18:20:58.824Z');
+assert.equal(nextFeedCheckAt({ now: nearBoundary, pollClass: 'ACTIVE_15M' }), '2026-09-16T18:35:00.000Z');
+
+// Off-grid operator runs are not aggressively rounded and keep their natural clock.
+const offGrid = new Date('2026-09-16T18:22:00.000Z');
+assert.equal(nextFeedCheckAt({ now: offGrid, pollClass: 'ACTIVE_15M' }), '2026-09-16T18:37:00.000Z');
+
+// Failure backoff and Retry-After remain exact; cadence alignment never makes an
+// upstream-protection timestamp earlier.
+assert.equal(
+  nextFeedCheckAt({ now: scheduledStart, pollClass: 'ACTIVE_15M', consecutiveFailures: 1 }),
+  '2026-09-16T18:50:01.913Z',
+);
+assert.equal(
+  nextFeedCheckAt({ now: scheduledStart, pollClass: 'HOT_5M', retryAfterSeconds: 120 }),
+  '2026-09-16T18:22:01.913Z',
+);
+
 assert.equal(parseRetryAfterSeconds('120', now), 120);
 assert.equal(parseRetryAfterSeconds('Wed, 16 Sep 2026 00:05:00 GMT', now), 300);
 assert.equal(FEED_PARSER_VERSION, 'feed-parser-v1');
