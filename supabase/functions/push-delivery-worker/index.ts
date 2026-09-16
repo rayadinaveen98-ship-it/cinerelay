@@ -1,4 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
+// @deno-types="../../../packages/domain/dist/push-presentation.d.ts"
+import { pushNotificationTitle } from '../../../packages/domain/dist/push-presentation.js';
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL');
 const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
@@ -217,6 +219,7 @@ async function sendOne(account: ServiceAccount, accessToken: string, target: Lea
 
   const payload = target.payload ?? {};
   const headline = asString(payload.headline) ?? 'New CineRelay update';
+  const verificationState = asString(payload.verificationState);
   const response = await fetch(
     `https://fcm.googleapis.com/v1/projects/${encodeURIComponent(account.project_id)}/messages:send`,
     {
@@ -228,7 +231,7 @@ async function sendOne(account: ServiceAccount, accessToken: string, target: Lea
       body: JSON.stringify({
         message: {
           token: target.target_value,
-          notification: { title: 'CineRelay', body: headline.slice(0, 240) },
+          notification: { title: pushNotificationTitle(verificationState), body: headline.slice(0, 240) },
           data: messageData(target),
         },
       }),
