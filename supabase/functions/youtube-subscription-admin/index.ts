@@ -56,7 +56,7 @@ async function postHubWithRetry(request: HubRequest): Promise<HubPostResult> {
         method: 'POST',
         headers: request.headers,
         body: request.body,
-        signal: AbortSignal.timeout(15_000),
+        signal: AbortSignal.timeout(HUB_RETRY_POLICY.attemptTimeoutMs),
       });
       if (hubResponse.ok) return { ok: true, status: hubResponse.status, attempts: attempt, transportError: false };
       const retry = decideHubRetry({ attempt, status: hubResponse.status });
