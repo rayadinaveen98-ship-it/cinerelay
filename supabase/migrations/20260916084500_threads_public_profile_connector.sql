@@ -60,8 +60,8 @@ begin
     raise exception 'source_identity_connector_type_must_be_threads_profile_api';
   end if;
 
-  if v_access_mode <> 'OFFICIAL_API' then
-    raise exception 'source_identity_access_mode_must_be_official_api';
+  if v_access_mode <> 'API' then
+    raise exception 'source_identity_access_mode_must_be_api';
   end if;
 
   if v_handle is not null and lower(regexp_replace(trim(v_handle), '^@+', '')) <> v_username then
