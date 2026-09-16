@@ -1,0 +1,103 @@
+name: CineRelay Android Canary CI
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: cinerelay-android-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  mobile-api:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - name: Type-check guest-aware mobile API
+        run: deno check --config supabase/functions/cinerelay-mobile-api/deno.json supabase/functions/cinerelay-mobile-api/index.ts
+      - name: Build deployment-native mobile API bundle
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p mobile-api-deploy/cinerelay-mobile-api
+          npx --yes esbuild@0.25.9 supabase/functions/cinerelay-mobile-api/index.ts \
+            --bundle \
+            --format=esm \
+            --platform=neutral \
+            --main-fields=module,main \
+            --target=es2022 \
+            --minify \
+            --external:@supabase/supabase-js \
+            --outfile=mobile-api-deploy/cinerelay-mobile-api/index.js
+          cp supabase/functions/cinerelay-mobile-api/deno.json mobile-api-deploy/cinerelay-mobile-api/deno.json
+      - name: Upload deployment-native mobile API bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: cinerelay-mobile-api-deploy-bundle
+          path: mobile-api-deploy
+          if-no-files-found: error
+          retention-days: 7
+
+  android-canary:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      CINERELAY_SUPABASE_URL: https://dnqaejljfzwhsainpdxb.supabase.co
+      CINERELAY_SUPABASE_PUBLISHABLE_KEY: sb_publishable_hR65p2JkQ2x5fFLx_kkcNQ_1SxNN3QP
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
+      - name: Install stable Android SDK 36
+        shell: bash
+        run: |
+          set -euo pipefail
+          sdkmanager 'platforms;android-36' 'platform-tools'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.6.0'
+      - name: Verify Android source contains no privileged secret material
+        shell: bash
+        run: |
+          set -euo pipefail
+          if grep -R -E 'SUPABASE_SERVICE_ROLE_KEY|CINERELAY_INTERNAL_ADMIN_SECRET|CINERELAY_FCM_SERVICE_ACCOUNT|BEGIN PRIVATE KEY' \
+            apps/android/app/src apps/android/*.kts apps/android/app/*.kts; then
+            echo 'Privileged server credential marker found in Android source' >&2
+            exit 1
+          fi
+      - name: Build CineRelay V0.1.1 Canary APK
+        run: gradle -p apps/android --no-daemon --stacktrace :app:assembleDebug
+      - name: Verify APK and package contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK='apps/android/app/build/outputs/apk/debug/app-debug.apk'
+          test -f "$APK"
+          test -s "$APK"
+          unzip -p "$APK" classes.dex > /tmp/cinerelay-classes.dex || true
+          if grep -a -E 'SUPABASE_SERVICE_ROLE_KEY|CINERELAY_INTERNAL_ADMIN_SECRET|CINERELAY_FCM_SERVICE_ACCOUNT|BEGIN PRIVATE KEY' "$APK" /tmp/cinerelay-classes.dex; then
+            echo 'Privileged credential marker found in APK' >&2
+            exit 1
+          fi
+          sha256sum "$APK" | tee apps/android/app/build/outputs/apk/debug/CineRelay-v0.1.1-canary.sha256
+      - name: Upload installable CineRelay APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: cinerelay-android-v0.1.1-canary-apk
+          path: |
+            apps/android/app/build/outputs/apk/debug/app-debug.apk
+            apps/android/app/build/outputs/apk/debug/CineRelay-v0.1.1-canary.sha256
+          if-no-files-found: error
+          retention-days: 7
