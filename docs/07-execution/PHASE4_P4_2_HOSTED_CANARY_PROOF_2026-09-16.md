@@ -10,6 +10,7 @@ Engineering proof completed:
 
 - declarative first-party HTML parser profiles;
 - fail-closed parser drift detection;
+- accessible-title extraction from visible text, `aria-label`, and `title`;
 - first-poll anti-backlog baseline;
 - conditional/full-body duplicate suppression;
 - shared per-domain throttling/backoff;
@@ -17,18 +18,19 @@ Engineering proof completed:
 - hosted `page-poll-worker` and scheduler dispatch;
 - automatic hosted cron heartbeat;
 - hosted two-version synthetic new-item transport proof;
-- one India-first official production canary.
+- one India-first official production canary;
+- real parser-drift incident detection and production recovery.
 
 A genuine post-baseline official page item is still required before P4.2 can be release-closed. Synthetic transport proof deliberately does not substitute for that authority/evidence gate.
 
-## Green engineering baseline
+## Current green engineering baseline
 
-Production-eligible CI:
+Actual P4.2 parent branch:
 
 - workflow: `CineRelay CI`
-- run: `#229`
-- run id: `35066491404`
-- head: `38ca4ca383eb62c9718756af253e2fc6ee51cbf2`
+- run: `#253`
+- run id: `35072587450`
+- implementation head: `fad8b209b405d9663945e99b65359e6b4b48c5bc`
 - intelligence/connectors: PASS
 - web console: PASS
 - Edge Functions: PASS
@@ -36,14 +38,7 @@ Production-eligible CI:
 - deployment-native Edge bundle: PASS
 - fresh migrations + pgTAP + DB lint: PASS
 
-Artifacts:
-
-- Edge source artifact `10434531734`
-  - digest `sha256:db211cb7ac22019496b53870dc43771a1cc7c549ef5de398d00ef04713bdeef1`
-- deployment-native Edge artifact `10434178224`
-  - digest `sha256:1a47b6957781d392015d0bf3bd6b6f9aa165014809b5bf792c14ff86e6006bd1`
-
-The deployment bundle keeps `node-html-parser` external and resolves the pinned `npm:node-html-parser@7.0.1` through the function import map, reducing the deployment artifact substantially without changing tested behavior.
+The generic parser version is now `first-party-html-v2`.
 
 ## Hosted schema/runtime rollout
 
@@ -57,11 +52,12 @@ Applied hosted migration ledger entry:
 
 Git was reconciled to that exact hosted version after application.
 
-Active runtime:
+Active page runtime after recovery:
 
-- `page-poll-worker` v1 ACTIVE
-- `cinerelay-scheduler-dispatch` v3 ACTIVE
-- `process-raw-item-worker` v11 ACTIVE
+- `page-poll-worker` v4 ACTIVE
+- parser telemetry `first-party-html-v2`
+- scheduler dispatch remains active
+- `process-raw-item-worker` remains active
 
 `verify_jwt=false` remains intentional for the page worker and scheduler dispatcher because both use CineRelay's independent internal/scheduler-secret authentication boundary.
 
@@ -72,17 +68,6 @@ Hosted page cron:
 - schedule `*/5 * * * *`
 
 The five-minute job is only a scheduler heartbeat. External page requests remain gated by `page_source_state.next_check_at`, the source poll class, shared domain spacing and provider backoff.
-
-### Automatic scheduler proof — PASS
-
-The first automatic page cron invocation ran at `2026-09-16 07:15:00 UTC`:
-
-- pg_cron status `succeeded`
-- return message `1 row`
-- both registered page sources were not due at that instant
-- no forced early external request occurred
-
-This proves the cron is a dispatcher heartbeat rather than a fixed five-minute provider poll.
 
 ## Official India-first production canary
 
@@ -105,6 +90,7 @@ CineRelay source:
 - connector `FIRST_PARTY_HTML`
 - access mode `PUBLIC_WEB`
 - poll class `ACTIVE_15M`
+- parser profile `about-amazon-india-prime-video-v2`
 
 The profile is deliberately URL-pattern driven instead of depending on brittle visual card class names. It scans anchors and accepts only first-party `aboutamazon.in` entertainment/company-news article URLs.
 
@@ -117,57 +103,51 @@ First hosted request at `2026-09-16 07:09:11 UTC`:
 - HTTP `200`
 - extracted items `0`
 - configured minimum `5`
-- worker result `drifted = 1`
 - source health `PARSER_BROKEN`
 - error `PAGE_SELECTOR_UNDER_MINIMUM`
 - connector run `FAILED`
 - raw items remained `0`
 - baseline id remained `null`
 
-This was a configuration error, not a provider failure. Importantly, CineRelay failed closed rather than accepting an empty/incorrect parse and advancing the baseline.
+This proved a bad profile fails closed rather than accepting an empty parse and advancing the baseline.
 
-The stored profile was corrected and versioned as:
+The profile was corrected and versioned as:
 
 `about-amazon-india-prime-video-v2`
 
-The drift/failure history was intentionally preserved for auditability.
+The failure history was preserved for auditability.
 
 ## Corrected official baseline poll — PASS
 
-Corrected hosted baseline at `2026-09-16 07:10:18 UTC`:
+At `2026-09-16 07:10:18 UTC`:
 
 - HTTP `200`
-- official page items parsed: `12`
+- official page items parsed `12`
 - newest official item baselined:
   `https://www.aboutamazon.in/news/entertainment/prime-videos-the-revolutionaries-starring-bhuvan-bam-rohit-saraf-to-release-worldwide-on-september-11`
-- parser profile `about-amazon-india-prime-video-v2`
 - structure fingerprint `7352c78a`
 - connector run `SUCCEEDED`
 - source health `HEALTHY`
-- `gap_count = 0`
-- historical raw items created: `0`
-- historical revisions created: `0`
+- gap count `0`
+- historical raw items `0`
+- historical revisions `0`
 
-This proves the first-party page anti-backlog rule: onboarding a page with an existing archive establishes only a baseline and does not import its historical listing.
+This proves the anti-backlog rule: onboarding a page establishes a baseline without replaying its archive.
 
 ## Official unchanged full-body repeat — PASS
 
-After the mandatory domain spacing window elapsed, only the source due time was advanced for the verification request.
+At `2026-09-16 07:11:04 UTC` About Amazon returned HTTP `200` with the same 12-item window.
 
-Hosted repeat at `2026-09-16 07:11:04 UTC`:
+CineRelay kept:
 
-- HTTP `200`
-- parsed items `12`
-- newest stable id unchanged
-- connector run `SUCCEEDED`
 - items new `0`
 - raw items `0`
 - revisions `0`
-- page processing jobs `0`
-- `gap_count = 0`
+- processing jobs `0`
+- gap count `0`
 - source health `HEALTHY`
 
-About Amazon resent the page body rather than responding 304. CineRelay still produced no duplicate work, proving body-level idempotency independently of provider cache-validator behavior.
+This proves body-level idempotency independently of provider cache-validator behavior.
 
 ## Hosted synthetic end-to-end page transport proof — PASS
 
@@ -188,56 +168,100 @@ At `2026-09-16 07:14:57 UTC`:
 
 ### V2 one-new-item delta
 
-The same temporary source was switched to the immutable V2 fixture after the domain spacing window.
+At `2026-09-16 07:16:10 UTC` V2 exposed baseline item A plus new item B:
 
-At `2026-09-16 07:16:10 UTC`:
-
-- HTTP `200`
-- V2 exposed baseline item A plus new item B
 - `itemsNew = 1`
-- raw items became exactly `1`
-- initial revisions became exactly `1`
-- processing jobs became exactly `1`
-- gap/drift remained `0 / 0`
-- source health remained `HEALTHY`
+- raw items exactly `1`
+- initial revisions exactly `1`
+- processing jobs exactly `1`
+- gap/drift `0 / 0`
+- source health `HEALTHY`
 
-The normal `PROCESS_RAW_ITEM` worker was then dispatched.
-
-At `2026-09-16 07:16:37 UTC` the job completed:
+The normal `PROCESS_RAW_ITEM` worker completed at `07:16:37 UTC`:
 
 - state `SUCCEEDED`
 - attempt count `1`
 - `last_error = null`
 - revision count remained `1`
-- resolution count `1`
-- latest resolution `UNRESOLVED`
+- resolution `UNRESOLVED`
 - event evidence `0`
 
-This is the truthful result for a Tier-5 synthetic item with no registered title scope: transport succeeds, resolution remains unresolved, and CineRelay does not fabricate canonical intelligence.
+This is truthful for a Tier-5 synthetic item with no registered title scope: transport succeeds, resolution stays unresolved, and no canonical intelligence is fabricated.
 
 ### V2 unchanged repeat
 
-After the next domain spacing window, the V2 page was polled again:
+The repeat returned HTTP `304` and remained exactly:
 
-- HTTP `304`
-- items new `0`
-- items changed `0`
-- raw items stayed `1`
-- revisions stayed `1`
-- processing jobs stayed `1`
-- event evidence stayed `0`
-- health stayed `HEALTHY`
-- gap/drift stayed `0 / 0`
+- raw items `1`
+- revisions `1`
+- processing jobs `1`
+- event evidence `0`
+- no new or changed item
+- health `HEALTHY`
+- gap/drift `0 / 0`
 
-The temporary production source, identity, page state, raw item and processing job were then deleted. Verification counts for all of those production test objects returned zero. Only the V1/V2 fixture files remain in Git as regression assets.
+The temporary production source, identity, page state, raw item and processing job were then deleted. Only regression fixtures remain in Git.
+
+## Production parser incident and recovery — PASS
+
+At `07:50:01 UTC`, after earlier healthy polling, the official Prime Video canary returned HTTP `200` but the generic parser accepted zero items. CineRelay failed closed:
+
+- health `PARSER_BROKEN`
+- error `PAGE_SELECTOR_UNDER_MINIMUM`
+- baseline unchanged
+- gap count `0`
+- raw items `0`
+- revisions `0`
+- processing jobs `0`
+
+A controlled `08:00:51 UTC` retry reproduced the failure.
+
+A direct request from the hosted Supabase region proved the provider still returned the complete server-rendered Next.js page with 229 results and the expected 12 first-page cards. The stored URL regex also matched the official URL correctly.
+
+Root cause: current page cards can put the usable article title on image-first anchors through `aria-label`; visible inner text is not guaranteed on the first canonical anchor. An earlier manual runtime pin to an older parser also exposed a duplicate image-anchor weakness.
+
+The generic parser was hardened rather than introducing Amazon-specific logic:
+
+- parser version `first-party-html-v2`;
+- visible title text first;
+- then `aria-label`;
+- then HTML `title`;
+- stable URL only enters the duplicate set after a usable title exists;
+- regression coverage added for accessible image-first anchors and duplicate URLs.
+
+Production `page-poll-worker` v4 recovered at `08:11:07 UTC`:
+
+- run `SUCCEEDED`
+- items seen `12`
+- items new/changed `0 / 0`
+- health `HEALTHY`
+- parser `first-party-html-v2`
+- same baseline retained
+- gap count `0`
+- raw/revision/job counts `0 / 0 / 0`
+
+The source was then marked due without manually dispatching the worker. Normal cron job `6`, run id `5951`, fired at `08:15:00.042542 UTC` and succeeded. The resulting page run at `08:15:01.973 UTC` also succeeded with 12 items and zero delta.
+
+Post-automatic-repeat state:
+
+- health `HEALTHY`
+- parser `first-party-html-v2`
+- profile `about-amazon-india-prime-video-v2`
+- item count `12`
+- same newest stable URL
+- gap count `0`
+- raw items `0`
+- revisions `0`
+- processing jobs `0`
+- historical drift count retained for auditability.
+
+Dedicated incident proof:
+
+`docs/07-execution/PHASE4_P4_2_PARSER_INCIDENT_2026-09-16.md`
 
 ## Security/advisor verification
 
-After the hosted page-state migration, Supabase advisors showed no new blocking P4.2 finding.
-
-`page_source_state` appears under the expected informational `RLS enabled, no policy` notice because it is intentionally service-role-only and direct `public`, `anon` and `authenticated` access is revoked.
-
-The new due index initially appears unused because no long-running production polling history exists yet. Other advisor warnings are pre-existing project-wide findings and were not silently scope-expanded into this connector slice.
+Supabase advisors introduced no new blocking P4.2 finding. `page_source_state` intentionally has RLS enabled without public policies because it is service-role-only and direct `public`, `anon` and `authenticated` access is revoked.
 
 ## Remaining P4.2 release proof
 
@@ -255,6 +279,6 @@ A genuinely new article must appear on the official About Amazon India Prime Vid
 8. source/domain health remains observable;
 9. structural drift continues to fail closed rather than silently advancing the baseline.
 
-All of those transport/idempotency behaviors are already proven with the non-authoritative hosted canary; the remaining gate is specifically that the same path works on a genuinely new official item.
+Transport/idempotency and parser-recovery behavior are already production-proven. The remaining gate is specifically a genuinely new official item.
 
-PR #5 remains draft while this real official-new-item proof is pending. It is also intentionally stacked on PR #4 until the P4.1 release gate is satisfied.
+PR #5 remains draft while this gate is pending and remains intentionally stacked on PR #4 until P4.1 is ready to land.
