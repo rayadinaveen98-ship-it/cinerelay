@@ -9,7 +9,7 @@ const supabase = createClient(supabaseUrl, serviceRoleKey, {
   auth: { persistSession: false, autoRefreshToken: false },
 });
 
-type Action = 'youtube-enrichment' | 'process-raw-item' | 'youtube-fallback' | 'youtube-maintenance';
+type Action = 'youtube-enrichment' | 'process-raw-item' | 'youtube-fallback' | 'youtube-maintenance' | 'feed-poll';
 
 type DispatchTarget = {
   slug: string;
@@ -21,6 +21,7 @@ const TARGETS: Record<Action, DispatchTarget> = {
   'process-raw-item': { slug: 'process-raw-item-worker', body: { limit: 25 } },
   'youtube-fallback': { slug: 'youtube-fallback-worker', body: { limit: 20 } },
   'youtube-maintenance': { slug: 'youtube-maintenance-worker', body: { limit: 50 } },
+  'feed-poll': { slug: 'feed-poll-worker', body: { limit: 20 } },
 };
 
 function json(status: number, body: Record<string, unknown>): Response {
