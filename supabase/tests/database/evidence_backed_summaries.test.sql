@@ -1,7 +1,7 @@
 begin;
 
 create extension if not exists pgtap with schema extensions;
-select plan(40);
+select plan(42);
 
 insert into public.entities (id, entity_type, canonical_name, primary_language, country_code, status)
 values ('f5500000-0000-4000-8000-000000000001','MOVIE','P5.5 Summary Movie','te','IN','ACTIVE');
