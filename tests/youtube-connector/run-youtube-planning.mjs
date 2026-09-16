@@ -117,19 +117,28 @@ await test('bounded-window gap takes precedence over WebSub miss health', async 
   });
 });
 
-await test('normal authoritative discovery cadence is fifteen minutes', async () => {
-  assert.equal(decideDiscoveryIntervalMs({ existingErrorCode: null }), YOUTUBE_DISCOVERY_INTERVAL_MS.normal);
+await test('normal authoritative discovery cadence stays fifteen minutes', async () => {
+  assert.equal(decideDiscoveryIntervalMs({ existingErrorCode: null, priority: 'NORMAL' }), YOUTUBE_DISCOVERY_INTERVAL_MS.normal);
   assert.equal(YOUTUBE_DISCOVERY_INTERVAL_MS.normal, 15 * 60 * 1000);
 });
 
-await test('WebSub delivery degradation accelerates authoritative discovery to five minutes', async () => {
-  assert.equal(decideDiscoveryIntervalMs({ existingErrorCode: 'WEBSUB_MISSED_DELIVERY' }), YOUTUBE_DISCOVERY_INTERVAL_MS.hot);
+await test('high-priority authoritative discovery cadence is five minutes even while healthy', async () => {
+  assert.equal(decideDiscoveryIntervalMs({ existingErrorCode: null, priority: 'HIGH' }), YOUTUBE_DISCOVERY_INTERVAL_MS.hot);
   assert.equal(YOUTUBE_DISCOVERY_INTERVAL_MS.hot, 5 * 60 * 1000);
 });
 
-await test('provider failures back off discovery to protect quota and upstreams', async () => {
-  assert.equal(decideDiscoveryIntervalMs({ existingErrorCode: 'WEBSUB_MISSED_DELIVERY', providerFailure: true }), YOUTUBE_DISCOVERY_INTERVAL_MS.backoff);
+await test('unspecified priority remains backward-compatible with normal fifteen-minute discovery', async () => {
+  assert.equal(decideDiscoveryIntervalMs({ existingErrorCode: null }), YOUTUBE_DISCOVERY_INTERVAL_MS.normal);
+});
+
+await test('WebSub delivery degradation accelerates authoritative discovery to five minutes', async () => {
+  assert.equal(decideDiscoveryIntervalMs({ existingErrorCode: 'WEBSUB_MISSED_DELIVERY', priority: 'NORMAL' }), YOUTUBE_DISCOVERY_INTERVAL_MS.hot);
+  assert.equal(YOUTUBE_DISCOVERY_INTERVAL_MS.hot, 5 * 60 * 1000);
+});
+
+await test('provider failures override high priority and back off discovery to protect quota and upstreams', async () => {
+  assert.equal(decideDiscoveryIntervalMs({ existingErrorCode: 'WEBSUB_MISSED_DELIVERY', providerFailure: true, priority: 'HIGH' }), YOUTUBE_DISCOVERY_INTERVAL_MS.backoff);
   assert.equal(YOUTUBE_DISCOVERY_INTERVAL_MS.backoff, 30 * 60 * 1000);
 });
 
-console.log(`\nYouTube planning/enrichment/discovery canaries: ${passed}/15 passed.`);
+console.log(`\nYouTube planning/enrichment/discovery canaries: ${passed}/17 passed.`);
