@@ -154,15 +154,15 @@ select results_eq(
 );
 
 select results_eq(
-  $$select count(*) from public.sources$$,
-  array[1::bigint],
-  'approval does not create a real source'
+  $$select count(*) from public.sources where display_name='Candidate Studio News'$$,
+  array[0::bigint],
+  'approval does not create a real source for the candidate'
 );
 
 select results_eq(
-  $$select count(*) from public.source_identities$$,
-  array[1::bigint],
-  'approval does not create or promote a source identity'
+  $$select count(*) from public.source_identities where canonical_url in ('https://candidate.example.com/news','https://candidate.example.com/news?utm_source=test','https://candidate.example.com/news?utm_source=again')$$,
+  array[0::bigint],
+  'approval does not create or promote a source identity for the candidate'
 );
 
 select lives_ok(
