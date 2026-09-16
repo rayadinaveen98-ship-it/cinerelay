@@ -2,7 +2,7 @@
 
 Date: 2026-09-16
 
-State: **IMPLEMENTATION IN REVIEW / FRESH CI PENDING / NO HOSTED P5.5 DEPLOYMENT**
+State: **ENGINEERING COMPLETE / HOSTED FOUNDATION DEPLOYED / UNATTENDED SUMMARY CRON DELIBERATELY DISABLED**
 
 Parent checkpoint:
 
@@ -12,11 +12,11 @@ Parent checkpoint:
 
 Add a separate derived summary layer that gives CineRelay concise, auditable event summaries without changing canonical event facts, verification, priority, classification, evidence or notification state.
 
-P5.5 first proves the evidence contract with a deterministic generator. Model-assisted wording can be added later only behind the same provenance and stale-refresh rules.
+P5.5 proves the evidence contract with a deterministic generator. Model-assisted wording can be added later only behind the same provenance and stale-refresh rules.
 
 ## Hard boundary
 
-A summary is **derived presentation**, not factual truth.
+A summary is **derived presentation, not factual truth**.
 
 The summary engine must never:
 
@@ -134,7 +134,7 @@ Once all inputs are current, repeat refresh returns `0`.
 - no new secret;
 - scheduler allow-list action `evidence-summary` prepared with limit 100.
 
-No production summary cron is enabled by this implementation.
+Hosted runtime is deployed from the exact canonical CI #330 artifact. No production summary cron is enabled.
 
 ## Security
 
@@ -145,7 +145,30 @@ Both summary tables are service-owned in P5.5:
 - compute/refresh RPCs unavailable to normal clients;
 - service-role only mutation/execution.
 
+Hosted verification confirmed these boundaries and explicit function search paths.
+
 A later read API can expose a shaped summary + evidence projection without exposing internal mutation surfaces.
+
+## Hosted release proof
+
+Release gates passed:
+
+1. migration applied cleanly;
+2. all 42 P5.5 pgTAP assertions passed;
+3. prior Phase-1..P5.4 tests remained green;
+4. DB lint passed;
+5. worker and scheduler type-check passed;
+6. deployment-native bundle included the summary worker;
+7. hosted migration was reconciled to `20260916123420_evidence_backed_summaries`;
+8. canonical CI #330 / run `35096783409` passed all four jobs;
+9. exact canonical artifact `10445923788` was deployed;
+10. hosted RLS/privilege/zero-side-effect/advisor checks passed;
+11. controlled transactional summary/provenance/stale-refresh/idempotency proof passed and rolled back;
+12. summary cron remains disabled.
+
+Full proof:
+
+`docs/07-execution/PHASE5_P5_5_HOSTED_ENGINEERING_PROOF_2026-09-16.md`
 
 ## Explicitly deferred
 
@@ -158,19 +181,4 @@ P5.5 does not yet implement:
 - production summary cron;
 - client UI exposure.
 
-## Release gate
-
-Before hosted promotion:
-
-1. fresh migration applies cleanly;
-2. all P5.5 pgTAP assertions pass;
-3. prior Phase-1..P5.4 tests remain green;
-4. DB lint passes;
-5. worker and scheduler type-check;
-6. deployment-native Edge bundle contains the summary worker;
-7. hosted migration version is reconciled into Git;
-8. canonical CI is green;
-9. exact canonical CI artifact is deployed;
-10. hosted RLS/privilege/zero-side-effect/advisor checks pass;
-11. controlled transactional summary/evidence/stale-refresh/idempotency proof passes and rolls back;
-12. no summary cron is enabled without a separate operational decision.
+Any future model-assisted wording must preserve the proven evidence/provenance, withholding, stale-refresh and canonical-fact separation contract.
