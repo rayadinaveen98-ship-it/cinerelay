@@ -1,4 +1,4 @@
-export type NewsroomFilterReason = 'empty_content' | 'archive_or_library_clip';
+export type NewsroomFilterReason = 'empty_content' | 'archive_or_library_clip' | 'celebrity_lifestyle';
 
 const ARCHIVE_TITLE_PATTERNS = [
   /\bmovie\s+scenes?\b/i,
@@ -28,6 +28,17 @@ const CURRENT_SIGNAL_PATTERNS = [
   /\b(?:release|launch)\s+date\b/i,
 ];
 
+// These patterns are intentionally narrow and are applied only to lower-trust
+// editorial media sources. They come from hosted trade-feed evidence where the
+// same News feed mixes film intelligence with celebrity lifestyle/gossip items.
+// First-party/official sources are never subjected to this gate.
+const MEDIA_LIFESTYLE_TITLE_PATTERNS = [
+  /\b(?:pregnan(?:cy|t)|food\s+cravings?)\b/i,
+  /\b(?:renew(?:s|ed)?\s+(?:their\s+)?wedding\s+vows?|wedding\s+anniversary)\b/i,
+  /\badvis(?:e|es|ed)\b.*\bpublic\s+appearances?\b/i,
+  /\b(?:relationship|dating)\s+(?:rumou?rs?|speculation)\b/i,
+];
+
 // This intentionally stops at 2019. The hosted evidence that justified this rule
 // consists of legacy catalog clips, and the newsroom must not infer that a recent
 // film description is archival merely because it contains a production year.
@@ -40,10 +51,17 @@ export function hasCurrentNewsroomIntent(value: string | null | undefined): bool
   return CURRENT_SIGNAL_PATTERNS.some((pattern) => pattern.test(text));
 }
 
-export function newsroomNoiseReason(row: {
-  raw_title?: string | null;
-  raw_text?: string | null;
-}): NewsroomFilterReason | null {
+function isEditorialMediaRole(value: string | null | undefined): boolean {
+  return value === 'TRADE_MEDIA' || value === 'GENERAL_MEDIA';
+}
+
+export function newsroomNoiseReason(
+  row: {
+    raw_title?: string | null;
+    raw_text?: string | null;
+  },
+  context: { sourceRole?: string | null } = {},
+): NewsroomFilterReason | null {
   const title = (row.raw_title ?? '').trim();
   const body = (row.raw_text ?? '').trim();
   if (!title && !body) return 'empty_content';
@@ -57,9 +75,16 @@ export function newsroomNoiseReason(row: {
   const leadingBody = body.slice(0, 700);
   const looksLikeLegacyCatalogDescription = LEGACY_CATALOG_BODY_PATTERNS.some((pattern) => pattern.test(leadingBody));
 
-  return looksArchivedByTitle || looksLikeLegacyCatalogDescription
-    ? 'archive_or_library_clip'
-    : null;
+  if (looksArchivedByTitle || looksLikeLegacyCatalogDescription) {
+    return 'archive_or_library_clip';
+  }
+
+  if (isEditorialMediaRole(context.sourceRole)) {
+    const looksLikeLifestyleEditorial = MEDIA_LIFESTYLE_TITLE_PATTERNS.some((pattern) => pattern.test(title));
+    if (looksLikeLifestyleEditorial) return 'celebrity_lifestyle';
+  }
+
+  return null;
 }
 
 export function normalizedNewsroomTitleKey(value: string | null | undefined): string {
