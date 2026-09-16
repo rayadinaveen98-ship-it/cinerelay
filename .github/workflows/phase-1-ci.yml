@@ -163,15 +163,6 @@ jobs:
       - uses: supabase/setup-cli@v1
         with:
           version: latest
-      - name: Generate P4.2 migration scaffold with Supabase CLI
-        run: supabase migration new first_party_page_connector
-      - name: Upload generated P4.2 migration scaffold
-        uses: actions/upload-artifact@v4
-        with:
-          name: p4-2-migration-scaffold
-          path: supabase/migrations/*_first_party_page_connector.sql
-          if-no-files-found: error
-          retention-days: 1
       - name: Start database and apply migrations
         run: supabase db start
       - name: Run pgTAP database tests
