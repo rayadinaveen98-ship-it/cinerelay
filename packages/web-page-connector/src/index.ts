@@ -1,6 +1,7 @@
 import { parse, type HTMLElement } from 'node-html-parser';
 
 export const WEB_PAGE_PARSER_VERSION = 'first-party-html-v1';
+export const SELF_SELECTOR = '@self';
 
 export type PagePollClass = 'HOT_5M' | 'ACTIVE_15M' | 'NORMAL_60M' | 'COLD_6H' | 'DAILY';
 
@@ -73,13 +74,18 @@ function stableHash(value: string): string {
   return (hash >>> 0).toString(16).padStart(8, '0');
 }
 
+function selectedNode(item: HTMLElement, selector: string | undefined): HTMLElement | null {
+  if (!selector) return null;
+  if (selector === SELF_SELECTOR) return item;
+  return item.querySelector(selector);
+}
+
 function selectedText(item: HTMLElement, selector: string | undefined): string {
-  if (!selector) return '';
-  return cleanText(item.querySelector(selector)?.innerText);
+  return cleanText(selectedNode(item, selector)?.innerText);
 }
 
 function selectedAttribute(item: HTMLElement, selector: string, attribute: string): string {
-  return cleanText(item.querySelector(selector)?.getAttribute(attribute));
+  return cleanText(selectedNode(item, selector)?.getAttribute(attribute));
 }
 
 function parseDate(value: string): string | null {
@@ -100,10 +106,10 @@ export function canonicalizePageUrl(value: string, baseUrl: string): string {
 }
 
 function structureShape(item: HTMLElement, profile: WebPageParserProfile): string {
-  const link = item.querySelector(profile.linkSelector);
-  const title = profile.titleSelector ? item.querySelector(profile.titleSelector) : null;
-  const summary = profile.summarySelector ? item.querySelector(profile.summarySelector) : null;
-  const date = profile.dateSelector ? item.querySelector(profile.dateSelector) : null;
+  const link = selectedNode(item, profile.linkSelector);
+  const title = selectedNode(item, profile.titleSelector);
+  const summary = selectedNode(item, profile.summarySelector);
+  const date = selectedNode(item, profile.dateSelector);
   return [
     item.tagName,
     cleanText(item.getAttribute('class')),
@@ -159,11 +165,11 @@ export function parseWebPage(html: string, pageUrl: string, profile: WebPagePars
     if (!stableId || seen.has(stableId)) continue;
     seen.add(stableId);
 
-    const linkNode = item.querySelector(profile.linkSelector);
+    const linkNode = selectedNode(item, profile.linkSelector);
     const title = selectedText(item, profile.titleSelector) || cleanText(linkNode?.innerText);
     if (!title) continue;
     const text = selectedText(item, profile.summarySelector);
-    const dateNode = profile.dateSelector ? item.querySelector(profile.dateSelector) : null;
+    const dateNode = selectedNode(item, profile.dateSelector);
     const dateRaw = dateNode
       ? cleanText(profile.dateAttribute ? dateNode.getAttribute(profile.dateAttribute) : dateNode.getAttribute('datetime') ?? dateNode.innerText)
       : '';
