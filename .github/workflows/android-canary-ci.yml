@@ -20,6 +20,10 @@ jobs:
       - uses: denoland/setup-deno@v2
         with:
           deno-version: v2.x
+      - name: Install domain build dependencies
+        run: npm install --no-audit --no-fund --ignore-scripts
+      - name: Build shared domain types
+        run: npm run build:domain
       - name: Type-check guest-aware mobile API
         run: deno check --config supabase/functions/cinerelay-mobile-api/deno.json supabase/functions/cinerelay-mobile-api/index.ts
       - name: Type-check evidence detail API
