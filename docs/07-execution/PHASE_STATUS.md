@@ -93,10 +93,9 @@ Git and hosted production use the same sequence:
 
 Phase 3 exit criteria are satisfied and PR #3 is merged to `main`.
 
-Remaining release bookkeeping:
+Cloudflare Pages production branch has now been switched from `phase-3/internal-web-console` to `main`. This commit intentionally provides a fresh `main` change so the Git integration performs a production deployment from the permanent branch.
 
-1. switch Cloudflare Pages production branch from `phase-3/internal-web-console` to `main`;
-2. verify one successful automatic deployment from `main`.
+Phase 3 is release-closed once that automatic Cloudflare deployment reports success.
 
 ## Guardrails
 
