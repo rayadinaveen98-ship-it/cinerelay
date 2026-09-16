@@ -28,8 +28,8 @@ android {
         applicationId = "com.cinerelay.app"
         minSdk = 26
         targetSdk = 36
-        versionCode = 1
-        versionName = "0.1.0-canary"
+        versionCode = 2
+        versionName = "0.1.1-canary"
 
         buildConfigField("String", "SUPABASE_URL", "\"${publicConfig("CINERELAY_SUPABASE_URL", "https://dnqaejljfzwhsainpdxb.supabase.co")}\"")
         buildConfigField("String", "SUPABASE_PUBLISHABLE_KEY", "\"${publicConfig("CINERELAY_SUPABASE_PUBLISHABLE_KEY", "sb_publishable_hR65p2JkQ2x5fFLx_kkcNQ_1SxNN3QP")}\"")
@@ -66,7 +66,7 @@ android {
 }
 
 dependencies {
-    // Keep the V0.1 canary on the last stable Compose generation that supports compileSdk 36.
+    // Keep the canary on the last stable Compose generation that supports compileSdk 36.
     // Compose 1.12+ moved its Android floor to compileSdk 37.
     val composeBom = platform("androidx.compose:compose-bom:2026.04.01")
     implementation(composeBom)
