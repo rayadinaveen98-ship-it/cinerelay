@@ -25,9 +25,7 @@ type MobileRequest = {
   entityId?: unknown;
   active?: unknown;
 };
-
 type AuthenticatedUser = { id: string; email: string | null };
-
 type EventRow = {
   id: string;
   primary_entity_id: string;
@@ -55,12 +53,16 @@ function bearerToken(request: Request): string | null {
   return match?.[1] ?? null;
 }
 
-async function requireUser(request: Request): Promise<AuthenticatedUser | Response> {
+async function optionalUser(request: Request): Promise<AuthenticatedUser | null | Response> {
   const token = bearerToken(request);
-  if (!token) return json(401, { error: 'authentication_required' });
+  if (!token) return null;
   const { data, error } = await admin.auth.getUser(token);
   if (error || !data.user) return json(401, { error: 'invalid_session' });
   return { id: data.user.id, email: data.user.email ?? null };
+}
+
+function requireAuthenticated(user: AuthenticatedUser | null): AuthenticatedUser | Response {
+  return user ?? json(401, { error: 'authentication_required' });
 }
 
 function actionOf(value: unknown): MobileAction | null {
@@ -74,22 +76,32 @@ function limitOf(value: unknown, fallback = 30): number {
   return Number.isFinite(parsed) ? Math.max(1, Math.min(100, Math.trunc(parsed))) : fallback;
 }
 
-async function eventCards(events: EventRow[], userId: string): Promise<Record<string, unknown>[]> {
+async function eventCards(events: EventRow[], userId: string | null): Promise<Record<string, unknown>[]> {
   if (!events.length) return [];
 
   const eventIds = events.map((row) => row.id);
   const entityIds = [...new Set(events.map((row) => row.primary_entity_id).filter(Boolean))];
 
-  const [entityResult, evidenceResult, radarResult, summaryResult, followsResult] = await Promise.all([
+  const [entityResult, evidenceResult, radarResult, summaryResult] = await Promise.all([
     admin.from('entities').select('id,canonical_name,entity_type,primary_language,country_code').in('id', entityIds),
     admin.from('event_evidence').select('event_id,raw_item_id,evidence_role,weight').in('event_id', eventIds),
     admin.from('creator_radar_entries').select('event_id,creator_score,opportunity_label,reason_codes,generated_at').in('event_id', eventIds),
     admin.from('event_summary_entries').select('event_id,summary_status,summary_text,evidence_count,conflicting_evidence_count,reason_codes,generated_at').in('event_id', eventIds),
-    admin.from('user_entity_follows').select('entity_id,active').eq('user_id', userId).eq('active', true).in('entity_id', entityIds),
   ]);
 
-  for (const result of [entityResult, evidenceResult, radarResult, summaryResult, followsResult]) {
+  for (const result of [entityResult, evidenceResult, radarResult, summaryResult]) {
     if (result.error) throw result.error;
+  }
+
+  let followedIds: string[] = [];
+  if (userId && entityIds.length) {
+    const followResult = await admin.from('user_entity_follows')
+      .select('entity_id')
+      .eq('user_id', userId)
+      .eq('active', true)
+      .in('entity_id', entityIds);
+    if (followResult.error) throw followResult.error;
+    followedIds = (followResult.data ?? []).map((row) => row.entity_id);
   }
 
   const evidence = evidenceResult.data ?? [];
@@ -100,9 +112,9 @@ async function eventCards(events: EventRow[], userId: string): Promise<Record<st
   if (rawResult.error) throw rawResult.error;
 
   const raws = rawResult.data ?? [];
-  const sourceIdentityIds = [...new Set(raws.map((row) => row.source_identity_id).filter(Boolean))];
-  const identityResult = sourceIdentityIds.length
-    ? await admin.from('source_identities').select('id,source_id,platform,handle').in('id', sourceIdentityIds)
+  const identityIds = [...new Set(raws.map((row) => row.source_identity_id).filter(Boolean))];
+  const identityResult = identityIds.length
+    ? await admin.from('source_identities').select('id,source_id,platform,handle').in('id', identityIds)
     : { data: [], error: null };
   if (identityResult.error) throw identityResult.error;
 
@@ -116,11 +128,12 @@ async function eventCards(events: EventRow[], userId: string): Promise<Record<st
   const entityMap = new Map((entityResult.data ?? []).map((row) => [row.id, row]));
   const radarMap = new Map((radarResult.data ?? []).map((row) => [row.event_id, row]));
   const summaryMap = new Map((summaryResult.data ?? []).map((row) => [row.event_id, row]));
-  const followed = new Set((followsResult.data ?? []).map((row) => row.entity_id));
+  const followed = new Set(followedIds);
   const rawMap = new Map(raws.map((row) => [row.id, row]));
   const identityMap = new Map(identities.map((row) => [row.id, row]));
   const sourceMap = new Map((sourceResult.data ?? []).map((row) => [row.id, row]));
   const evidenceByEvent = new Map<string, Record<string, unknown>[]>();
+
   for (const row of evidence) {
     const list = evidenceByEvent.get(row.event_id) ?? [];
     list.push(row);
@@ -131,16 +144,15 @@ async function eventCards(events: EventRow[], userId: string): Promise<Record<st
     const entity = entityMap.get(event.primary_entity_id);
     const eventEvidence = evidenceByEvent.get(event.id) ?? [];
     const strongest = [...eventEvidence].sort((left, right) => {
-      const roleRank = (role: unknown) => role === 'PRIMARY' ? 0 : role === 'CORROBORATING' ? 1 : role === 'REPEAT' ? 2 : 3;
-      const roleDelta = roleRank(left.evidence_role) - roleRank(right.evidence_role);
-      if (roleDelta !== 0) return roleDelta;
-      return Number(right.weight ?? 0) - Number(left.weight ?? 0);
+      const rank = (role: unknown) => role === 'PRIMARY' ? 0 : role === 'CORROBORATING' ? 1 : role === 'REPEAT' ? 2 : 3;
+      const roleDelta = rank(left.evidence_role) - rank(right.evidence_role);
+      return roleDelta !== 0 ? roleDelta : Number(right.weight ?? 0) - Number(left.weight ?? 0);
     })[0];
     const raw = strongest ? rawMap.get(String(strongest.raw_item_id)) : undefined;
     const identity = raw ? identityMap.get(String(raw.source_identity_id)) : undefined;
     const source = identity ? sourceMap.get(String(identity.source_id)) : undefined;
-    const radar = radarMap.get(event.id);
-    const summary = summaryMap.get(event.id);
+    const radarEntry = radarMap.get(event.id);
+    const summaryEntry = summaryMap.get(event.id);
 
     return {
       id: event.id,
@@ -154,20 +166,20 @@ async function eventCards(events: EventRow[], userId: string): Promise<Record<st
       verificationState: event.verification_state,
       priorityBand: event.priority_band,
       headline: event.headline,
-      summary: summary?.summary_status === 'READY' ? summary.summary_text : event.summary,
-      summaryStatus: summary?.summary_status ?? null,
-      evidenceCount: summary?.evidence_count ?? eventEvidence.length,
-      conflictingEvidenceCount: summary?.conflicting_evidence_count ?? eventEvidence.filter((row) => row.evidence_role === 'CONFLICTING').length,
+      summary: summaryEntry?.summary_status === 'READY' ? summaryEntry.summary_text : event.summary,
+      summaryStatus: summaryEntry?.summary_status ?? null,
+      evidenceCount: summaryEntry?.evidence_count ?? eventEvidence.length,
+      conflictingEvidenceCount: summaryEntry?.conflicting_evidence_count ?? eventEvidence.filter((row) => row.evidence_role === 'CONFLICTING').length,
       status: event.status,
       detectedAt: event.detected_at,
       announcedAt: event.announced_at,
       occurredAt: event.occurred_at,
       structuredData: event.structured_data ?? {},
-      radar: radar ? {
-        score: radar.creator_score,
-        label: radar.opportunity_label,
-        reasons: radar.reason_codes ?? [],
-        generatedAt: radar.generated_at,
+      radar: radarEntry ? {
+        score: radarEntry.creator_score,
+        label: radarEntry.opportunity_label,
+        reasons: radarEntry.reason_codes ?? [],
+        generatedAt: radarEntry.generated_at,
       } : null,
       evidence: raw ? {
         role: strongest?.evidence_role ?? null,
@@ -184,14 +196,14 @@ async function eventCards(events: EventRow[], userId: string): Promise<Record<st
   });
 }
 
-async function live(userId: string, limit: number) {
+async function live(userId: string | null, limit: number) {
   const { data, error } = await admin.from('events')
     .select('id,primary_entity_id,event_type,verification_state,priority_band,headline,summary,structured_data,status,detected_at,announced_at,occurred_at')
     .in('status', ACTIVE_EVENT_STATUSES)
     .order('detected_at', { ascending: false })
     .limit(limit);
   if (error) throw error;
-  return { generatedAt: new Date().toISOString(), items: await eventCards((data ?? []) as EventRow[], userId) };
+  return { generatedAt: new Date().toISOString(), guest: userId === null, items: await eventCards((data ?? []) as EventRow[], userId) };
 }
 
 async function following(userId: string, limit: number) {
@@ -214,7 +226,7 @@ async function following(userId: string, limit: number) {
   return { generatedAt: new Date().toISOString(), items: await eventCards((data ?? []) as EventRow[], userId) };
 }
 
-async function radar(userId: string, limit: number) {
+async function radar(userId: string | null, limit: number) {
   const { data: radarRows, error: radarError } = await admin.from('creator_radar_entries')
     .select('event_id,creator_score')
     .order('creator_score', { ascending: false })
@@ -222,17 +234,18 @@ async function radar(userId: string, limit: number) {
     .limit(limit);
   if (radarError) throw radarError;
   const eventIds = (radarRows ?? []).map((row) => row.event_id);
-  if (!eventIds.length) return { generatedAt: new Date().toISOString(), items: [] };
+  if (!eventIds.length) return { generatedAt: new Date().toISOString(), guest: userId === null, items: [] };
 
   const { data, error } = await admin.from('events')
     .select('id,primary_entity_id,event_type,verification_state,priority_band,headline,summary,structured_data,status,detected_at,announced_at,occurred_at')
     .in('id', eventIds)
     .in('status', ACTIVE_EVENT_STATUSES);
   if (error) throw error;
+
   const cards = await eventCards((data ?? []) as EventRow[], userId);
   const rank = new Map((radarRows ?? []).map((row, index) => [row.event_id, index]));
-  cards.sort((a, b) => (rank.get(String(a.id)) ?? 9999) - (rank.get(String(b.id)) ?? 9999));
-  return { generatedAt: new Date().toISOString(), items: cards };
+  cards.sort((left, right) => (rank.get(String(left.id)) ?? 9999) - (rank.get(String(right.id)) ?? 9999));
+  return { generatedAt: new Date().toISOString(), guest: userId === null, items: cards };
 }
 
 async function alerts(userId: string, limit: number) {
@@ -242,6 +255,7 @@ async function alerts(userId: string, limit: number) {
     .order('created_at', { ascending: false })
     .limit(limit);
   if (error) throw error;
+
   const eventIds = [...new Set((deliveries ?? []).map((row) => row.event_id).filter(Boolean))];
   let cards: Record<string, unknown>[] = [];
   if (eventIds.length) {
@@ -251,6 +265,7 @@ async function alerts(userId: string, limit: number) {
     if (eventError) throw eventError;
     cards = await eventCards((events ?? []) as EventRow[], userId);
   }
+
   const cardMap = new Map(cards.map((row) => [String(row.id), row]));
   return {
     generatedAt: new Date().toISOString(),
@@ -306,17 +321,21 @@ Deno.serve(async (request) => {
     if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: corsHeaders });
     if (request.method !== 'POST') return new Response(null, { status: 405, headers: { ...corsHeaders, allow: 'POST, OPTIONS' } });
 
-    const user = await requireUser(request);
-    if (user instanceof Response) return user;
-
     const body = await request.json().catch(() => ({})) as MobileRequest;
     const action = actionOf(body.action);
     if (!action) return json(400, { error: 'unsupported_action' });
 
+    const maybeUser = await optionalUser(request);
+    if (maybeUser instanceof Response) return maybeUser;
+
+    if (action === 'live') return json(200, await live(maybeUser?.id ?? null, limitOf(body.limit)));
+    if (action === 'radar') return json(200, await radar(maybeUser?.id ?? null, limitOf(body.limit)));
+
+    const user = requireAuthenticated(maybeUser);
+    if (user instanceof Response) return user;
+
     if (action === 'bootstrap') return json(200, await bootstrap(user));
-    if (action === 'live') return json(200, await live(user.id, limitOf(body.limit)));
     if (action === 'following') return json(200, await following(user.id, limitOf(body.limit)));
-    if (action === 'radar') return json(200, await radar(user.id, limitOf(body.limit)));
     if (action === 'alerts') return json(200, await alerts(user.id, limitOf(body.limit)));
 
     const entityId = typeof body.entityId === 'string' ? body.entityId.trim() : '';
