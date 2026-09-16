@@ -9,6 +9,7 @@ import com.cinerelay.app.data.AlertItem
 import com.cinerelay.app.data.ApiException
 import com.cinerelay.app.data.Bootstrap
 import com.cinerelay.app.data.EventCard
+import com.cinerelay.app.data.NewsroomSignal
 import com.cinerelay.app.data.PushState
 import com.cinerelay.app.push.PushManager
 import kotlinx.coroutines.Dispatchers
@@ -31,6 +32,7 @@ data class CineRelayUiState(
     val notice: String? = null,
     val error: String? = null,
     val bootstrap: Bootstrap? = null,
+    val newsroomSignals: List<NewsroomSignal> = emptyList(),
     val events: List<EventCard> = emptyList(),
     val alerts: List<AlertItem> = emptyList(),
     val pushState: PushState = PushState(BuildConfig.FIREBASE_CONFIGURED),
@@ -130,7 +132,7 @@ class CineRelayViewModel(application: Application) : AndroidViewModel(applicatio
         if (_state.value.tab == tab) return
         _state.value = _state.value.copy(tab = tab, error = null, notice = null)
         if (!_state.value.authenticated && tab.requiresAccount()) {
-            _state.value = _state.value.copy(events = emptyList(), alerts = emptyList())
+            _state.value = _state.value.copy(newsroomSignals = emptyList(), events = emptyList(), alerts = emptyList())
             return
         }
         refresh()
@@ -145,7 +147,7 @@ class CineRelayViewModel(application: Application) : AndroidViewModel(applicatio
             runCatching {
                 withContext(Dispatchers.IO) {
                     when (_state.value.tab) {
-                        AppTab.LIVE -> LoadResult.Events(backend.eventFeed("live", allowGuest = true))
+                        AppTab.LIVE -> LoadResult.Newsroom(backend.newsroom())
                         AppTab.FOLLOWING -> LoadResult.Events(backend.eventFeed("following"))
                         AppTab.RADAR -> LoadResult.Events(backend.eventFeed("radar", allowGuest = true))
                         AppTab.ALERTS -> LoadResult.Alerts(backend.alerts())
@@ -153,8 +155,24 @@ class CineRelayViewModel(application: Application) : AndroidViewModel(applicatio
                 }
             }.onSuccess { result ->
                 _state.value = when (result) {
-                    is LoadResult.Events -> _state.value.copy(loading = false, events = result.items, alerts = emptyList())
-                    is LoadResult.Alerts -> _state.value.copy(loading = false, alerts = result.items, events = emptyList())
+                    is LoadResult.Newsroom -> _state.value.copy(
+                        loading = false,
+                        newsroomSignals = result.items,
+                        events = emptyList(),
+                        alerts = emptyList(),
+                    )
+                    is LoadResult.Events -> _state.value.copy(
+                        loading = false,
+                        newsroomSignals = emptyList(),
+                        events = result.items,
+                        alerts = emptyList(),
+                    )
+                    is LoadResult.Alerts -> _state.value.copy(
+                        loading = false,
+                        newsroomSignals = emptyList(),
+                        alerts = result.items,
+                        events = emptyList(),
+                    )
                 }
             }.onFailure(::handleFailure)
         }
@@ -171,6 +189,10 @@ class CineRelayViewModel(application: Application) : AndroidViewModel(applicatio
             runCatching { withContext(Dispatchers.IO) { backend.setFollow(card.entityId, desired) } }
                 .onSuccess {
                     _state.value = _state.value.copy(
+                        newsroomSignals = _state.value.newsroomSignals.map { signal ->
+                            val event = signal.canonicalEvent
+                            if (event?.entityId == card.entityId) signal.copy(canonicalEvent = event.copy(followed = desired)) else signal
+                        },
                         events = _state.value.events.map { item ->
                             if (item.entityId == card.entityId) item.copy(followed = desired) else item
                         },
@@ -247,6 +269,7 @@ class CineRelayViewModel(application: Application) : AndroidViewModel(applicatio
     }
 
     private sealed interface LoadResult {
+        data class Newsroom(val items: List<NewsroomSignal>) : LoadResult
         data class Events(val items: List<EventCard>) : LoadResult
         data class Alerts(val items: List<AlertItem>) : LoadResult
     }
