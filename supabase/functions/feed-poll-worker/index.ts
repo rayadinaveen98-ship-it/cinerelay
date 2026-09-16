@@ -216,7 +216,7 @@ async function upsertFeedEntry(input: {
     const { error: enqueueError } = await supabase.rpc('enqueue_job', {
       p_job_type: 'PROCESS_RAW_ITEM',
       p_idempotency_key: `process:feed:${rawItemId}:${fingerprint.slice(0, 24)}`,
-      p_payload: { rawItemId },
+      p_payload: { rawItemId, sourceIdentityId },
       p_priority: 40,
     });
     if (enqueueError) throw enqueueError;
@@ -255,7 +255,7 @@ async function upsertFeedEntry(input: {
   const { error: enqueueError } = await supabase.rpc('enqueue_job', {
     p_job_type: 'PROCESS_RAW_ITEM',
     p_idempotency_key: `process:feed:${rawItemId}:${fingerprint.slice(0, 24)}`,
-    p_payload: { rawItemId },
+    p_payload: { rawItemId, sourceIdentityId },
     p_priority: 40,
   });
   if (enqueueError) throw enqueueError;
