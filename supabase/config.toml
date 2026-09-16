@@ -54,6 +54,9 @@ verify_jwt = false
 [functions.youtube-maintenance-worker]
 verify_jwt = false
 
+[functions.feed-poll-worker]
+verify_jwt = false
+
 # Database cron calls only this dispatcher. It validates a database-generated
 # Vault token through verify_scheduler_token() and then forwards to a strict
 # allow-list of internal workers using the existing internal admin secret.
