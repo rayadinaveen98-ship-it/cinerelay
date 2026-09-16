@@ -18,12 +18,13 @@
     "test:contracts": "npm run build && node scripts/validate-contracts.mjs",
     "test:benchmark": "npm run build && node tests/benchmark/run-benchmark.mjs",
     "test:newsroom": "npm run build:domain && node tests/newsroom/run-newsroom-filter.mjs",
+    "test:push-presentation": "npm run build:domain && node tests/benchmark/run-push-presentation.mjs",
     "test:youtube": "npm run build:youtube && node tests/youtube-connector/run-youtube-connector.mjs && node tests/youtube-connector/run-youtube-planning.mjs",
     "test:feed": "npm run build:feed && node tests/feed-connector/run-feed-connector.mjs && node tests/feed-connector/run-processing-contract.mjs",
     "test:web-page": "npm run build:web-page && node tests/web-page-connector/run-web-page-connector.mjs",
     "test:threads": "npm run build:threads && node tests/threads-connector/run-threads-connector.mjs",
     "test:instagram": "npm run build:instagram && node tests/instagram-connector/run-instagram-connector.mjs",
-    "ci": "npm run lint && npm run test:contracts && npm run test:benchmark && npm run test:newsroom && npm run test:youtube && npm run test:feed && npm run test:web-page && npm run test:threads && npm run test:instagram"
+    "ci": "npm run lint && npm run test:contracts && npm run test:benchmark && npm run test:newsroom && npm run test:push-presentation && npm run test:youtube && npm run test:feed && npm run test:web-page && npm run test:threads && npm run test:instagram"
   },
   "dependencies": {
     "fast-xml-parser": "5.2.5",
