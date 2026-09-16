@@ -104,6 +104,12 @@ verify_jwt = false
 [functions.cinerelay-device-registration-api]
 verify_jwt = false
 
+# Mobile reads/follow mutations use the same user-auth boundary. The function
+# validates the bearer token itself and exposes shaped data only; service-owned
+# internal tables remain unavailable directly to Android clients.
+[functions.cinerelay-mobile-api]
+verify_jwt = false
+
 # Push delivery is an internal server-only worker. It requires the independent
 # x-cinerelay-internal-key and keeps the FCM service account exclusively in hosted
 # Edge secrets. No scheduler cron is enabled until the real-device canary passes.
