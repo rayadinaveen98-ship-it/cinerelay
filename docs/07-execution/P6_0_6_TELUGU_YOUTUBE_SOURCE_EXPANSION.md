@@ -1,7 +1,7 @@
 # P6.0.6 — Telugu YouTube Source Expansion
 
 Date: 2026-09-16
-Status: PRODUCTION + MUSIC FIRST-PARTY EXPANSION HOSTED-PROVEN
+Status: 12-SOURCE FIRST-PARTY EXPANSION HOSTED-PROVEN
 
 ## Goal
 
@@ -78,6 +78,32 @@ All four retained active WebSub leases and the 5-minute authoritative fallback s
 - hosted health after baseline: `HEALTHY`
 
 Suresh Productions is intentionally NORMAL rather than HIGH because its very large archive-oriented library creates materially more noise and does not justify five-minute polling by default. The newsroom relevance filter still protects against archive/library clips when they are encountered.
+
+### DVV Entertainment
+
+- YouTube channel: `UCumU_6FNxfHXTmeeFCYz6Yw`
+- handle: `@DVVMovies`
+- role: `PRODUCTION_HOUSE`
+- authority tier: `1`
+- discovery priority: `NORMAL`
+- uploads playlist: `UUumU_6FNxfHXTmeeFCYz6Yw`
+- hosted baseline video id: `VUq-TIp3AH4`
+- hosted cadence: exactly 15.00 minutes
+- hosted health after baseline: `HEALTHY`
+
+### SLV Cinemas
+
+- YouTube channel: `UCiWKEIAFbdMIEicYBwKfi0g`
+- handle: `@SLVCinemas`
+- role: `PRODUCTION_HOUSE`
+- authority tier: `1`
+- discovery priority: `NORMAL`
+- uploads playlist: `UUiWKEIAFbdMIEicYBwKfi0g`
+- hosted baseline video id: `OuCgikSBRyU`
+- hosted cadence: exactly 15.00 minutes
+- hosted health after baseline: `HEALTHY`
+
+DVV Entertainment and SLV Cinemas start NORMAL rather than HIGH. Exact source identity is proven, but a permanent five-minute quota budget is reserved for channels whose current publishing pattern materially benefits FrameByNavin freshness.
 
 ## New music-label sources enrolled
 
@@ -163,6 +189,22 @@ Cadence and health proof:
 - Aditya Music: `15.00` minutes, `HEALTHY`
 - Sony Music South: `15.00` minutes, `HEALTHY`
 
+### Batch 4: DVV Entertainment + SLV Cinemas
+
+The live fallback run also included four already-due HIGH sources, so the dispatcher result was:
+
+- due: 6
+- checked: 6
+- baselineSources: 2
+- discoveredUploads: 0
+- gapSources: 0
+- highPrioritySources: 4
+- YouTube quota units consumed: 6
+- discovery mode: `UPLOADS_PLAYLIST_PRIMARY`
+- WebSub role: `ACCELERATOR`
+
+The two baseline sources were DVV Entertainment and SLV Cinemas. Both independently resolved to HEALTHY state and exactly 15.00-minute next-check cadence.
+
 ## Current official YouTube coverage after this slice
 
 HIGH priority official production sources:
@@ -180,6 +222,10 @@ NORMAL official first-party sources:
 8. Suresh Productions — production house
 9. Aditya Music — music label
 10. Sony Music South — music label
+11. DVV Entertainment — production house
+12. SLV Cinemas — production house
+
+Total official YouTube sources: **12**.
 
 ## Subscription note
 
@@ -189,15 +235,16 @@ P6.0.5 established that the Google hub is currently returning transport failures
 
 ## Quota behavior
 
-Each hosted baseline batch consumed one YouTube Data API unit per source. The source expansion therefore remains comfortably inside the existing daily quota guard while preserving the emergency reserve.
+Each hosted baseline source consumes one YouTube Data API unit per authoritative check. The source expansion remains comfortably inside the existing daily quota guard while preserving the emergency reserve.
 
-HIGH priority is reserved for sources where current-release publishing patterns justify a five-minute freshness target. Archive-heavy or high-volume first-party sources default to NORMAL/15-minute cadence.
+HIGH priority is reserved for sources where current-release publishing patterns justify a five-minute freshness target. Archive-heavy, high-volume, or lower-frequency first-party sources default to NORMAL/15-minute cadence.
 
 ## Next
 
-1. add more current Telugu production houses as HIGH only when exact identity and recent publishing behavior are verified;
-2. evaluate additional official Telugu music/trailer channels as NORMAL first;
-3. observe actual newsroom output from the expanded ten-source set and add relevance rules only when hosted evidence demonstrates a safe pattern;
-4. keep the first-party source tier separate from trusted trade/public-page sources;
-5. attach WebSub to newly enrolled sources only when the provider path is healthy enough to verify cleanly;
-6. continue exposing provenance and original source links on every newsroom signal.
+1. observe actual newsroom output from the expanded twelve-source set and add relevance rules only when hosted evidence demonstrates a safe pattern;
+2. add more current Telugu production houses as HIGH only when exact identity and recent publishing behavior are verified;
+3. evaluate additional official Telugu music/trailer channels as NORMAL first;
+4. reduce high-priority first-party RSS/Web polling cadence where the connector contract supports it safely;
+5. keep the first-party source tier separate from trusted trade/public-page sources;
+6. attach WebSub to newly enrolled sources only when the provider path is healthy enough to verify cleanly;
+7. continue exposing provenance and original source links on every newsroom signal.
