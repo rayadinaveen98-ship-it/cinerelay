@@ -10,7 +10,12 @@ import {
   normalizeChannelsListResponse,
 } from '../../../packages/youtube-connector/dist/index.js';
 // @deno-types="../../../packages/youtube-connector/dist/subscription.d.ts"
-import { planSubscription, planUnsubscription } from '../../../packages/youtube-connector/dist/subscription.js';
+import {
+  HUB_RETRY_POLICY,
+  decideHubRetry,
+  planSubscription,
+  planUnsubscription,
+} from '../../../packages/youtube-connector/dist/subscription.js';
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL');
 const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
@@ -20,6 +25,8 @@ const youtubeApiKey = Deno.env.get('YOUTUBE_API_KEY');
 if (!supabaseUrl || !serviceRoleKey || !masterSecret || !internalSecret || !youtubeApiKey) throw new Error('Missing YouTube subscription-admin environment');
 const supabase = createClient(supabaseUrl, serviceRoleKey, { auth: { persistSession: false, autoRefreshToken: false } });
 const callbackBaseUrl = `${supabaseUrl.replace(/\/$/, '')}/functions/v1/youtube-websub`;
+
+type HubRequest = { url: string; headers: Record<string, string>; body: string };
 
 function authorized(request: Request): boolean {
   const supplied = request.headers.get('x-cinerelay-internal-key') ?? '';
@@ -31,6 +38,25 @@ function authorized(request: Request): boolean {
 
 function response(status: number, body: Record<string, unknown>): Response {
   return new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } });
+}
+
+async function postHubWithRetry(request: HubRequest): Promise<{ response: Response; attempts: number }> {
+  let lastResponse: Response | null = null;
+  for (let attempt = 1; attempt <= HUB_RETRY_POLICY.maxAttempts; attempt += 1) {
+    const hubResponse = await fetch(request.url, {
+      method: 'POST',
+      headers: request.headers,
+      body: request.body,
+      signal: AbortSignal.timeout(15_000),
+    });
+    lastResponse = hubResponse;
+    if (hubResponse.ok) return { response: hubResponse, attempts: attempt };
+    const retry = decideHubRetry({ attempt, status: hubResponse.status });
+    if (!retry.retry) return { response: hubResponse, attempts: attempt };
+    await new Promise((resolve) => setTimeout(resolve, retry.delayMs));
+  }
+  if (!lastResponse) throw new Error('Hub retry loop completed without a response');
+  return { response: lastResponse, attempts: HUB_RETRY_POLICY.maxAttempts };
 }
 
 async function quotaAllowed(): Promise<boolean> {
@@ -84,11 +110,11 @@ Deno.serve(async (request) => {
       const active = rows.find((item) => item.state === 'ACTIVE') ?? rows.find((item) => item.state === 'SUPERSEDED');
       if (!active) return response(409, { error: 'no_active_subscription' });
       const plan = await planUnsubscription({ sourceIdentityId, channelId, generation: Number(active.generation), callbackBaseUrl, masterSecret: masterSecret! });
-      const hubResponse = await fetch(plan.hubRequest.url, { method: 'POST', headers: plan.hubRequest.headers, body: plan.hubRequest.body });
-      if (!hubResponse.ok) return response(502, { error: 'hub_unsubscribe_rejected', status: hubResponse.status });
+      const hub = await postHubWithRetry(plan.hubRequest);
+      if (!hub.response.ok) return response(502, { error: 'hub_unsubscribe_rejected', status: hub.response.status, attempts: hub.attempts });
       const { error } = await supabase.from('connector_subscriptions').update({ state: 'UNSUBSCRIBING', last_error: null }).eq('id', active.id);
       if (error) throw error;
-      return response(202, { action, generation: Number(active.generation), hub: YOUTUBE_WEBSUB_HUB_URL });
+      return response(202, { action, generation: Number(active.generation), hub: YOUTUBE_WEBSUB_HUB_URL, hubAttempts: hub.attempts });
     }
 
     if (action === 'subscribe') {
@@ -126,13 +152,19 @@ Deno.serve(async (request) => {
     const { error: insertError } = await supabase.from('connector_subscriptions').insert({ source_identity_id: sourceIdentityId, provider: YOUTUBE_WEBSUB_PROVIDER, hub_url: YOUTUBE_WEBSUB_HUB_URL, topic_url: plan.topicUrl, callback_token_hash: plan.callbackTokenHash, generation: plan.generation, signature_required: true, state: plan.state });
     if (insertError) throw insertError;
 
-    const hubResponse = await fetch(plan.hubRequest.url, { method: 'POST', headers: plan.hubRequest.headers, body: plan.hubRequest.body });
-    if (!hubResponse.ok) {
-      await supabase.from('connector_subscriptions').update({ state: 'ERROR', last_error: `hub request failed with ${hubResponse.status}` }).eq('provider', YOUTUBE_WEBSUB_PROVIDER).eq('source_identity_id', sourceIdentityId).eq('generation', plan.generation);
-      return response(502, { error: 'hub_subscribe_rejected', status: hubResponse.status });
+    const hub = await postHubWithRetry(plan.hubRequest);
+    if (!hub.response.ok) {
+      await supabase.from('connector_subscriptions').update({ state: 'ERROR', last_error: `hub request failed with ${hub.response.status} after ${hub.attempts} attempt(s)` }).eq('provider', YOUTUBE_WEBSUB_PROVIDER).eq('source_identity_id', sourceIdentityId).eq('generation', plan.generation);
+      return response(502, { error: 'hub_subscribe_rejected', status: hub.response.status, attempts: hub.attempts });
     }
 
-    return response(202, { action, generation: plan.generation, channel: { id: channel.channelId, title: channel.title, uploadsPlaylistId: channel.uploadsPlaylistId ?? null }, hub: YOUTUBE_WEBSUB_HUB_URL });
+    return response(202, {
+      action,
+      generation: plan.generation,
+      channel: { id: channel.channelId, title: channel.title, uploadsPlaylistId: channel.uploadsPlaylistId ?? null },
+      hub: YOUTUBE_WEBSUB_HUB_URL,
+      hubAttempts: hub.attempts,
+    });
   } catch (error) {
     console.error('youtube-subscription-admin failure', error);
     return response(500, { error: 'internal_error' });
