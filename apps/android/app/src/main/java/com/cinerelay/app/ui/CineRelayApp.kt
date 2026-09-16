@@ -8,60 +8,15 @@ import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Logout
-import androidx.compose.material.icons.filled.Movie
-import androidx.compose.material.icons.filled.Notifications
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.StarBorder
-import androidx.compose.material.icons.filled.Warning
-import androidx.compose.material3.AssistChip
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -93,7 +48,7 @@ private val Developing = Color(0xFFF2B85B)
 private val Caution = Color(0xFFF07A75)
 private val InfoBlue = Color(0xFF86B9FF)
 
-private val CineRelayColors = androidx.compose.material3.darkColorScheme(
+private val CineRelayColors = darkColorScheme(
     primary = Signal,
     onPrimary = Color(0xFF231B08),
     secondary = Trusted,
@@ -112,11 +67,8 @@ fun CineRelayApp(viewModel: CineRelayViewModel = viewModel()) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     MaterialTheme(colorScheme = CineRelayColors) {
         Surface(modifier = Modifier.fillMaxSize(), color = Ink) {
-            if (state.authenticated) {
-                SignalRoom(state, viewModel)
-            } else {
-                LoginScreen(state.error, state.signingIn, viewModel::signIn)
-            }
+            if (state.authenticated) SignalRoom(state, viewModel)
+            else LoginScreen(state.error, state.signingIn, viewModel::signIn)
         }
     }
 }
@@ -127,16 +79,12 @@ private fun LoginScreen(error: String?, busy: Boolean, onSignIn: (String, String
     var password by remember { mutableStateOf("") }
 
     Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(horizontal = 28.dp),
+        modifier = Modifier.fillMaxSize().padding(horizontal = 28.dp),
         verticalArrangement = Arrangement.Center,
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Box(
-                modifier = Modifier
-                    .size(44.dp)
-                    .background(Signal, RoundedCornerShape(14.dp)),
+                modifier = Modifier.size(44.dp).background(Signal, RoundedCornerShape(14.dp)),
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(Icons.Default.PlayArrow, contentDescription = null, tint = Ink, modifier = Modifier.size(28.dp))
@@ -152,7 +100,7 @@ private fun LoginScreen(error: String?, busy: Boolean, onSignIn: (String, String
         Text("Enter the signal room", fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
         Spacer(Modifier.height(8.dp))
         Text(
-            "Use your CineRelay account. Your session talks only to authenticated mobile APIs; privileged backend credentials never enter the app.",
+            "Use your CineRelay account. The app talks only to authenticated mobile APIs; privileged backend credentials never enter your phone.",
             color = TextSecondary,
             lineHeight = 20.sp,
         )
@@ -176,12 +124,10 @@ private fun LoginScreen(error: String?, busy: Boolean, onSignIn: (String, String
             visualTransformation = PasswordVisualTransformation(),
             enabled = !busy,
         )
-
         if (!error.isNullOrBlank()) {
             Spacer(Modifier.height(12.dp))
             Text(error, color = Caution, fontSize = 13.sp)
         }
-
         Spacer(Modifier.height(20.dp))
         Button(
             onClick = { onSignIn(email, password) },
@@ -189,18 +135,11 @@ private fun LoginScreen(error: String?, busy: Boolean, onSignIn: (String, String
             enabled = !busy,
             contentPadding = PaddingValues(vertical = 14.dp),
         ) {
-            if (busy) {
-                CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp, color = Ink)
-            } else {
-                Text("Sign in")
-            }
+            if (busy) CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp, color = Ink)
+            else Text("Sign in")
         }
         Spacer(Modifier.height(18.dp))
-        Text(
-            "V0.1 Canary • ${BuildConfig.VERSION_NAME}",
-            color = TextSecondary,
-            fontSize = 11.sp,
-        )
+        Text("V0.1 Canary • ${BuildConfig.VERSION_NAME}", color = TextSecondary, fontSize = 11.sp)
     }
 }
 
@@ -215,9 +154,7 @@ private fun SignalRoom(state: CineRelayUiState, viewModel: CineRelayViewModel) {
                 title = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Box(
-                            modifier = Modifier
-                                .size(30.dp)
-                                .background(Signal, RoundedCornerShape(9.dp)),
+                            modifier = Modifier.size(30.dp).background(Signal, RoundedCornerShape(9.dp)),
                             contentAlignment = Alignment.Center,
                         ) {
                             Icon(Icons.Default.PlayArrow, null, tint = Ink, modifier = Modifier.size(19.dp))
@@ -248,11 +185,7 @@ private fun SignalRoom(state: CineRelayUiState, viewModel: CineRelayViewModel) {
             }
         },
     ) { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding),
-        ) {
+        Column(modifier = Modifier.fillMaxSize().padding(padding)) {
             StatusStrip(state)
             if (!state.error.isNullOrBlank()) {
                 Text(
@@ -262,22 +195,14 @@ private fun SignalRoom(state: CineRelayUiState, viewModel: CineRelayViewModel) {
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                 )
             }
-            when (state.tab) {
-                AppTab.ALERTS -> AlertsContent(state, viewModel)
-                else -> FeedContent(state, viewModel)
-            }
+            if (state.tab == AppTab.ALERTS) AlertsContent(state, viewModel)
+            else FeedContent(state, viewModel)
         }
     }
 }
 
 @Composable
-private fun BottomDestination(
-    tab: AppTab,
-    selected: AppTab,
-    icon: ImageVector,
-    label: String,
-    onSelect: (AppTab) -> Unit,
-) {
+private fun BottomDestination(tab: AppTab, selected: AppTab, icon: ImageVector, label: String, onSelect: (AppTab) -> Unit) {
     NavigationBarItem(
         selected = tab == selected,
         onClick = { onSelect(tab) },
@@ -289,10 +214,7 @@ private fun BottomDestination(
 @Composable
 private fun StatusStrip(state: CineRelayUiState) {
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(Panel)
-            .padding(horizontal = 16.dp, vertical = 8.dp),
+        modifier = Modifier.fillMaxWidth().background(Panel).padding(horizontal = 16.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(Modifier.size(7.dp).background(Trusted, RoundedCornerShape(50)))
@@ -320,7 +242,7 @@ private fun FeedContent(state: CineRelayUiState, viewModel: CineRelayViewModel) 
             },
             body = when (state.tab) {
                 AppTab.FOLLOWING -> "Follow a title from Live and its updates will appear here."
-                AppTab.RADAR -> "Creator Radar entries will appear once the deterministic scoring layer materializes them."
+                AppTab.RADAR -> "Creator Radar entries appear when the deterministic scoring layer materializes them."
                 else -> "CineRelay has no active canonical events to show right now."
             },
         )
@@ -331,9 +253,7 @@ private fun FeedContent(state: CineRelayUiState, viewModel: CineRelayViewModel) 
         contentPadding = PaddingValues(horizontal = 14.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        items(state.events, key = { it.id }) { card ->
-            SignalCard(card, onFollow = { viewModel.toggleFollow(card) })
-        }
+        items(state.events, key = { it.id }) { card -> SignalCard(card) { viewModel.toggleFollow(card) } }
         item { Spacer(Modifier.height(8.dp)) }
     }
 }
@@ -381,10 +301,7 @@ private fun SignalCard(card: EventCard, onFollow: () -> Unit) {
             card.radar?.let { radar ->
                 Spacer(Modifier.height(12.dp))
                 Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(PanelRaised, RoundedCornerShape(12.dp))
-                        .padding(horizontal = 12.dp, vertical = 9.dp),
+                    modifier = Modifier.fillMaxWidth().background(PanelRaised, RoundedCornerShape(12.dp)).padding(horizontal = 12.dp, vertical = 9.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text("RADAR ${radar.score}", color = Signal, fontSize = 11.sp, fontWeight = FontWeight.Bold)
@@ -396,20 +313,15 @@ private fun SignalCard(card: EventCard, onFollow: () -> Unit) {
             Spacer(Modifier.height(13.dp))
             HorizontalDivider(color = Line)
             Spacer(Modifier.height(11.dp))
-
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
-                    Text(
-                        card.evidence?.sourceName ?: "Evidence pending",
-                        color = TextPrimary,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Medium,
-                    )
-                    Text(
-                        "${card.evidenceCount} evidence${if (card.evidenceCount == 1) "" else " items"}${if (card.conflictingEvidenceCount > 0) "  •  ${card.conflictingEvidenceCount} conflict" else ""}",
-                        color = if (card.conflictingEvidenceCount > 0) Caution else TextSecondary,
-                        fontSize = 11.sp,
-                    )
+                    Text(card.evidence?.sourceName ?: "Evidence pending", color = TextPrimary, fontSize = 12.sp, fontWeight = FontWeight.Medium)
+                    val evidenceText = buildString {
+                        append(card.evidenceCount)
+                        append(if (card.evidenceCount == 1) " evidence" else " evidence items")
+                        if (card.conflictingEvidenceCount > 0) append("  •  ${card.conflictingEvidenceCount} conflict")
+                    }
+                    Text(evidenceText, color = if (card.conflictingEvidenceCount > 0) Caution else TextSecondary, fontSize = 11.sp)
                 }
                 IconButton(onClick = onFollow) {
                     Icon(
@@ -420,9 +332,7 @@ private fun SignalCard(card: EventCard, onFollow: () -> Unit) {
                 }
                 val sourceUrl = card.evidence?.canonicalUrl
                 if (!sourceUrl.isNullOrBlank()) {
-                    TextButton(onClick = {
-                        runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(sourceUrl))) }
-                    }) {
+                    TextButton(onClick = { runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(sourceUrl))) } }) {
                         Text("Source")
                     }
                 }
@@ -449,16 +359,16 @@ private fun AlertsContent(state: CineRelayUiState, viewModel: CineRelayViewModel
                 state = state,
                 notificationGranted = notificationGranted,
                 onEnable = {
-                    if (!BuildConfig.FIREBASE_CONFIGURED) return@PushCanaryCard
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && !notificationGranted) {
-                        permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-                    } else {
-                        viewModel.registerPush()
+                    if (BuildConfig.FIREBASE_CONFIGURED) {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && !notificationGranted) {
+                            permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                        } else {
+                            viewModel.registerPush()
+                        }
                     }
                 },
             )
         }
-
         if (state.alerts.isEmpty() && !state.loading) {
             item {
                 EmptyState(
