@@ -118,6 +118,8 @@ jobs:
         run: deno check --config supabase/functions/push-delivery-worker/deno.json supabase/functions/push-delivery-worker/index.ts
       - name: Type-check digest-compose-worker
         run: deno check --config supabase/functions/digest-compose-worker/deno.json supabase/functions/digest-compose-worker/index.ts
+      - name: Type-check creator-radar-worker
+        run: deno check --config supabase/functions/creator-radar-worker/deno.json supabase/functions/creator-radar-worker/index.ts
       - name: Build deployment-native Edge bundles
         shell: bash
         run: |
@@ -142,6 +144,7 @@ jobs:
             cinerelay-device-registration-api
             push-delivery-worker
             digest-compose-worker
+            creator-radar-worker
           )
           for fn in "${functions[@]}"; do
             mkdir -p "edge-deploy/${fn}"
