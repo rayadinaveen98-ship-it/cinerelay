@@ -15,7 +15,8 @@ Phase-4 stack:
 - `phase-4/source-discovery-candidates` — draft PR #6 stacked on #5 — P4.3 curated candidate workflow;
 - `phase-4/threads-public-profiles` — draft PR #7 stacked on #6 — P4.4 official Threads public-profile API;
 - `phase-4/instagram-professional` — draft PR #8 stacked on #7 — P4.5 Instagram Professional / Business Discovery;
-- `phase-4/trusted-trade-media` — draft PR #9 stacked on #8 — P4.6 audited trusted media RSS onboarding.
+- `phase-4/trusted-trade-media` — draft PR #9 stacked on #8 — P4.6 audited trusted media RSS onboarding;
+- `phase-4/selected-public-pages` — draft PR #10 stacked on #9 — P4.7 carefully selected public-page onboarding.
 
 The stack must remain ordered. Child PRs must not bypass their parents to `main`.
 
@@ -280,6 +281,69 @@ Full proof:
 
 ---
 
+## P4.7 — Carefully selected additional public pages
+
+**Engineering complete / hosted foundation deployed / real selected-page canary pending.**
+
+P4.7 completes the locked Phase-4 source-priority list without adding a new scraper framework. It reuses the production-hardened P4.2 page connector while keeping trust semantics separate from the technical parser-family identifier.
+
+Policy:
+
+- candidate must already be `APPROVED` and kind `PUBLIC_WEB`;
+- approval remains non-promoting;
+- Tier 3 -> `TRADE_MEDIA`;
+- Tier 4 -> `GENERAL_MEDIA`;
+- Tier 5 -> `DISCOVERY_ONLY`;
+- Tier 1/2 rejected;
+- cadence limited to `NORMAL_60M`, `COLD_6H`, or `DAILY`;
+- bounded declarative parser profile required;
+- exact canonical duplicates rejected;
+- double promotion rejected;
+- identity metadata records `sourceClass=SELECTED_PUBLIC_PAGE`;
+- `FIRST_PARTY_HTML` is reused only as the existing parser/connector family and does not imply first-party authority.
+
+Canonical hosted migration:
+
+`20260916100515_selected_public_page_promotion`
+
+Canonical migration-reconciliation CI:
+
+- head `d1ae419eda4605c690eca7065ef9b6984de202f0`;
+- CineRelay CI #288 / run `35084264282`;
+- all four jobs PASS;
+- fresh canonical migrations + pgTAP + DB lint PASS;
+- web console build/static-host checks PASS;
+- `cinerelay-public-page-onboarding-api` type-check + deployment-native bundle PASS.
+
+Hosted runtime:
+
+- `cinerelay-public-page-onboarding-api` v1 ACTIVE;
+- function id `bb255c7a-a7ab-4b23-ba18-561eebf8dcbf`;
+- runtime bundle SHA `7525b4bdf567dc4813fab427116b3296ad37985cfb9b5ac244748fcb181d5c50`;
+- exact CI artifact `10440759028`;
+- artifact digest `sha256:46397db0829f1caabb2a404676aeb9c4ce2eee90a91ba6b41485e0020194c4bc`.
+
+Hosted no-side-effect verification:
+
+- promotion RPC exists;
+- authenticated direct RPC execution denied;
+- selected public-page sources `0`;
+- selected public-page identities `0`;
+- selected public-page page-state rows `0`;
+- promoted selected-page candidates `0`.
+
+Supabase advisors show no new P4.7-specific finding.
+
+The P4.7 console controls are implemented and CI-built on the stacked branch. Production Cloudflare Pages UI deployment is not claimed until the ordered branch stack reaches the normal console release path.
+
+Remaining production-canary gate: choose a rights/usage-compatible real public page, validate its parser profile, review it separately, explicitly promote it at Tier 3/4/5, prove zero-history baseline and duplicate-free repeat, prove visible parser-drift failure, and prove one genuinely new page item through the normal evidence pipeline while preserving the source's lower authority.
+
+Full proof:
+
+`docs/07-execution/PHASE4_P4_7_HOSTED_ENGINEERING_PROOF_2026-09-16.md`
+
+---
+
 ## Current release chain
 
 1. P4.1 waits for one genuine post-baseline Disney feed item.
@@ -288,8 +352,9 @@ Full proof:
 4. P4.4 hosted foundation is complete and deliberately dormant until real Threads authorization + official-post proof.
 5. P4.5 hosted foundation is complete and deliberately dormant until real Instagram Professional authorization + official-media proof.
 6. P4.6 hosted trust-promotion foundation is complete; no media source was auto-trusted. It waits for a rights-compatible real media RSS canary and baseline/idempotency/new-item proof.
+7. P4.7 hosted selected-page onboarding foundation is complete; no public page was auto-trusted. It waits for a rights/usage-compatible real page and parser/baseline/idempotency/drift/new-item proof.
 
-The hosted P4.1/P4.2 schedulers continue watching their official canaries automatically while later Phase-4 engineering proceeds. P4.4/P4.5 remain dormant rather than generating credential failures before their external authorization gates are satisfied. P4.6 remains operationally available to operators but has zero promoted media sources until the rights/evidence gate is satisfied.
+The hosted P4.1/P4.2 schedulers continue watching their official canaries automatically while later Phase-4 engineering proceeds. P4.4/P4.5 remain dormant rather than generating credential failures before their external authorization gates are satisfied. P4.6/P4.7 remain operationally available to authenticated operators but have zero promoted lower-authority sources until their real-source evidence/rights gates are satisfied.
 
 ## Guardrails
 
@@ -301,6 +366,8 @@ The hosted P4.1/P4.2 schedulers continue watching their official canaries automa
 - parsing uncertainty fails closed rather than silently advancing state;
 - candidate approval never auto-promotes trust;
 - trusted-media promotion cannot assign Tier 1/2;
+- selected-public-page promotion cannot assign Tier 1/2 and cannot poll faster than 60 minutes;
+- selected-public-page parser profiles are bounded and operator-reviewed;
 - public availability does not by itself establish reuse rights;
 - synthetic canaries prove transport mechanics only, never official evidence;
 - source count is not a success metric; precision, recall, latency, idempotency and connector health are.
