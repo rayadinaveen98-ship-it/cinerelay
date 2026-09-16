@@ -2,7 +2,7 @@
 
 Date: 2026-09-16
 
-State: **IMPLEMENTATION IN REVIEW / NO PRODUCTION CRON**
+State: **ENGINEERING COMPLETE / HOSTED FOUNDATION DEPLOYED / REAL-DEVICE CANARY PENDING / NO PRODUCTION PUSH CRON**
 
 Parent checkpoint:
 
@@ -49,7 +49,7 @@ Official reference checked 2026-09-16:
 
 The worker:
 
-- stores the Firebase service account only in the hosted secret `CINERELAY_FCM_SERVICE_ACCOUNT`;
+- reads the Firebase service account only from hosted secret `CINERELAY_FCM_SERVICE_ACCOUNT`;
 - mints a short-lived OAuth 2.0 token with scope `https://www.googleapis.com/auth/firebase.messaging`;
 - sends to `POST https://fcm.googleapis.com/v1/projects/{project_id}/messages:send`;
 - targets the currently implemented registration `message.token`;
@@ -129,16 +129,53 @@ Cron activation is gated on:
 6. invalid-registration/deactivation proof;
 7. hosted security/advisor verification.
 
+## Canonical hosted foundation
+
+Hosted migrations:
+
+- `20260916110813_push_delivery_foundation`
+- `20260916110823_push_delivery_lease_invariant`
+- `20260916111150_push_delivery_index_hardening`
+
+Canonical head `f21dd08a9225cf4820031688303381643670e983` passed CineRelay CI #309 / run `35090401513` with all four jobs green.
+
+Exact Edge artifact:
+
+- artifact `10444330354`;
+- digest `sha256:886cdbe06fb69e7e2290efec5098759fa53dc9e0cc201d57cfc5fbc2aa40f6e3`.
+
+Hosted runtime now contains:
+
+- `cinerelay-device-registration-api` v1 ACTIVE;
+- `push-delivery-worker` v1 ACTIVE;
+- `cinerelay-scheduler-dispatch` v6 ACTIVE with `push-delivery` allow-list action.
+
+Deployment preserves a zero-side-effect state: zero device rows, zero delivery-target rows and zero push cron jobs.
+
 ## CI and security gates
 
-CI must prove:
+CI proves:
 
-- fresh migration application;
-- pgTAP device/delivery state contracts;
+- fresh canonical migration application;
+- 27 pgTAP device/delivery state assertions;
 - existing P5.1 canonical-event tests remain green;
 - Edge type-check for device API and push worker;
-- deployment-native Edge bundles include both functions;
+- deployment-native Edge bundles include the P5.2 runtimes;
 - browser artifact contains no `CINERELAY_FCM_SERVICE_ACCOUNT` marker;
 - database function lint remains green.
 
-No P5.2 migration or Edge function is promoted to hosted Supabase until all four CI jobs are green.
+Hosted verification proves:
+
+- RLS remains enabled on both internal P5.2 tables;
+- authenticated direct table reads are denied;
+- authenticated direct execution of internal registration/lease/completion RPCs is denied;
+- the P5.2 foreign-key advisor finding is resolved;
+- no production push scheduler is enabled.
+
+Full hosted proof:
+
+`docs/07-execution/PHASE5_P5_2_HOSTED_ENGINEERING_PROOF_2026-09-16.md`
+
+## Remaining release gate
+
+P5.2 is not production-notification-complete until a controlled real Firebase credential + device canary proves successful delivery, duplicate-free repeat, transient retry/recovery and explicit `UNREGISTERED` deactivation. Only after that evidence is captured may the production `push-delivery` cron be enabled.
