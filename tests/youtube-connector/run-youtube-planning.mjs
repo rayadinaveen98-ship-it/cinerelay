@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import {
   HUB_RETRY_POLICY,
   decideHubRetry,
+  decideHubTransportRetry,
   failedRenewalRetryAt,
   planSubscription,
   planUnsubscription,
@@ -54,6 +55,12 @@ await test('transient hub 503 retries with bounded backoff', async () => {
   assert.deepEqual(decideHubRetry({ attempt: 2, status: 503 }), { retry: true, delayMs: 750 });
   assert.deepEqual(decideHubRetry({ attempt: 3, status: 503 }), { retry: false, delayMs: 0 });
   assert.equal(HUB_RETRY_POLICY.maxAttempts, 3);
+});
+
+await test('transport failures use the same bounded retry clock', async () => {
+  assert.deepEqual(decideHubTransportRetry(1), { retry: true, delayMs: 250 });
+  assert.deepEqual(decideHubTransportRetry(2), { retry: true, delayMs: 750 });
+  assert.deepEqual(decideHubTransportRetry(3), { retry: false, delayMs: 0 });
 });
 
 await test('hub rate limits are retryable but permanent client errors are not', async () => {
@@ -163,4 +170,4 @@ await test('provider failures override high priority and back off discovery to p
   assert.equal(YOUTUBE_DISCOVERY_INTERVAL_MS.backoff, 30 * 60 * 1000);
 });
 
-console.log(`\nYouTube planning/enrichment/discovery canaries: ${passed}/20 passed.`);
+console.log(`\nYouTube planning/enrichment/discovery canaries: ${passed}/21 passed.`);
