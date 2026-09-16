@@ -2,7 +2,7 @@
 
 Date: 2026-09-16
 
-State: **IMPLEMENTATION IN REVIEW / APK CI PENDING / MOBILE API NOT YET HOSTED / REAL FIREBASE DEVICE CANARY PENDING**
+State: **ENGINEERING APK COMPLETE / HOSTED MOBILE API DEPLOYED / REAL FIREBASE DEVICE CANARY PENDING**
 
 Branch:
 
@@ -16,7 +16,11 @@ Draft PR:
 
 `#16 — Phase 6 P6.0.1: Android V0.1 canary`
 
-## Implemented so far
+Engineering checkpoint:
+
+`091a0fa832bc2ea6570a0f48c997fed74b1ad0ee`
+
+## Implemented
 
 ### Visible Android product
 
@@ -40,7 +44,7 @@ Draft PR:
 
 ### Mobile backend boundary
 
-- new `cinerelay-mobile-api` Edge source;
+- hosted `cinerelay-mobile-api` Edge function;
 - independent bearer validation through `auth.getUser()`;
 - shaped `bootstrap`, `live`, `following`, `radar`, `alerts`, `setFollow` actions;
 - P5.5 READY summary reuse where available;
@@ -57,54 +61,98 @@ Draft PR:
 - notification channel configured;
 - no fake Firebase success when configuration is absent.
 
-### CI
+## Green CI proof
 
-- dedicated `.github/workflows/android-canary-ci.yml`;
-- mobile API type-check + deployment bundle artifact;
-- JDK 17 / Gradle 9.6 / stable Android API 36 build;
-- `assembleDebug` APK generation;
-- privileged-secret marker scans;
+### CineRelay CI #344
+
+Run `35104494874` — all four jobs PASS on engineering head `091a0fa832bc2ea6570a0f48c997fed74b1ad0ee`:
+
+- intelligence/connectors;
+- database migrations + pgTAP + lint;
+- Edge functions;
+- web console.
+
+### Android Canary CI #10
+
+Run `35104494966` — all jobs PASS:
+
+- `cinerelay-mobile-api` type-check and deployment bundle;
+- JDK 17 / Gradle 9.6 / stable API 36 setup;
+- privileged-secret source scan;
+- `:app:assembleDebug`;
+- APK contract/secret scan;
 - APK SHA-256 generation;
 - installable APK artifact upload.
 
-## CI findings so far
+## Exact artifacts
 
-- Android Canary CI #1 proved `cinerelay-mobile-api` type-check/bundle success, but `android-actions/setup-android@v3` tried to install obsolete SDK package `tools`; workflow fixed to request `platform-tools` only.
-- Android Canary CI #2 again proved the mobile API green and advanced past `setup-android`, then showed that stable `sdkmanager` does not publish `platforms;android-37` because Android 17/API 37 is still preview-only.
-- The canary was therefore pinned to stable Android 16/API 36 rather than opting into preview tooling. No application compiler failure has occurred yet; both findings were CI/SDK setup issues before Gradle compilation.
+Android APK artifact:
 
-## Security boundary
+- name: `cinerelay-android-v0.1-canary-apk`;
+- artifact ID: `10449931862`;
+- archive digest: `sha256:fe040aaee90fbda37c549001519e6eeb2be92281dcf0d8c94a328ac390072e06`;
+- extracted APK SHA-256: `c16bca0724fe22bce5b242b6e79ffbae994ffb8789c2b72f4a18367839585948`;
+- extracted size: `20,649,257` bytes.
 
-Allowed in APK:
+Mobile API artifact:
 
-- Supabase URL;
-- Supabase publishable key;
-- user's own refreshable auth session.
+- name: `cinerelay-mobile-api-deploy-bundle`;
+- artifact ID: `10449538338`;
+- archive digest: `sha256:2405fbdf032e88b95f4a9fec0324bd4aae6e951ff5d172ffeeaac6d998b5b9fa`.
 
-Forbidden from APK:
+## Hosted mobile API
 
-- Supabase service-role key;
-- CineRelay internal worker/scheduler secret;
-- Firebase service-account private key;
-- connector provider credentials.
+The exact CI-built deployment-native bundle is live:
+
+- function: `cinerelay-mobile-api`;
+- function ID: `c71305b1-b602-4b95-bb29-0914be6ebc80`;
+- version: `1`;
+- status: `ACTIVE`;
+- hosted bundle SHA: `b241078fe866f0c2acbe4df93231e1eb84095046d1b8dfdcc8edcabeaba62dda`;
+- `verify_jwt=false` by design, with mandatory in-function `auth.getUser()` bearer validation before user-specific work.
+
+Hosted runtime verification:
+
+- missing bearer -> HTTP `401`, `authentication_required`;
+- deliberately invalid bearer -> HTTP `401`, `invalid_session`;
+- before/after both probes: `user_entity_follows=0`, `alert_deliveries=0`, `push_device_registrations=0`.
+
+Therefore the tested authentication-failure paths are zero-side-effect.
+
+## Advisor review
+
+No P6.0.1-specific database security/performance regression appeared.
+
+Existing project findings remain the known service-owned RLS/no-policy INFO set, old `record_youtube_websub_delivery` search-path warning, leaked-password-protection setting, old unindexed-FK backlog, and unused-index informational findings.
+
+P6.0.1 adds no database schema or index migration.
 
 ## Current Firebase state
 
-The canary intentionally compiles without `google-services.json`.
+The engineering APK intentionally compiles without `google-services.json`.
 
-Until Firebase is configured, normal app functionality can still be verified, while the Alerts canary card reports that push activation is pending.
+Normal CineRelay UI is buildable/installable and the hosted mobile API is active, but real push remains gated by external Firebase configuration and a physical device.
 
-## Next gates
+Still required before the Phase-5 delivery exit gate can close:
 
-1. require the stable-API-36 replacement CI to reach and pass the actual Gradle/Kotlin/Compose build;
-2. keep the existing four-job CineRelay CI green in parallel;
-3. require an installable APK artifact;
-4. deploy `cinerelay-mobile-api` only from its exact green CI bundle;
-5. verify hosted mobile API auth/no-side-effect boundary;
-6. provide the exact green CI APK for installation;
-7. configure Firebase client/server credentials when available;
-8. run real-device exactly-once/retry/invalid-token canary;
-9. formally close the remaining Phase-5 delivery exit gate.
+1. Firebase Android client config for package `com.cinerelay.app`;
+2. hosted `CINERELAY_FCM_SERVICE_ACCOUNT` secret;
+3. physical Android install/sign-in;
+4. device token registration;
+5. one controlled exactly-once push delivery;
+6. transient retry/recovery proof;
+7. explicit `UNREGISTERED` token deactivation proof;
+8. final security/advisor recheck.
+
+No production push cron is enabled before this gate passes.
+
+## Next product step
+
+With the V0.1 engineering APK and mobile API foundation proven, the next Phase-6 product slices can build on this app rather than scaffolding again: title/timeline detail, search, source pages, offline/cache, richer filters, deep links, launcher/brand polish and preference editing.
+
+Hosted proof:
+
+`docs/07-execution/PHASE6_P6_0_1_HOSTED_ENGINEERING_PROOF_2026-09-16.md`
 
 Design:
 
