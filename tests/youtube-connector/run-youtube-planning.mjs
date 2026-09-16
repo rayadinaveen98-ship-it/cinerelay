@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import {
   HUB_RETRY_POLICY,
   decideHubRetry,
+  failedRenewalRetryAt,
   planSubscription,
   planUnsubscription,
 } from '../../packages/youtube-connector/dist/subscription.js';
@@ -59,6 +60,12 @@ await test('hub rate limits are retryable but permanent client errors are not', 
   assert.equal(decideHubRetry({ attempt: 1, status: 429 }).retry, true);
   assert.equal(decideHubRetry({ attempt: 1, status: 400 }).retry, false);
   assert.equal(decideHubRetry({ attempt: 1, status: 404 }).retry, false);
+});
+
+await test('failed renewal defers the next generation attempt by thirty minutes', async () => {
+  const now = new Date('2026-09-16T16:00:00.000Z');
+  assert.equal(failedRenewalRetryAt(now), '2026-09-16T16:30:00.000Z');
+  assert.equal(HUB_RETRY_POLICY.failedRenewalBackoffMs, 30 * 60 * 1000);
 });
 
 await test('video snapshot fingerprint is stable and changes with meaningful metadata', async () => {
@@ -156,4 +163,4 @@ await test('provider failures override high priority and back off discovery to p
   assert.equal(YOUTUBE_DISCOVERY_INTERVAL_MS.backoff, 30 * 60 * 1000);
 });
 
-console.log(`\nYouTube planning/enrichment/discovery canaries: ${passed}/19 passed.`);
+console.log(`\nYouTube planning/enrichment/discovery canaries: ${passed}/20 passed.`);
