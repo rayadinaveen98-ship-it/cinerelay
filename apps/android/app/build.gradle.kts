@@ -28,8 +28,8 @@ android {
         applicationId = "com.cinerelay.app"
         minSdk = 26
         targetSdk = 36
-        versionCode = 2
-        versionName = "0.1.1-canary"
+        versionCode = 3
+        versionName = "0.2.0-canary"
 
         buildConfigField("String", "SUPABASE_URL", "\"${publicConfig("CINERELAY_SUPABASE_URL", "https://dnqaejljfzwhsainpdxb.supabase.co")}\"")
         buildConfigField("String", "SUPABASE_PUBLISHABLE_KEY", "\"${publicConfig("CINERELAY_SUPABASE_PUBLISHABLE_KEY", "sb_publishable_hR65p2JkQ2x5fFLx_kkcNQ_1SxNN3QP")}\"")
@@ -84,8 +84,6 @@ dependencies {
     implementation("androidx.compose.material:material-icons-extended")
     debugImplementation("androidx.compose.ui:ui-tooling")
 
-    // OkHttp 5.5 Android metadata requires compileSdk 37. 4.12 remains stable and
-    // fully adequate for this canary's HTTPS/Auth/Edge API traffic on minSdk 26+.
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
 
     implementation(platform("com.google.firebase:firebase-bom:34.19.0"))
