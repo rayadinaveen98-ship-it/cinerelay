@@ -55,7 +55,7 @@ jobs:
             echo 'VITE Supabase publishable key was not bound into the browser artifact' >&2
             exit 1
           fi
-          if grep -R -E 'SUPABASE_SERVICE_ROLE_KEY|CINERELAY_INTERNAL_ADMIN_SECRET|CINERELAY_WEBSUB_MASTER_SECRET|YOUTUBE_API_KEY' apps/web/dist; then
+          if grep -R -E 'SUPABASE_SERVICE_ROLE_KEY|CINERELAY_INTERNAL_ADMIN_SECRET|CINERELAY_WEBSUB_MASTER_SECRET|YOUTUBE_API_KEY|THREADS_PROFILE_DISCOVERY_ACCESS_TOKEN' apps/web/dist; then
             echo 'Forbidden privileged credential marker found in browser bundle' >&2
             exit 1
           fi
@@ -98,6 +98,8 @@ jobs:
         run: deno check --config supabase/functions/feed-poll-worker/deno.json supabase/functions/feed-poll-worker/index.ts
       - name: Type-check page-poll-worker
         run: deno check --config supabase/functions/page-poll-worker/deno.json supabase/functions/page-poll-worker/index.ts
+      - name: Type-check threads-profile-poll-worker
+        run: deno check --config supabase/functions/threads-profile-poll-worker/deno.json supabase/functions/threads-profile-poll-worker/index.ts
       - name: Type-check cinerelay-scheduler-dispatch
         run: deno check --config supabase/functions/cinerelay-scheduler-dispatch/deno.json supabase/functions/cinerelay-scheduler-dispatch/index.ts
       - name: Type-check cinerelay-console-api
@@ -120,6 +122,7 @@ jobs:
             youtube-maintenance-worker
             feed-poll-worker
             page-poll-worker
+            threads-profile-poll-worker
             cinerelay-scheduler-dispatch
             cinerelay-console-api
             cinerelay-review-api
@@ -149,6 +152,7 @@ jobs:
             packages/youtube-connector/dist
             packages/feed-connector/dist
             packages/web-page-connector/dist
+            packages/threads-connector/dist
           if-no-files-found: error
           retention-days: 7
       - name: Upload deployment-native Edge bundle
