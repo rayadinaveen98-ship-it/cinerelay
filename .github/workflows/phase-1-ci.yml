@@ -25,8 +25,6 @@ jobs:
   web-console:
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    # These values are intentionally public browser configuration. Never place
-    # service-role, connector, or other privileged secrets in VITE_* variables.
     env:
       VITE_SUPABASE_URL: https://dnqaejljfzwhsainpdxb.supabase.co
       VITE_SUPABASE_PUBLISHABLE_KEY: sb_publishable_hR65p2JkQ2x5fFLx_kkcNQ_1SxNN3QP
@@ -165,6 +163,15 @@ jobs:
       - uses: supabase/setup-cli@v1
         with:
           version: latest
+      - name: Generate P4.2 migration scaffold with Supabase CLI
+        run: supabase migration new first_party_page_connector
+      - name: Upload generated P4.2 migration scaffold
+        uses: actions/upload-artifact@v4
+        with:
+          name: p4-2-migration-scaffold
+          path: supabase/migrations/*_first_party_page_connector.sql
+          if-no-files-found: error
+          retention-days: 1
       - name: Start database and apply migrations
         run: supabase db start
       - name: Run pgTAP database tests
