@@ -110,3 +110,23 @@ select cron.schedule(
   ) as request_id;
   $job$
 );
+
+-- First-party public newsroom / press-page polling. This is another scheduler
+-- heartbeat only: page-poll-worker enforces page-specific due times, conditional
+-- validators, parser drift guards, per-domain spacing and backoff.
+select cron.schedule(
+  'cinerelay-page-poll',
+  '*/5 * * * *',
+  $job$
+  select net.http_post(
+    url := (select decrypted_secret from vault.decrypted_secrets where name = 'cinerelay_project_url' order by created_at desc limit 1)
+      || '/functions/v1/cinerelay-scheduler-dispatch',
+    headers := jsonb_build_object(
+      'Content-Type', 'application/json',
+      'x-cinerelay-scheduler-key', (select decrypted_secret from vault.decrypted_secrets where name = 'cinerelay_scheduler_dispatch_token' order by created_at desc limit 1)
+    ),
+    body := '{"action":"page-poll"}'::jsonb,
+    timeout_milliseconds := 45000
+  ) as request_id;
+  $job$
+);
