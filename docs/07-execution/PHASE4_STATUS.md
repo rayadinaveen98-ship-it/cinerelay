@@ -12,7 +12,8 @@ Phase-4 branches / PRs:
 
 - `phase-4/free-source-expansion` — draft PR #4, P4.1 RSS/Atom foundation;
 - `phase-4/first-party-pages` — draft PR #5 stacked on PR #4, P4.2 first-party HTML/newsroom foundation;
-- `phase-4/source-discovery-candidates` — draft PR #6 stacked on PR #5, P4.3 curated candidate workflow.
+- `phase-4/source-discovery-candidates` — draft PR #6 stacked on PR #5, P4.3 curated candidate workflow;
+- `phase-4/threads-public-profiles` — draft PR #7 stacked on PR #6, P4.4 official Threads public-profile API foundation.
 
 ## Goal
 
@@ -276,13 +277,75 @@ PR #6 stays draft and stacked; it must not bypass P4.1/P4.2.
 
 ---
 
+## P4.4 — Official Threads public-profile connector
+
+**Engineering complete / hosted foundation deployed / real Meta credential + official-post release gate pending.**
+
+P4.4 lives on `phase-4/threads-public-profiles` through draft PR #7 and remains intentionally stacked on P4.3.
+
+Implemented:
+
+- official Meta Threads API path only; no browser-session or public-page scraping;
+- exact curated username normalization + registry-handle mismatch guard;
+- first-poll anti-backlog baseline;
+- bounded top-50 post delta with visible `THREADS_WINDOW_GAP` recovery signal;
+- deterministic fixtures and connector canaries;
+- service-role-only `threads_profile_source_state`;
+- `register_threads_profile_source(...)` with strict `THREADS / THREADS_PROFILE_API / API` contract checks;
+- RLS plus direct public/anon/authenticated privilege revocation;
+- `threads-profile-poll-worker` with normal raw/revision/job transport;
+- adaptive cadence/backoff and explicit `AUTH_REQUIRED`, `RATE_LIMITED`, `PARSER_BROKEN`, `DEGRADED`, `HEALTHY` state ownership;
+- scheduler dispatcher action prepared;
+- Meta token remains server-side and is CI-guarded against browser-bundle leakage.
+
+Compatibility proof:
+
+Fresh-db CI caught the first proposed `OFFICIAL_API` access-mode value because the frozen CineRelay contract already represents official programmatic access with `API`. P4.4 was corrected to reuse `API` instead of expanding the core enum.
+
+Hosted migration:
+
+`20260916085300_threads_public_profile_connector`
+
+Hosted runtime:
+
+- `threads-profile-poll-worker` v1 ACTIVE;
+- `cinerelay-scheduler-dispatch` v4 ACTIVE;
+- Threads identities `0`;
+- Threads state rows `0`;
+- Threads cron jobs `0`.
+
+Hosted security verification:
+
+- state-table RLS enabled;
+- authenticated direct SELECT denied;
+- authenticated registration-RPC execute denied.
+
+Canonical reconciliation CI:
+
+- head `1178a95263e42417246f306f84144ad6c2d5dc40`;
+- CineRelay CI `#264` / run `35076303251`;
+- all four jobs PASS.
+
+Remaining gate:
+
+P4.4 is not production-verified until a Meta Threads token with `threads_profile_discovery` is configured, one curated official cinema/OTT/studio profile baselines with zero historical replay, one genuine post-baseline official post travels exactly once through raw/revision/processing, an unchanged repeat produces no duplicate work, and invalid/expired auth is visibly represented as `AUTH_REQUIRED`.
+
+No Threads pg_cron heartbeat is activated before that authorization gate.
+
+Full proof:
+
+`docs/07-execution/PHASE4_P4_4_HOSTED_ENGINEERING_PROOF_2026-09-16.md`
+
+---
+
 ## Current release chain
 
 1. P4.1 waits for one genuine post-baseline Disney feed item.
 2. P4.2 waits for one genuine post-baseline Prime Video page item; parser-drift recovery is already resolved and production-proven.
 3. P4.3 backend/trust-boundary proof is complete but remains stacked behind its parents.
+4. P4.4 engineering + hosted foundation are complete; it waits on real Meta `threads_profile_discovery` authorization and a genuine post-baseline official Threads item before any cron activation or production-verification claim.
 
-The hosted schedulers continue watching the P4.1/P4.2 official canaries automatically while further Phase-4 work proceeds.
+The hosted P4.1/P4.2 schedulers continue watching their official canaries automatically while further Phase-4 work proceeds. P4.4 remains deliberately dormant until its external authorization gate is met.
 
 ## Guardrails
 
