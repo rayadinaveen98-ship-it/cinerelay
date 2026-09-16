@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
 import {
+  HUB_RETRY_POLICY,
+  decideHubRetry,
   planSubscription,
   planUnsubscription,
 } from '../../packages/youtube-connector/dist/subscription.js';
@@ -44,6 +46,19 @@ await test('unsubscription plan reconstructs the exact active generation callbac
   assert.equal(unsubscribe.callbackTokenHash, active.callbackTokenHash);
   assert.equal(unsubscribe.hubSecret, active.hubSecret);
   assert.equal(unsubscribe.state, 'UNSUBSCRIBING');
+});
+
+await test('transient hub 503 retries with bounded backoff', async () => {
+  assert.deepEqual(decideHubRetry({ attempt: 1, status: 503 }), { retry: true, delayMs: 250 });
+  assert.deepEqual(decideHubRetry({ attempt: 2, status: 503 }), { retry: true, delayMs: 750 });
+  assert.deepEqual(decideHubRetry({ attempt: 3, status: 503 }), { retry: false, delayMs: 0 });
+  assert.equal(HUB_RETRY_POLICY.maxAttempts, 3);
+});
+
+await test('hub rate limits are retryable but permanent client errors are not', async () => {
+  assert.equal(decideHubRetry({ attempt: 1, status: 429 }).retry, true);
+  assert.equal(decideHubRetry({ attempt: 1, status: 400 }).retry, false);
+  assert.equal(decideHubRetry({ attempt: 1, status: 404 }).retry, false);
 });
 
 await test('video snapshot fingerprint is stable and changes with meaningful metadata', async () => {
@@ -141,4 +156,4 @@ await test('provider failures override high priority and back off discovery to p
   assert.equal(YOUTUBE_DISCOVERY_INTERVAL_MS.backoff, 30 * 60 * 1000);
 });
 
-console.log(`\nYouTube planning/enrichment/discovery canaries: ${passed}/17 passed.`);
+console.log(`\nYouTube planning/enrichment/discovery canaries: ${passed}/19 passed.`);
