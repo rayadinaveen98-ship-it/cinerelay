@@ -56,6 +56,8 @@ type EventRow = {
   detected_at: string | null;
 };
 
+type FilterReason = 'empty_content' | 'archive_or_library_clip' | 'duplicate_title';
+
 function json(status: number, body: Record<string, unknown>): Response {
   return new Response(JSON.stringify(body), {
     status,
@@ -81,13 +83,21 @@ function limitOf(value: unknown): number {
   return Number.isFinite(parsed) ? Math.max(1, Math.min(100, Math.trunc(parsed))) : 50;
 }
 
-function noiseReason(row: { raw_title?: string | null; raw_text?: string | null }): string | null {
+function noiseReason(row: { raw_title?: string | null; raw_text?: string | null }): FilterReason | null {
   const title = (row.raw_title ?? '').trim();
   const body = (row.raw_text ?? '').trim();
   if (!title && !body) return 'empty_content';
   const looksArchived = ARCHIVE_NOISE_PATTERNS.some((pattern) => pattern.test(title));
   const titleHasCurrentIntent = CURRENT_SIGNAL_PATTERNS.some((pattern) => pattern.test(title));
   return looksArchived && !titleHasCurrentIntent ? 'archive_or_library_clip' : null;
+}
+
+function normalizedTitleKey(value: string | null | undefined): string {
+  return (value ?? '')
+    .normalize('NFKC')
+    .toLocaleLowerCase('en-US')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 function newsroomState(verificationState: string | null, authorityTier: number | null, conflictCount: number): string {
@@ -146,15 +156,34 @@ async function newsroom(userId: string | null, limit: number) {
   const sourceMap = new Map(sources.map((row) => [row.id, row]));
 
   const selected: typeof raws = [];
-  let filteredOut = 0;
+  const seenTitleKeys = new Set<string>();
+  const filterCounts: Record<FilterReason, number> = {
+    empty_content: 0,
+    archive_or_library_clip: 0,
+    duplicate_title: 0,
+  };
+
   for (const raw of raws) {
     const identity = identityMap.get(raw.source_identity_id);
     const source = identity ? sourceMap.get(identity.source_id) : undefined;
     if (!identity || !source) continue;
-    if (noiseReason(raw)) {
-      filteredOut += 1;
+
+    const reason = noiseReason(raw);
+    if (reason) {
+      filterCounts[reason] += 1;
       continue;
     }
+
+    const normalizedTitle = normalizedTitleKey(raw.raw_title);
+    if (normalizedTitle) {
+      const duplicateKey = `${raw.source_identity_id}:${normalizedTitle}`;
+      if (seenTitleKeys.has(duplicateKey)) {
+        filterCounts.duplicate_title += 1;
+        continue;
+      }
+      seenTitleKeys.add(duplicateKey);
+    }
+
     selected.push(raw);
     if (selected.length >= limit) break;
   }
@@ -298,7 +327,8 @@ async function newsroom(userId: string | null, limit: number) {
     generatedAt: new Date().toISOString(),
     guest: userId === null,
     scanCount: raws.length,
-    filteredOut,
+    filteredOut: Object.values(filterCounts).reduce((sum, count) => sum + count, 0),
+    filterCounts,
     items,
   };
 }
