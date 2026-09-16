@@ -101,6 +101,14 @@ class BackendClient(
         )
     }
 
+    fun newsroom(limit: Int = 60): List<NewsroomSignal> {
+        val json = invokeGuestAware(
+            "cinerelay-newsroom-api",
+            JSONObject().put("action", "newsroom").put("limit", limit.coerceIn(1, 100)),
+        )
+        return json.optJSONArray("items").toNewsroomSignals()
+    }
+
     fun eventFeed(action: String, limit: Int = 40, allowGuest: Boolean = false): List<EventCard> {
         val body = JSONObject().put("action", action).put("limit", limit.coerceIn(1, 100))
         val json = if (allowGuest) invokeGuestAware("cinerelay-mobile-api", body) else invokeAuthenticated("cinerelay-mobile-api", body)
@@ -244,6 +252,40 @@ class ApiException(message: String, val statusCode: Int) : RuntimeException(mess
 private fun JSONObject.optNullableString(key: String): String? {
     if (!has(key) || isNull(key)) return null
     return optString(key).takeIf { it.isNotBlank() }
+}
+
+private fun JSONArray?.toNewsroomSignals(): List<NewsroomSignal> {
+    val array = this ?: JSONArray()
+    return buildList {
+        for (index in 0 until array.length()) {
+            val row = array.optJSONObject(index) ?: continue
+            val source = row.optJSONObject("source") ?: JSONObject()
+            add(
+                NewsroomSignal(
+                    id = row.optString("id"),
+                    state = row.optString("state", "UNCONFIRMED"),
+                    source = NewsroomSource(
+                        name = source.optNullableString("name"),
+                        authorityTier = if (source.has("authorityTier") && !source.isNull("authorityTier")) source.optInt("authorityTier") else null,
+                        role = source.optNullableString("role"),
+                        platform = source.optNullableString("platform"),
+                        handle = source.optNullableString("handle"),
+                    ),
+                    itemType = row.optNullableString("itemType"),
+                    mediaType = row.optNullableString("mediaType"),
+                    languageCode = row.optNullableString("languageCode"),
+                    title = row.optString("title", "Untitled source update"),
+                    text = row.optNullableString("text"),
+                    canonicalUrl = row.optNullableString("canonicalUrl"),
+                    sourceObservedAt = row.optNullableString("sourceObservedAt"),
+                    observedAt = row.optNullableString("observedAt"),
+                    ingestedAt = row.optNullableString("ingestedAt"),
+                    enrichmentState = row.optString("enrichmentState", "RAW"),
+                    canonicalEvent = row.optJSONObject("canonicalEvent")?.toEventCard(),
+                ),
+            )
+        }
+    }
 }
 
 private fun JSONArray?.toEventCards(): List<EventCard> {
