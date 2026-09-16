@@ -109,3 +109,9 @@ verify_jwt = false
 # Edge secrets. No scheduler cron is enabled until the real-device canary passes.
 [functions.push-delivery-worker]
 verify_jwt = false
+
+# Digest composition is an internal deterministic worker. It only turns already
+# eligible P5.1 DIGEST outbox rows into bounded durable batches; it never calls an
+# external provider and requires the independent internal worker secret.
+[functions.digest-compose-worker]
+verify_jwt = false
