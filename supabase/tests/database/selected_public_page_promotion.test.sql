@@ -1,7 +1,7 @@
 begin;
 
 create extension if not exists pgtap with schema extensions;
-select plan(18);
+select plan(20);
 
 insert into public.source_discovery_candidates (
   id, candidate_url, normalized_url, display_name, candidate_kind,
