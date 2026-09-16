@@ -60,4 +60,54 @@ await test('current-news pipe title is never grouped as archive clip family', as
   assert.equal(newsroomClipFamilyKey('#AadarshaKutumbam - Releasing on Oct 2nd, 2026 | Venkatesh | Trivikram'), null);
 });
 
-console.log(`\nNewsroom filter regressions: ${passed}/7 passed.`);
+await test('tier-3 pregnancy and food-craving lifestyle editorial is filtered', async () => {
+  assert.equal(newsroomNoiseReason({
+    raw_title: 'Samantha reveals her pregnancy food cravings',
+    raw_text: 'The actress discussed her food cravings during pregnancy on a television show.',
+  }, { sourceRole: 'TRADE_MEDIA' }), 'celebrity_lifestyle');
+});
+
+await test('tier-3 wedding-vow lifestyle editorial is filtered', async () => {
+  assert.equal(newsroomNoiseReason({
+    raw_title: 'Suriya and Jyotika renew wedding vows after 20 years',
+    raw_text: 'The couple celebrated their anniversary with family.',
+  }, { sourceRole: 'TRADE_MEDIA' }), 'celebrity_lifestyle');
+});
+
+await test('tier-3 public-appearance relationship advice is filtered', async () => {
+  assert.equal(newsroomNoiseReason({
+    raw_title: 'Ambika advises Trisha to be cautious about public appearances with Vijay',
+    raw_text: 'The story discusses renewed attention and relationship speculation.',
+  }, { sourceRole: 'TRADE_MEDIA' }), 'celebrity_lifestyle');
+});
+
+await test('lifestyle gate does not apply to first-party source roles', async () => {
+  assert.equal(newsroomNoiseReason({
+    raw_title: 'Suriya and Jyotika renew wedding vows after 20 years',
+    raw_text: 'Official source post.',
+  }, { sourceRole: 'PRODUCTION_HOUSE' }), null);
+});
+
+await test('current-news intent still overrides media lifestyle words', async () => {
+  assert.equal(newsroomNoiseReason({
+    raw_title: 'Relationship Rumours Trailer Launch | Official Trailer',
+    raw_text: 'A film titled Relationship Rumours launches its trailer.',
+  }, { sourceRole: 'TRADE_MEDIA' }), null);
+});
+
+await test('hosted-proven film intelligence from the same trade feed survives', async () => {
+  assert.equal(newsroomNoiseReason({
+    raw_title: 'M.S. Subbulakshmi Biopic: Kamal Haasan claps on Rashmika Mandanna’s first shot',
+    raw_text: 'The biopic has been officially launched and the first shot was filmed.',
+  }, { sourceRole: 'TRADE_MEDIA' }), null);
+  assert.equal(newsroomNoiseReason({
+    raw_title: 'The Paradise plans South India promotional tour from tomorrow',
+    raw_text: 'The promotional campaign begins with events and press meets.',
+  }, { sourceRole: 'TRADE_MEDIA' }), null);
+  assert.equal(newsroomNoiseReason({
+    raw_title: 'Aasmaan teaser: Meghamsh Srihari promises an intriguing ride',
+    raw_text: 'The teaser of the film was unveiled today.',
+  }, { sourceRole: 'TRADE_MEDIA' }), null);
+});
+
+console.log(`\nNewsroom filter regressions: ${passed}/13 passed.`);
