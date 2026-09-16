@@ -22,6 +22,7 @@ export type SubscriptionPlan = {
 export const HUB_RETRY_POLICY = Object.freeze({
   maxAttempts: 3,
   delaysMs: [250, 750] as const,
+  failedRenewalBackoffMs: 30 * 60 * 1000,
 });
 
 const RETRYABLE_HUB_STATUSES = new Set([429, 500, 502, 503, 504]);
@@ -39,6 +40,12 @@ export function decideHubRetry(input: { attempt: number; status: number }): HubR
   }
   const delayMs = HUB_RETRY_POLICY.delaysMs[Math.min(input.attempt - 1, HUB_RETRY_POLICY.delaysMs.length - 1)] ?? 0;
   return { retry: true, delayMs };
+}
+
+export function failedRenewalRetryAt(now: Date): string {
+  const timestamp = now.getTime();
+  if (!Number.isFinite(timestamp)) throw new Error('Invalid failed-renewal clock');
+  return new Date(timestamp + HUB_RETRY_POLICY.failedRenewalBackoffMs).toISOString();
 }
 
 function callbackUrlWithToken(baseUrl: string, token: string): string {
