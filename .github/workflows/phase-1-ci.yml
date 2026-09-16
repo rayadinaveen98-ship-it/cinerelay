@@ -110,6 +110,8 @@ jobs:
         run: deno check --config supabase/functions/cinerelay-review-api/deno.json supabase/functions/cinerelay-review-api/index.ts
       - name: Type-check cinerelay-source-discovery-api
         run: deno check --config supabase/functions/cinerelay-source-discovery-api/deno.json supabase/functions/cinerelay-source-discovery-api/index.ts
+      - name: Type-check cinerelay-public-page-onboarding-api
+        run: deno check --config supabase/functions/cinerelay-public-page-onboarding-api/deno.json supabase/functions/cinerelay-public-page-onboarding-api/index.ts
       - name: Build deployment-native Edge bundles
         shell: bash
         run: |
@@ -130,6 +132,7 @@ jobs:
             cinerelay-console-api
             cinerelay-review-api
             cinerelay-source-discovery-api
+            cinerelay-public-page-onboarding-api
           )
           for fn in "${functions[@]}"; do
             mkdir -p "edge-deploy/${fn}"
