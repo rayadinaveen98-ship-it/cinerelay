@@ -7,17 +7,15 @@ Date: 2026-09-16
 **Phase 0 — Product Foundation: COMPLETE**  
 **Phase 1 — Intelligence Core Skeleton: COMPLETE + merged to `main`**  
 **Phase 2 — YouTube Production Connector: COMPLETE / PRODUCTION-VERIFIED / merged to `main`**  
-**Phase 3 — Internal Web Intelligence Console: COMPLETE / HOSTED / BROWSER-VERIFIED / READY TO MERGE**
+**Phase 3 — Internal Web Intelligence Console: COMPLETE / HOSTED / BROWSER-VERIFIED / merged to `main`**
 
 Phase 2 merged through PR #2 at:
 
 `e757afef33b18572c1438462621d98298d388cb5`
 
-Phase 3 branch:
+Phase 3 merged through PR #3 at:
 
-`phase-3/internal-web-console`
-
-PR: `#3`.
+`41c40c82b3bde93d8772095b15ad4ede7e170537`
 
 ## Production ingestion baseline
 
@@ -52,19 +50,17 @@ Production correction state remains clean:
 - active operator overrides `0`;
 - ADMIN audit actions `0`.
 
-## CI / engineering proof
+## Final CI / engineering proof
 
-CI #181 / run `34990528085` passed:
+CI #185 / run `35058385449` passed on the final completion head `b9c6cdb35adea213093f244c9f3ec2845214e566`:
 
-- fresh migrations;
-- 53 pgTAP tests;
-- DB lint;
-- intelligence/connectors;
-- all ten Edge Functions;
-- environment-bound web build;
-- Cloudflare static-host/browser-config/secret checks.
-
-The documentation-consistent head `3c8e6f690d1f889f4a58afa5ec94cca3e576a52d` then passed CI #183 / run `34991225255` across all four jobs.
+- intelligence/connectors PASS;
+- web-console PASS;
+- all ten Edge Functions PASS;
+- fresh migrations PASS;
+- 53 pgTAP tests PASS;
+- DB lint PASS;
+- Cloudflare static-host/browser-config/secret checks PASS.
 
 ## Cloudflare + real operator proof
 
@@ -95,13 +91,12 @@ Git and hosted production use the same sequence:
 
 ## Phase-3 exit result
 
-Phase 3 exit criteria are satisfied. The remaining release action is organizational rather than implementation work:
+Phase 3 exit criteria are satisfied and PR #3 is merged to `main`.
 
-1. run CI on the final completion-doc head;
-2. mark PR #3 ready;
-3. merge PR #3 into `main`;
-4. switch Cloudflare Pages production branch from `phase-3/internal-web-console` to `main`;
-5. verify one successful automatic deployment from `main`.
+Remaining release bookkeeping:
+
+1. switch Cloudflare Pages production branch from `phase-3/internal-web-console` to `main`;
+2. verify one successful automatic deployment from `main`.
 
 ## Guardrails
 
