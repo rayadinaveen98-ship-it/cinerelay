@@ -7,7 +7,8 @@ Date: 2026-09-16
 **Phase 0 — Product Foundation: COMPLETE**  
 **Phase 1 — Intelligence Core Skeleton: COMPLETE + merged to `main`**  
 **Phase 2 — YouTube Production Connector: COMPLETE / PRODUCTION-VERIFIED / merged to `main`**  
-**Phase 3 — Internal Web Intelligence Console: COMPLETE / HOSTED / BROWSER-VERIFIED / merged to `main`**
+**Phase 3 — Internal Web Intelligence Console: COMPLETE / HOSTED / BROWSER-VERIFIED / merged to `main`**  
+**Phase 4 — Free Source Expansion: ACTIVE**
 
 Phase 2 merged through PR #2 at:
 
@@ -17,11 +18,19 @@ Phase 3 merged through PR #3 at:
 
 `41c40c82b3bde93d8772095b15ad4ede7e170537`
 
+Phase 4 branch:
+
+`phase-4/free-source-expansion`
+
 ## Production ingestion baseline
+
+YouTube production ingestion remains:
 
 `official uploads playlist -> authoritative discovery -> targeted videos.list enrichment -> raw/revision persistence -> intelligence processing`
 
 WebSub remains a best-effort accelerator, not a correctness dependency.
+
+The Phase-4 design extends the same evidence/intelligence pipeline rather than introducing a separate feed silo.
 
 ## Phase 3 delivered surface
 
@@ -45,12 +54,7 @@ Hosted runtime includes:
 - `process-raw-item-worker` v10 ACTIVE;
 - `cinerelay-review-api` v1 ACTIVE.
 
-Production correction state remains clean:
-
-- active operator overrides `0`;
-- ADMIN audit actions `0`.
-
-## Final CI / engineering proof
+## Final Phase-3 CI / engineering proof
 
 CI #185 / run `35058385449` passed on the final completion head `b9c6cdb35adea213093f244c9f3ec2845214e566`:
 
@@ -62,50 +66,58 @@ CI #185 / run `35058385449` passed on the final completion head `b9c6cdb35adea21
 - DB lint PASS;
 - Cloudflare static-host/browser-config/secret checks PASS.
 
-## Cloudflare + real operator proof
-
 Cloudflare Pages is live at:
 
 `https://cinerelay-console.pages.dev`
 
-Real hosted flow is verified:
+Cloudflare production branch has been switched to `main`.
 
-1. genuine Supabase magic-link login succeeded from Cloudflare;
-2. authenticated non-operator was denied console access before allowlisting;
-3. that exact real Auth user was activated in `operator_users`;
-4. the signed-in browser then loaded the production console successfully;
-5. `/feed` deep-link and refresh preserve session state;
-6. Overview, Live feed, event detail/timeline, Sources & ops, System health and review surfaces were checked in the real browser.
+## Phase 4 — active work
 
-Hosted operator count is now `1`.
+### P4.1 Generic RSS/Atom connector foundation
 
-No production correction was fabricated to satisfy QA.
+Currently implemented on the Phase-4 branch:
 
-## Migration parity
+- generic RSS/Atom parser package;
+- conditional HTTP support (`ETag`, `If-None-Match`, `Last-Modified`, `If-Modified-Since`);
+- adaptive poll classes and failure backoff;
+- per-domain request/rate-limit state;
+- feed source state + service-role registration RPC;
+- RSS/Atom fixtures and connector canaries;
+- pgTAP feed registration/security tests;
+- internal `feed-poll-worker`;
+- normal raw-item/revision/processing integration;
+- scheduler-dispatch `feed-poll` action;
+- hosted 5-minute scheduler wakeup definition with worker-enforced adaptive cadence;
+- CI wiring for package, worker and database validation.
 
-Git and hosted production use the same sequence:
+Nothing from P4.1 has been applied to production yet. Full CI must pass first, followed by a deliberately small official-feed hosted canary.
 
-1. `20260915115439_operator_review_workflow`
-2. `20260915115543_noop_verify_operator_review_workflow`
-3. `20260915115553_operator_review_workflow_verify_cleanup`
+## Phase-4 source priority
 
-## Phase-3 exit result
-
-Phase 3 exit criteria are satisfied and PR #3 is merged to `main`.
-
-Cloudflare Pages production branch has now been switched from `phase-3/internal-web-console` to `main`. This commit intentionally provides a fresh `main` change so the Git integration performs a production deployment from the permanent branch.
-
-Phase 3 is release-closed once that automatic Cloudflare deployment reports success.
+1. official RSS/Atom feeds;
+2. first-party studio/platform press/news pages;
+3. Threads public-profile capabilities where permitted;
+4. Instagram Professional-account capabilities where permitted;
+5. trusted trade/media feeds/pages;
+6. carefully selected additional public pages.
 
 ## Guardrails
 
-Do not expand the completed Phase-3 scope into mass source onboarding, X/Instagram ingestion, broad scraping, public accounts, community features, or paid infrastructure as part of the merge-close step.
+- free-first; no mandatory paid API dependency;
+- official/direct sources first;
+- polite conditional HTTP and per-domain limits;
+- parser breakage must surface as operational health, not silent absence;
+- no broad scraper farm;
+- no authority auto-promotion from discovery alone;
+- source count is not success by itself.
 
 ## Authoritative execution docs
 
+- `docs/07-execution/PHASE4_STATUS.md`
 - `docs/07-execution/PHASE3_STATUS.md`
 - `docs/07-execution/PHASE2_STATUS.md`
-- `docs/07-execution/PHASE2_AUTHORITATIVE_DISCOVERY_PROOF_2026-09-15.md`
-- `docs/07-execution/PHASE2_YOUTUBE_OPERATIONS.md`
+- `docs/01-sources/SOURCE_STRATEGY.md`
+- `docs/06-roadmap/ROADMAP.md`
 
 _Last updated: 2026-09-16_
