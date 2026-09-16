@@ -66,6 +66,11 @@ verify_jwt = false
 [functions.threads-profile-poll-worker]
 verify_jwt = false
 
+# Instagram Business Discovery is also an internal official API connector.
+# Page/Instagram credentials and Graph API version stay in hosted Edge secrets.
+[functions.instagram-business-poll-worker]
+verify_jwt = false
+
 # Database cron calls only this dispatcher. It validates a database-generated
 # Vault token through verify_scheduler_token() and then forwards to a strict
 # allow-list of internal workers using the existing internal admin secret.
