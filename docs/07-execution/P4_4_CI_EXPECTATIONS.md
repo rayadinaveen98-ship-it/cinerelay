@@ -1,0 +1,1 @@
+P4.4 CI must validate the Threads connector package, deterministic connector canaries, the Threads Edge Function type-check/deployment bundle, fresh database migrations, pgTAP security tests, DB lint, and the browser secret-marker check for `THREADS_PROFILE_DISCOVERY_ACCESS_TOKEN`.

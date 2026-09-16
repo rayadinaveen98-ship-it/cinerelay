@@ -1,0 +1,43 @@
+{
+  "data": [
+    {
+      "id": "1003",
+      "media_product_type": "THREADS",
+      "media_type": "VIDEO",
+      "permalink": "https://www.threads.net/@example/post/1003",
+      "username": "example",
+      "text": "The official teaser is out now.",
+      "timestamp": "2026-09-16T09:00:00+0000",
+      "shortcode": "1003",
+      "is_quote_post": false,
+      "has_replies": true,
+      "link_attachment_url": "https://www.youtube.com/watch?v=example"
+    },
+    {
+      "id": "1002",
+      "media_product_type": "THREADS",
+      "media_type": "TEXT_POST",
+      "permalink": "https://www.threads.net/@example/post/1002",
+      "username": "example",
+      "text": "Official teaser tomorrow at 6 PM.",
+      "timestamp": "2026-09-16T08:00:00+0000",
+      "shortcode": "1002",
+      "is_quote_post": false,
+      "has_replies": true,
+      "topic_tag": "Cinema"
+    },
+    {
+      "id": "1001",
+      "media_product_type": "THREADS",
+      "media_type": "IMAGE",
+      "permalink": "https://www.threads.net/@example/post/1001",
+      "username": "example",
+      "text": "First look poster.",
+      "timestamp": "2026-09-15T08:00:00+0000",
+      "shortcode": "1001",
+      "is_quote_post": false,
+      "has_replies": false,
+      "alt_text": "Official first look poster"
+    }
+  ]
+}
