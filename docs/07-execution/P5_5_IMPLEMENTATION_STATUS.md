@@ -2,7 +2,7 @@
 
 Date: 2026-09-16
 
-State: **IMPLEMENTATION IN REVIEW / FRESH CI PENDING / NO HOSTED P5.5 DEPLOYMENT**
+State: **IMPLEMENTATION IN REVIEW / CORRECTED CI PENDING / NO HOSTED P5.5 DEPLOYMENT**
 
 Branch:
 
@@ -11,6 +11,10 @@ Branch:
 Parent:
 
 `phase-5/creator-radar` @ `8a6422559cfa2852a00eaba549c866669b318d8f`
+
+Draft PR:
+
+`#15 — Phase 5.5: evidence-backed concise summaries`
 
 Implemented so far:
 
@@ -30,20 +34,25 @@ Implemented so far:
 - internal `evidence-summary-worker` using the existing internal secret;
 - scheduler allow-list action `evidence-summary`, with no cron enabled;
 - CI type-check/deployment-native bundle coverage;
-- 40 pgTAP assertions covering withholding, ready summaries, conflict surfacing, evidence ordering, RLS/privileges, bounded refresh, same-transaction stale rebuild and idempotency.
+- 42 pgTAP assertions covering withholding, ready summaries, conflict surfacing, evidence ordering, RLS/privileges, bounded refresh, same-transaction stale rebuild and idempotency.
+
+## CI #327 bookkeeping finding
+
+Fresh CI #327 successfully applied the P5.5 migration and passed intelligence, web and Edge—including the new summary worker and deployment-native bundle. The P5.5 pgTAP file executed **42 behavior assertions and all 42 passed**, but its TAP plan declared 40, so the database job correctly failed on plan mismatch.
+
+No production SQL or runtime logic changed. The test plan was corrected from 40 to 42.
 
 Next gate:
 
-1. open stacked draft PR on P5.4;
-2. run all four CineRelay CI jobs;
-3. fix migration/pgTAP/type-check issues without weakening the evidence contract;
-4. only after fresh CI is green, apply the migration to hosted Supabase;
-5. reconcile Supabase's canonical migration version into Git;
-6. rerun canonical CI;
-7. deploy exact CI-built summary worker + updated scheduler artifact;
-8. verify hosted RLS/privilege/zero-side-effect/advisor state;
-9. run a controlled transactional summary/provenance/stale-refresh/idempotency proof;
-10. keep unattended summary cron disabled until separately approved operationally.
+1. run corrected all-four-job CineRelay CI;
+2. require all 42 P5.5 assertions green;
+3. only after corrected CI is green, apply the migration to hosted Supabase;
+4. reconcile Supabase's canonical migration version into Git;
+5. rerun canonical CI;
+6. deploy exact CI-built summary worker + updated scheduler artifact;
+7. verify hosted RLS/privilege/zero-side-effect/advisor state;
+8. run a controlled transactional summary/provenance/stale-refresh/idempotency proof;
+9. keep unattended summary cron disabled until separately approved operationally.
 
 Design:
 
