@@ -4,19 +4,17 @@ Date: 2026-09-16
 
 ## Overall state
 
-**Phase 3: COMPLETE / BROWSER-VERIFIED / READY TO MERGE**
+**Phase 3: COMPLETE / HOSTED / BROWSER-VERIFIED / MERGED TO `main`**
 
 Phase 2 is production-verified and merged to `main` through PR #2 at:
 
 `e757afef33b18572c1438462621d98298d388cb5`
 
-Phase 3 branch:
+Phase 3 merged through PR #3 at:
 
-`phase-3/internal-web-console`
+`41c40c82b3bde93d8772095b15ad4ede7e170537`
 
-PR: `#3`.
-
-The CineRelay internal console is now implemented, hosted, authenticated, operator-gated, and verified in a real browser against production data.
+The CineRelay internal console is implemented, hosted, authenticated, operator-gated, browser-verified against production data, and now part of `main`.
 
 ## Production ingestion baseline
 
@@ -79,89 +77,65 @@ WebSub remains a best-effort low-latency accelerator rather than a correctness d
 - mutation tables/RPCs restricted to `service_role`;
 - separate authenticated `cinerelay-review-api`.
 
-Hosted P3.5 runtime:
+Hosted runtime:
 
+- `cinerelay-console-api` v5 ACTIVE;
 - `process-raw-item-worker` v10 ACTIVE;
 - `cinerelay-review-api` v1 ACTIVE;
-- production active overrides remain `0`;
-- production ADMIN audit actions remain `0`;
-- no production correction was fabricated for QA.
+- active production overrides remain `0`;
+- production ADMIN audit actions remain `0`.
 
 ## P3.6 — Hosting, security and browser verification
-
-### Engineering baseline
-
-CI #181 / run `34990528085` passed all four jobs on the deployable environment-bound build:
-
-- fresh database migration startup PASS;
-- all 53 pgTAP tests PASS;
-- DB lint PASS;
-- intelligence/connectors PASS;
-- all ten Edge Functions PASS;
-- environment-bound web build PASS;
-- Cloudflare static-host/browser-config/secret checks PASS.
-
-Deployable web artifact:
-
-- artifact `10405273418`;
-- digest `sha256:e22653caf259c8e5ab68542ca5bc7c48234bb527365c95d179425e4934de7601`.
-
-The documentation-consistent head `3c8e6f690d1f889f4a58afa5ec94cca3e576a52d` then passed CI #183 / run `34991225255` across all four jobs.
-
-### Cloudflare Pages
 
 Cloudflare Pages is live at:
 
 `https://cinerelay-console.pages.dev`
 
-Configuration:
+Configuration used for Phase-3 QA:
 
 - framework: React (Vite);
 - root: `apps/web`;
 - build: `npm run build`;
 - output: `dist`;
-- production branch during Phase-3 QA: `phase-3/internal-web-console`;
-- build-time browser values limited to `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`, and pinned Node version.
+- production branch during QA: `phase-3/internal-web-console`;
+- browser build values limited to `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`, and pinned Node version.
 
-Cloudflare's GitHub integration also reported the deployment successful on PR #3.
-
-### Genuine auth/operator proof
-
-A real hosted Supabase user completed the normal magic-link flow from the Cloudflare site.
-
-Observed sequence:
+Real hosted auth/operator flow was verified:
 
 1. genuine magic-link login succeeded;
-2. signed-in user was correctly denied console data before allowlisting;
-3. the same Auth user was inserted into `operator_users` with `active = true`;
-4. browser refresh immediately loaded the real CineRelay console/live feed;
+2. signed-in non-operator was denied console data before allowlisting;
+3. the same Auth user was activated in `operator_users`;
+4. browser refresh loaded the real CineRelay console/live feed;
 5. `/feed` deep-link and refresh remained authenticated;
-6. operator allowlist count is now `1`.
+6. operator allowlist count became `1`.
 
-Existing negative API canaries remain valid:
+The signed-in operator verified:
 
-- request `3634` -> `401 authentication_required`;
-- request `3635` -> `401 invalid_session`.
-
-Post-allowlist hosted state:
-
-- active operators: `1`;
-- active operator resolution overrides: `0`;
-- ADMIN audit actions: `0`;
-- current review queue: `18` at the last check.
-
-### Browser QA
-
-The signed-in operator verified the live Cloudflare console in a real desktop browser:
-
-- Overview loads correctly;
-- Live feed loads production intelligence;
-- event detail/timeline works;
-- Sources & ops loads source/health/review information;
-- System health loads;
-- `/feed` refresh preserves the authenticated session.
+- Overview;
+- Live feed;
+- event detail/timeline;
+- Sources & ops;
+- System health;
+- review surfaces;
+- session persistence on refresh.
 
 No destructive or corrective production action was performed merely to satisfy QA.
+
+## Final CI proof
+
+CI #185 / run `35058385449` passed on final completion head:
+
+`b9c6cdb35adea213093f244c9f3ec2845214e566`
+
+Passed gates:
+
+- intelligence/connectors;
+- web-console;
+- all ten Edge Functions;
+- fresh database migration startup;
+- all 53 pgTAP tests;
+- DB lint;
+- Cloudflare static-host/browser-config/secret checks.
 
 ## Migration parity
 
@@ -175,9 +149,9 @@ Git and hosted production use the same order:
 
 Phase 3 exit criteria are satisfied: an authenticated allowlisted operator can use the hosted console to inspect production ingestion and intelligence, trace evidence, review unresolved work, inspect operations health, reload persistent backend state, and access controlled audited correction tools without privileged browser credentials or required recurring infrastructure cost.
 
-## Post-merge action
+## Remaining release bookkeeping
 
-After PR #3 merges to `main`, change Cloudflare Pages production branch from:
+Cloudflare Pages must now switch its production branch from:
 
 `phase-3/internal-web-console`
 
@@ -185,6 +159,6 @@ to:
 
 `main`
 
-Then verify one automatic production deployment from `main`.
+Then verify one successful automatic deployment from `main`.
 
 _Last updated: 2026-09-16_
