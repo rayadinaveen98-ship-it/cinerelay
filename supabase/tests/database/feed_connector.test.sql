@@ -1,7 +1,7 @@
 begin;
 
 create extension if not exists pgtap with schema extensions;
-select plan(10);
+select plan(11);
 
 insert into public.sources (id, display_name, authority_tier, source_role)
 values ('41000000-0000-4000-8000-000000000001', 'Feed Test Studio', 1, 'STUDIO');
@@ -18,6 +18,17 @@ insert into public.source_identities (
   'FEED',
   '{}'::jsonb,
   true
+);
+
+select throws_ok(
+  $$select public.register_feed_source(
+    '42000000-0000-4000-8000-000000000001'::uuid,
+    'http://studio.example.com/feed.xml'::text,
+    'feed-parser-v1'::text
+  )$$,
+  'P0001',
+  'feed_url_must_be_https',
+  'feed registration rejects insecure HTTP URLs'
 );
 
 select lives_ok(
