@@ -259,7 +259,7 @@ Deno.serve(async (request) => {
     const ids = (dueRows as ThreadsState[]).map((row) => row.source_identity_id);
     const { data: identities, error: identityError } = await supabase.from('source_identities')
       .select('id,poll_class,active,handle').in('id', ids).eq('active', true)
-      .eq('platform', 'THREADS').eq('connector_type', 'THREADS_PROFILE_API').eq('access_mode', 'OFFICIAL_API');
+      .eq('platform', 'THREADS').eq('connector_type', 'THREADS_PROFILE_API').eq('access_mode', 'API');
     if (identityError) throw identityError;
     const identityById = new Map<string, SourceIdentity>((identities ?? []).map((row: SourceIdentity) => [row.id, row]));
 
