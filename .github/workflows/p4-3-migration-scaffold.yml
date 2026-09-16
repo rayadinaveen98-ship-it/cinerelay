@@ -1,0 +1,28 @@
+name: P4.3 migration scaffold
+
+on:
+  push:
+    branches:
+      - phase-4/source-discovery-candidates
+
+permissions:
+  contents: read
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - name: Generate source discovery migration
+        run: supabase migration new source_discovery_candidates
+      - name: Upload migration scaffold
+        uses: actions/upload-artifact@v4
+        with:
+          name: p4-3-migration-scaffold
+          path: supabase/migrations/*_source_discovery_candidates.sql
+          if-no-files-found: error
+          retention-days: 1
