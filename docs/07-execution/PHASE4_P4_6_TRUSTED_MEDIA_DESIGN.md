@@ -72,7 +72,7 @@ A source is not eligible for the real P4.6 canary merely because its RSS endpoin
 
 The Indian Express entertainment/Telugu RSS feed was researched as an India-focused publisher-owned candidate. Its own RSS directory states feed consumption is strictly for personal and non-commercial use and that reuse requires appropriate permission/licensing. It is therefore **research-only / blocked for the P4.6 production canary unless the relevant rights are obtained**.
 
-P4.6 will instead wait for a publisher-owned/trusted-media RSS source whose stated terms or explicit permission are compatible with the intended monitoring/use. Absence of a visible restriction alone is not treated as affirmative permission when the usage context is material.
+P4.6 will instead wait for a publisher-owned/trusted-media RSS source whose stated terms or explicit permission are compatible with the intended monitoring/use. A technically reachable feed or absence of an obvious restriction is not by itself enough to promote a source when usage rights remain unclear.
 
 ## Release gates
 
