@@ -132,6 +132,7 @@ jobs:
               --target=es2022 \
               --minify \
               --external:@supabase/supabase-js \
+              --external:node-html-parser \
               --outfile="edge-deploy/${fn}/index.js"
             cp "supabase/functions/${fn}/deno.json" "edge-deploy/${fn}/deno.json"
           done
