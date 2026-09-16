@@ -23,7 +23,7 @@ insert into public.source_discovery_candidates (
 select ok(
   not has_function_privilege(
     'authenticated',
-    'public.operator_promote_media_feed_candidate(uuid,uuid,smallint,text,text)',
+    'public.operator_promote_media_feed_candidate(uuid,uuid,integer,text,text)',
     'EXECUTE'
   ),
   'authenticated users cannot invoke media-feed promotion RPC directly'
