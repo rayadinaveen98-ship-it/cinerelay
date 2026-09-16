@@ -8,13 +8,10 @@ Date: 2026-09-16
 
 Phase 3 is complete, hosted, browser-verified and merged to `main` through PR #3.
 
-Active branch:
+Phase-4 branches / PRs:
 
-`phase-4/free-source-expansion`
-
-Draft PR:
-
-`#4 — Phase 4: free source expansion / RSS Atom foundation`
+- `phase-4/free-source-expansion` — draft PR #4, P4.1 RSS/Atom foundation;
+- `phase-4/first-party-pages` — draft PR #5 stacked on PR #4, P4.2 first-party HTML/newsroom foundation.
 
 ## Goal
 
@@ -29,209 +26,257 @@ Locked source priority:
 5. trusted trade/media feeds/pages;
 6. carefully selected additional public pages.
 
+---
+
 ## P4.1 — Generic RSS/Atom connector foundation
 
 **Implementation complete / hosted engineering proof complete / one real official-new-item release gate pending.**
 
 ### Implemented
 
-- `packages/feed-connector` TypeScript package;
-- RSS 2.0 + Atom parsing;
-- normalized feed-entry contract and HTML-to-text normalization;
-- stable item identity selection;
+- generic RSS 2.0 + Atom parsing;
+- normalized entry contract and stable identity;
 - first-poll baseline with no historical replay;
-- later-poll delta planning;
-- visible `FEED_WINDOW_GAP` recovery when the previous stable id falls outside the fetched window;
-- conditional request validators (`ETag` / `Last-Modified`);
-- adaptive poll intervals for `HOT_5M`, `ACTIVE_15M`, `NORMAL_60M`, `COLD_6H`, `DAILY`;
-- exponential failure backoff capped at one day;
-- `Retry-After` handling;
-- HTTPS-only registration plus private/local-host and redirect revalidation guards;
-- RSS + Atom fixtures and connector/delta canaries;
-- hosted two-version synthetic transport fixtures retained as regression fixtures;
-- `feed_source_state` database state;
-- `connector_domain_state` per-domain request/rate-limit state;
-- RLS on connector-state tables;
-- service-role-only `register_feed_source(...)` RPC;
-- pgTAP registration/security coverage;
-- internal `feed-poll-worker` Edge Function;
-- normal `raw_items` / `raw_item_revisions` / `PROCESS_RAW_ITEM` integration;
-- processor backward compatibility for minimal `{ rawItemId }` jobs while validating conflicting source IDs;
-- connector run history + source health;
-- scheduler dispatcher `feed-poll` action;
-- hosted five-minute dispatcher wakeup with worker-enforced adaptive cadence;
-- CI coverage for feed package, feed/processor contract, Edge type-checking/bundling and fresh migrations.
+- delta planning + visible `FEED_WINDOW_GAP` recovery;
+- ETag / Last-Modified conditional requests;
+- adaptive polling, exponential backoff and `Retry-After`;
+- HTTPS-only registration plus private/local-host and redirect guards;
+- shared per-domain request/rate-limit state;
+- RLS + service-role-only connector state and registration;
+- normal `raw_items -> raw_item_revisions -> PROCESS_RAW_ITEM` integration;
+- source health + connector-run telemetry;
+- five-minute scheduler heartbeat with worker-enforced source cadence;
+- processor contract hardening for cross-connector jobs.
 
-## Green engineering baselines
+### Hosted production
 
-Initial hosted rollout:
-
-- `CineRelay CI #200`
-- run id `35060068842`
-- head `51c8930718c9382b8a2c63e08db7e97d9c60dfae`
-- all jobs PASS.
-
-Processor-contract hardening after hosted synthetic proof exposed an integration mismatch:
-
-- `CineRelay CI #210`
-- run id `35062375532`
-- head `9bf373b0e7f67f1c813875360e0e49de4e19d229`
-- intelligence/connectors + processing-contract regression canary PASS;
-- web-console PASS;
-- all eleven Edge Functions PASS;
-- fresh migrations + pgTAP + DB lint PASS;
-- deployment-native Edge bundle PASS.
-
-#210 deployment artifacts:
-
-- edge source artifact `10433440612`, digest `sha256:f6956e10f554ecd09fcadc4431bbeed23b7c71bdd4086458bfea683dad1c858d`;
-- deployment-native artifact `10433251440`, digest `sha256:11ec636a31e670e0d27d6251d9fbf57d396b80d5e218568eb0bc52415dbffaae`.
-
-## Hosted production state
-
-Hosted migration ledger:
+Migration ledger:
 
 `20260916053710_generic_feed_connector`
 
-Active relevant runtime:
+Runtime:
 
 - `feed-poll-worker` v1 ACTIVE;
-- `cinerelay-scheduler-dispatch` v2 ACTIVE;
-- `process-raw-item-worker` v11 ACTIVE, deployed from the green #210 deployment-native artifact.
+- `process-raw-item-worker` v11 ACTIVE;
+- scheduler dispatcher is now v3 because P4.2 added the page action; existing feed action remains active.
 
-Hosted feed cron:
+Feed cron:
 
-- job id `5`;
-- name `cinerelay-feed-poll`;
-- schedule `*/5 * * * *`.
+- job `5`;
+- `cinerelay-feed-poll`;
+- `*/5 * * * *`.
 
-The cron is only a scheduler heartbeat. External request cadence remains controlled by each source's `next_check_at`, poll class and per-domain spacing/rate limits.
+### Official canary — The Walt Disney Company
 
-## Official production canary — The Walt Disney Company
+- official feed: `https://thewaltdisneycompany.com/feed/`;
+- source identity: `3ac40489-7669-403f-9433-8fbfa8346a63`;
+- authority tier `1`;
+- poll class `ACTIVE_15M`.
 
-- canonical newsroom: `https://thewaltdisneycompany.com/news/`
-- official feed: `https://thewaltdisneycompany.com/feed/`
-- source identity: `3ac40489-7669-403f-9433-8fbfa8346a63`
-- authority tier: `1`
-- connector: `RSS_ATOM`
-- access mode: `FEED`
-- initial poll class: `ACTIVE_15M`.
+Proven:
 
-### Baseline poll — PASS
-
-At `2026-09-16 05:50:50 UTC`:
-
-- HTTP `200`;
-- 50 existing entries observed;
-- newest stable id baselined;
+- first request HTTP 200, 50 historical entries observed, zero historical import;
 - ETag + Last-Modified captured;
-- raw items created: `0`;
-- connector run `SUCCEEDED`;
+- second request HTTP 304 with zero duplicate work;
+- later HTTP 200 full-body unchanged responses also produce zero duplicates;
+- health remains HEALTHY and `gap_count = 0`;
+- scheduler heartbeat succeeds without forcing early source requests;
+- hosted synthetic two-version transport canary proved exactly one raw item + one revision + successful truthful processing + duplicate-free repeat;
+- synthetic production test data was deleted after proof.
+
+Latest Disney check during P4.2 rollout:
+
+- `2026-09-16 06:45:01 UTC`;
+- HTTP 200;
+- stable id unchanged;
+- raw items `0`;
 - health `HEALTHY`;
-- `gap_count = 0`.
+- gap count `0`.
 
-### Conditional poll — PASS
+Still pending before PR #4 merge:
 
-At `2026-09-16 05:51:51 UTC`:
+A genuinely new official Disney feed entry published after the baseline must pass the same raw/revision/processing/idempotency path. Synthetic proof does not replace this authority/evidence gate.
 
-- HTTP `304 Not Modified`;
-- connector run `SUCCEEDED`;
-- items seen/new/changed `0 / 0 / 0`;
-- raw items remained `0`;
-- `consecutive_not_modified = 1`;
-- health remained `HEALTHY`;
-- `gap_count = 0`.
-
-### Natural unchanged full-body repeat — PASS
-
-At `2026-09-16 06:10:01 UTC`, Disney returned HTTP `200` instead of 304 but the newest stable id was unchanged. CineRelay still created `0` raw items, kept `gap_count = 0`, and health remained `HEALTHY`.
-
-This proves both conditional-fetch efficiency and body-level duplicate suppression.
-
-## Hosted scheduler proof — PASS
-
-Cron job 5 first fired automatically at `2026-09-16 05:55:00 UTC` with status `succeeded`. Because Disney was not due, the worker made no early provider request. This proves the five-minute cron is a safe heartbeat rather than a forced five-minute source request.
-
-## Hosted synthetic end-to-end transport proof — PASS
-
-A temporary Tier-5 `TEST_CANARY` source was used only to verify transport behavior without fabricating official evidence.
-
-V1 established a baseline with zero historical import. V2 introduced one synthetic delta item.
-
-V2 produced:
-
-- exactly `1` raw item;
-- exactly `1` initial revision;
-- `gap_count = 0`;
-- health `HEALTHY`.
-
-That first processing job exposed a real payload-contract mismatch: the feed producer supplied only `rawItemId`, while the processor required `rawItemId + sourceIdentityId`.
-
-The branch was hardened so:
-
-1. new feed jobs supply both IDs;
-2. the processor can derive the source identity from the authoritative raw row for an older/minimal job;
-3. a conflicting caller-supplied source identity is still rejected.
-
-After CI #210 passed, `process-raw-item-worker` v11 was deployed. The parked synthetic retry then completed:
-
-- state `SUCCEEDED`;
-- attempt `5 / 5`;
-- `last_error = null`;
-- latest resolution `UNRESOLVED`;
-- revision count remained `1`;
-- event evidence `0`.
-
-An unchanged repeat then returned HTTP `304` and left counts at exactly:
-
-- raw items `1`;
-- revisions `1`;
-- processing jobs `1`;
-- event evidence `0`.
-
-The temporary hosted synthetic source/job/raw data was then fully removed. Repository fixture files remain as regression canaries.
-
-Full hosted proof:
+Full P4.1 proof:
 
 `docs/07-execution/PHASE4_P4_1_HOSTED_CANARY_PROOF_2026-09-16.md`
 
-## P4.1 exit gate
+---
 
-Completed:
+## P4.2 — First-party studio/platform newsroom pages
 
-1. connector/unit/delta canaries PASS;
-2. fresh database migration startup + pgTAP + lint PASS;
-3. Edge type-check/bundle PASS;
-4. hosted migration + worker rollout complete;
-5. genuine official RSS source registered;
-6. first-poll anti-backlog behavior proven;
-7. ETag/Last-Modified conditional request proven with real HTTP 304;
-8. unchanged full-body response proven duplicate-free;
-9. source/domain health and adaptive scheduling observable;
-10. hosted new-item raw/revision/processing/idempotency path proven with a non-authoritative synthetic transport canary;
-11. processor cross-connector contract hardened and production-verified;
-12. no mandatory recurring paid API introduced.
+**Implementation complete / hosted baseline + idempotency proof complete / one real official-new-item release gate pending.**
 
-Still pending before release-close / merge:
+P4.2 is intentionally stacked on P4.1 through draft PR #5.
 
-13. a **genuinely new official Disney feed entry** published after the official baseline must be discovered through hosted polling and pass the same raw/revision/processing/idempotency path. Synthetic proof deliberately does not substitute for this authority/evidence gate.
+### Implemented
 
-Do **not** merge PR #4 until that real official-new-item proof exists.
+- `packages/web-page-connector`;
+- pinned `node-html-parser@7.0.1`;
+- declarative parser profiles rather than site-specific scraper code;
+- CSS selector profiles plus resilient `@self` anchor discovery;
+- canonical URL cleanup + tracking parameter removal;
+- URL include/exclude filtering;
+- title/summary/date/author extraction;
+- stable item identity;
+- first-poll anti-backlog baseline;
+- later delta planning + page-window gap detection;
+- structure fingerprinting;
+- `HEALTHY` / `DEGRADED` / `PARSER_BROKEN` drift assessment;
+- duplicate image-first anchor regression protection;
+- conditional HTTP, adaptive polling, exponential backoff and `Retry-After`;
+- HTTPS-only/private-host/redirect safety guards;
+- 5 MB page cap and bounded redirects/timeouts;
+- shared `connector_domain_state` throttling;
+- `page_source_state` service-role-only runtime state;
+- `register_page_source(...)` service-role-only RPC;
+- normal `raw_items -> raw_item_revisions -> PROCESS_RAW_ITEM` integration;
+- `page-poll-worker`;
+- scheduler dispatcher `page-poll` action;
+- hosted five-minute page scheduler heartbeat definition;
+- pgTAP registration/security tests;
+- deployment-native CI bundle with HTML parser externalized through its pinned Deno npm import.
 
-## Next slices after P4.1
+### Green engineering baseline
 
-- **P4.2** first-party studio/platform press/news connector framework;
-- parser versioning + drift detection for HTML sources;
-- source-discovery candidate workflow;
-- larger curated India-first source expansion only after reliability is measured.
+Production-eligible CI:
+
+- `CineRelay CI #229`;
+- run id `35066491404`;
+- head `38ca4ca383eb62c9718756af253e2fc6ee51cbf2`;
+- intelligence/connectors PASS;
+- web console PASS;
+- all Edge checks PASS;
+- `page-poll-worker` type-check PASS;
+- deployment-native bundle PASS;
+- fresh migrations + pgTAP + DB lint PASS.
+
+#229 artifacts:
+
+- Edge source `10434531734`, digest `sha256:db211cb7ac22019496b53870dc43771a1cc7c549ef5de398d00ef04713bdeef1`;
+- Edge deploy `10434178224`, digest `sha256:1a47b6957781d392015d0bf3bd6b6f9aa165014809b5bf792c14ff86e6006bd1`.
+
+### Hosted production
+
+Migration ledger:
+
+`20260916065601_first_party_page_connector`
+
+Git migration history was reconciled to that exact hosted version.
+
+Runtime:
+
+- `page-poll-worker` v1 ACTIVE;
+- `cinerelay-scheduler-dispatch` v3 ACTIVE;
+- `process-raw-item-worker` v11 ACTIVE.
+
+Page cron:
+
+- job `6`;
+- `cinerelay-page-poll`;
+- `*/5 * * * *`.
+
+Supabase security/performance advisors found no new blocking P4.2 issue. `page_source_state` has the expected informational RLS-with-no-policy notice because it is intentionally service-role-only with direct `public`, `anon` and `authenticated` access revoked.
+
+### Official India-first canary — About Amazon India / Prime Video
+
+Official page:
+
+`https://www.aboutamazon.in/news/tag/prime-video`
+
+CineRelay identity:
+
+- source id `070f383a-721f-4e07-8f59-2674be453d79`;
+- source identity `60e520f8-7840-46b9-b09e-d8a507d3c339`;
+- authority tier `1`;
+- source role `OTT_PLATFORM`;
+- territory `IN`;
+- platform `WEB`;
+- connector `FIRST_PARTY_HTML`;
+- access mode `PUBLIC_WEB`;
+- poll class `ACTIVE_15M`.
+
+The parser profile is URL-pattern driven and does not depend on volatile visual card classes.
+
+#### Fail-closed profile proof
+
+The first stored profile accidentally over-escaped the dots in its JavaScript URL regex.
+
+At `2026-09-16 07:09:11 UTC`:
+
+- HTTP 200;
+- extracted items `0`;
+- configured minimum `5`;
+- health became `PARSER_BROKEN`;
+- error `PAGE_SELECTOR_UNDER_MINIMUM`;
+- connector run FAILED;
+- raw items remained `0`;
+- baseline remained null.
+
+This proved bad parser configuration fails closed rather than advancing the baseline or ingesting incorrect data.
+
+The profile was corrected and versioned as `about-amazon-india-prime-video-v2`; the failure history was preserved.
+
+#### Corrected baseline — PASS
+
+At `2026-09-16 07:10:18 UTC`:
+
+- HTTP 200;
+- `12` official articles parsed;
+- newest official article URL baselined;
+- structure fingerprint `7352c78a`;
+- run SUCCEEDED;
+- health HEALTHY;
+- gap count `0`;
+- raw items `0`;
+- revisions `0`.
+
+This proves first-party page onboarding does not replay historical archives.
+
+#### Unchanged full-body repeat — PASS
+
+At `2026-09-16 07:11:04 UTC` About Amazon returned HTTP 200 again.
+
+CineRelay parsed the same 12 items and kept:
+
+- items new `0`;
+- raw items `0`;
+- revisions `0`;
+- processing jobs `0`;
+- gap count `0`;
+- health HEALTHY.
+
+This proves body-level idempotency even when the provider does not answer 304.
+
+Full P4.2 proof:
+
+`docs/07-execution/PHASE4_P4_2_HOSTED_CANARY_PROOF_2026-09-16.md`
+
+### P4.2 remaining release gate
+
+Before P4.2 can be release-closed, a genuinely new official About Amazon India Prime Video page item must appear after the baseline and prove exactly-once raw/revision/job processing plus duplicate-free repeat. Canonical intelligence must only be created when existing resolution/classification contracts justify it.
+
+PR #5 remains draft while that proof is pending, and it remains stacked on PR #4 until P4.1 is ready to land.
+
+---
+
+## Next Phase-4 work
+
+While P4.1/P4.2 real-new-item gates are being monitored by their hosted schedulers, the next planned expansion slices are:
+
+- curated source-discovery candidate workflow;
+- larger India-first official source graph only after reliability measurements;
+- additional permitted free source capabilities in locked priority order.
 
 ## Guardrails
 
 - official/direct sources first;
-- do not use aggressive scraping;
-- respect conditional HTTP, rate limits and source-specific cadence;
-- parser failures must become visible health errors rather than silent data loss;
+- no aggressive scraper farm;
+- conditional HTTP and polite source-specific cadence;
+- parser/provider failures must become visible health errors;
+- parsing uncertainty must fail closed rather than silently advance state;
 - do not auto-promote discovered identities to trusted authority;
-- source count is not a success metric; precision, recall, latency and connector health are.
+- synthetic canaries may prove engineering transport but never substitute for official evidence gates;
+- source count is not a success metric; precision, recall, latency, idempotency and connector health are.
 
 _Last updated: 2026-09-16_
