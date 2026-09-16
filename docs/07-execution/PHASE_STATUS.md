@@ -1,154 +1,117 @@
 # Phase Status
 
-Date: 2026-09-15
+Date: 2026-09-16
 
 ## Current status
 
 **Phase 0 — Product Foundation: COMPLETE**  
 **Phase 1 — Intelligence Core Skeleton: COMPLETE + merged to `main`**  
-**Phase 2 — YouTube Production Connector: COMPLETE / PRODUCTION-VERIFIED / READY TO MERGE**  
-**Phase 3 — Internal Web Intelligence Console: UNLOCKED after PR #2 merges**
+**Phase 2 — YouTube Production Connector: COMPLETE / PRODUCTION-VERIFIED / merged to `main`**  
+**Phase 3 — Internal Web Intelligence Console: COMPLETE / HOSTED / BROWSER-VERIFIED / READY TO MERGE**
 
-CineRelay now has a real hosted backend, unattended recurring workers, official YouTube ingestion, authoritative uploads-playlist discovery, optional WebSub acceleration, canonical intelligence processing, production source health, quota controls, and a production-proven zero-gap WebSub renewal lifecycle.
+Phase 2 merged through PR #2 at:
 
-## Final Phase-2 architecture
+`e757afef33b18572c1438462621d98298d388cb5`
 
-The correctness path is:
+Phase 3 branch:
+
+`phase-3/internal-web-console`
+
+PR: `#3`.
+
+## Production ingestion baseline
 
 `official uploads playlist -> authoritative discovery -> targeted videos.list enrichment -> raw/revision persistence -> intelligence processing`
 
-WebSub remains active as a best-effort low-latency accelerator. Repeated provider-side push misses no longer make CineRelay lose data or block the roadmap.
+WebSub remains a best-effort accelerator, not a correctness dependency.
 
-Per-source discovery cadence:
+## Phase 3 delivered surface
 
-- WebSub-degraded/hot source: 5 minutes
-- normal source: 15 minutes
-- provider/API/quota backoff: 30 minutes
+- secure React/TypeScript/Vite internal console;
+- Supabase magic-link Auth + server-side `operator_users` allowlist;
+- live canonical intelligence feed;
+- event/evidence detail, raw revisions and entity timeline;
+- source registry, health, authoritative discovery, WebSub, quota, worker and scheduler diagnostics;
+- latest unresolved/ambiguous review queue;
+- durable operator resolution overrides;
+- bind existing entity or create missing MOVIE/SERIES/SEASON;
+- source candidate learning with `OPERATOR_REVIEW`;
+- normal reprocessing after correction;
+- audited clear/suppress/reclassify/merge operations;
+- separate authenticated review API;
+- direct mutation RPCs restricted to `service_role`.
 
-The hosted discovery dispatcher runs every 5 minutes and services only rows that are due.
+Hosted runtime includes:
 
-## Phase 2 branch
+- `cinerelay-console-api` v5 ACTIVE;
+- `process-raw-item-worker` v10 ACTIVE;
+- `cinerelay-review-api` v1 ACTIVE.
 
-- branch: `phase-2/youtube-connector`
-- PR: `#2`
-- hosted project: `CineRelay`
-- Supabase ref: `dnqaejljfzwhsainpdxb`
-- region: `ap-south-1`
-- recurring infrastructure cost: **₹0/month**
+Production correction state remains clean:
 
-## Production proof
+- active operator overrides `0`;
+- ADMIN audit actions `0`.
 
-### Canonical intelligence
+## CI / engineering proof
 
-Mythri Movie Makers video `rfP-ArN8nds`:
+CI #181 / run `34990528085` passed:
 
-- resolved to **Family Pack** at `0.98`;
-- classified `PROJECT_ANNOUNCED`;
-- verification `OFFICIAL`;
-- priority `HIGH`;
-- primary evidence attached;
-- replay deduped to exactly one canonical event.
+- fresh migrations;
+- 53 pgTAP tests;
+- DB lint;
+- intelligence/connectors;
+- all ten Edge Functions;
+- environment-bound web build;
+- Cloudflare static-host/browser-config/secret checks.
 
-### Authoritative discovery
+The documentation-consistent head `3c8e6f690d1f889f4a58afa5ec94cca3e576a52d` then passed CI #183 / run `34991225255` across all four jobs.
 
-Production scheduler request `2975` checked all four pilot sources through the new authoritative discovery worker:
+## Cloudflare + real operator proof
 
-- due `4`
-- checked `4`
-- discovered uploads `1`
-- gap sources `0`
-- quota units `13 -> 17`
-- discovery mode `UPLOADS_PLAYLIST_PRIMARY`
-- WebSub role `ACCELERATOR`
+Cloudflare Pages is live at:
 
-It found real Haarika & Hassine Creations upload `C6R0LkeURFo` and automatically completed enrichment plus downstream processing. The current source scope truthfully produced `UNRESOLVED / 0` rather than inventing an entity match.
+`https://cinerelay-console.pages.dev`
 
-### Adaptive cadence
+Real hosted flow is verified:
 
-The same production canary proved:
+1. genuine Supabase magic-link login succeeded from Cloudflare;
+2. authenticated non-operator was denied console access before allowlisting;
+3. that exact real Auth user was activated in `operator_users`;
+4. the signed-in browser then loaded the production console successfully;
+5. `/feed` deep-link and refresh preserve session state;
+6. Overview, Live feed, event detail/timeline, Sources & ops, System health and review surfaces were checked in the real browser.
 
-- Geetha Arts -> 5-minute hot cadence after `WEBSUB_MISSED_DELIVERY`
-- Haarika & Hassine Creations -> 5-minute hot cadence after its newly observed WebSub miss
-- Mythri Movie Makers -> 15-minute normal cadence
-- Sithara Entertainments -> 15-minute normal cadence
+Hosted operator count is now `1`.
 
-### WebSub v9 observability
+No production correction was fabricated to satisfy QA.
 
-A controlled no-token POST, request `2971`, returned the expected `404` and still persisted a `YOUTUBE_WEBSUB_INGRESS` receipt with `tokenState = MISSING`.
+## Migration parity
 
-This closes the previous pre-token diagnostic blind spot. Future real pushes can be distinguished as matched, unknown-token, missing-token, or overlong-token ingress before signature/payload validation.
+Git and hosted production use the same sequence:
 
-### Gate B — zero-gap renewal
+1. `20260915115439_operator_review_workflow`
+2. `20260915115543_noop_verify_operator_review_workflow`
+3. `20260915115553_operator_review_workflow_verify_cleanup`
 
-Previously passed in production:
+## Phase-3 exit result
 
-- generation 2 requested `2026-09-14 14:13:03.525049 UTC`
-- generation 2 verified `2026-09-14 14:13:05.490 UTC`
-- generation 1 remained usable until replacement verification
-- generation 1 became `SUPERSEDED` only after generation 2 became active
-- no usable-lease gap occurred
+Phase 3 exit criteria are satisfied. The remaining release action is organizational rather than implementation work:
 
-The renewal lifecycle remains valuable for WebSub acceleration even though WebSub no longer controls ingestion correctness.
+1. run CI on the final completion-doc head;
+2. mark PR #3 ready;
+3. merge PR #3 into `main`;
+4. switch Cloudflare Pages production branch from `phase-3/internal-web-console` to `main`;
+5. verify one successful automatic deployment from `main`.
 
-## Final quality baseline
+## Guardrails
 
-Implementation head before final documentation commits:
+Do not expand the completed Phase-3 scope into mass source onboarding, X/Instagram ingestion, broad scraping, public accounts, community features, or paid infrastructure as part of the merge-close step.
 
-`58854a4413f35ceb8e7fbca2452b23513f6d8e07`
+## Authoritative execution docs
 
-CineRelay CI `#132` / run `34959975534`: **PASS** across all three jobs.
-
-Validated:
-
-- intelligence-and-connectors: PASS
-- YouTube planning/enrichment/discovery canaries: 15/15
-- all eight Edge Functions: type-check PASS
-- deployment-native bundle: PASS
-- PostgreSQL-17 migration startup: PASS
-- pgTAP: PASS
-- DB lint: PASS
-
-Deployment artifact:
-
-- id `10393330447`
-- digest `sha256:9d8f75d6ab50763056b7e92a9c0235b1b954f512cd4b9366f724ab04aa5b7a17`
-
-Production `youtube-websub` v9 and `youtube-fallback-worker` v9 were deployed from this exact green artifact.
-
-## Phase-2 completion decision
-
-Natural WebSub delivery is no longer an exit gate. It remains an operational metric for accelerator latency and upstream reliability.
-
-Phase 2 is complete because CineRelay now has an unattended, official-source, quota-bounded ingestion path whose correctness does not depend on provider push delivery.
-
-PR #2 should receive one final documentation-consistent CI pass and then merge to `main`.
-
-## Next phase
-
-**Phase 3 — Internal Web Intelligence Console** begins after PR #2 merges.
-
-Planned scope remains:
-
-- authentication;
-- live feed;
-- event detail + evidence;
-- title timeline;
-- source registry;
-- source-health dashboard;
-- review/correction queue;
-- merge/suppress/reclassify tools;
-- filters/search;
-- benchmark diagnostics.
-
-Do not begin broad Android UI, mass source onboarding, X/Instagram ingestion, or broad scraping ahead of the internal web console foundation.
-
-## Authoritative Phase-2 docs
-
+- `docs/07-execution/PHASE3_STATUS.md`
 - `docs/07-execution/PHASE2_STATUS.md`
 - `docs/07-execution/PHASE2_AUTHORITATIVE_DISCOVERY_PROOF_2026-09-15.md`
-- `docs/07-execution/PHASE2_HOSTED_PILOT_WATCH.md`
-- `docs/07-execution/PHASE2_PILOT_INCIDENT_2026-09-14.md`
-- `docs/07-execution/PHASE2_GATE_B_RENEWAL_PROOF_2026-09-14.md`
 - `docs/07-execution/PHASE2_YOUTUBE_OPERATIONS.md`
 
-_Last updated: 2026-09-15_
+_Last updated: 2026-09-16_
