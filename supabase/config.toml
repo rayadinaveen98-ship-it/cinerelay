@@ -115,3 +115,9 @@ verify_jwt = false
 # external provider and requires the independent internal worker secret.
 [functions.digest-compose-worker]
 verify_jwt = false
+
+# Creator Radar is an internal deterministic editorial-assistance worker. It reads
+# canonical event/evidence facts and writes only separate creator_radar_entries.
+# It never changes event verification, priority or notification state.
+[functions.creator-radar-worker]
+verify_jwt = false
