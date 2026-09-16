@@ -27,28 +27,61 @@ class BackendClient(
     fun signOut() = sessionStore.clear()
 
     fun signIn(email: String, password: String): Session {
-        val body = JSONObject()
-            .put("email", email.trim())
-            .put("password", password)
-        val request = Request.Builder()
-            .url("$baseUrl/auth/v1/token?grant_type=password")
-            .header("apikey", publishableKey)
-            .post(body.toString().toRequestBody(jsonType))
-            .build()
-        val response = execute(request)
+        val response = execute(
+            Request.Builder()
+                .url("$baseUrl/auth/v1/token?grant_type=password")
+                .header("apikey", publishableKey)
+                .post(
+                    JSONObject()
+                        .put("email", email.trim())
+                        .put("password", password)
+                        .toString()
+                        .toRequestBody(jsonType),
+                )
+                .build(),
+        )
         if (!response.ok) throw ApiException(response.errorMessage ?: "Sign in failed", response.code)
         return parseAndStoreSession(response.json)
     }
 
+    fun signUp(email: String, password: String): SignUpResult {
+        val response = execute(
+            Request.Builder()
+                .url("$baseUrl/auth/v1/signup")
+                .header("apikey", publishableKey)
+                .post(
+                    JSONObject()
+                        .put("email", email.trim())
+                        .put("password", password)
+                        .toString()
+                        .toRequestBody(jsonType),
+                )
+                .build(),
+        )
+        if (!response.ok) throw ApiException(response.errorMessage ?: "Account creation failed", response.code)
+
+        val accessToken = response.json.optString("access_token")
+        val refreshToken = response.json.optString("refresh_token")
+        if (accessToken.isNotBlank() && refreshToken.isNotBlank()) {
+            return SignUpResult(session = parseAndStoreSession(response.json), confirmationRequired = false)
+        }
+
+        val user = response.json.optJSONObject("user")
+        if (user != null && user.optString("id").isNotBlank()) {
+            return SignUpResult(session = null, confirmationRequired = true)
+        }
+        throw ApiException("Account created but the auth response was incomplete", 500)
+    }
+
     fun refreshSession(): Session {
         val current = sessionStore.read() ?: throw ApiException("No saved session", 401)
-        val body = JSONObject().put("refresh_token", current.refreshToken)
-        val request = Request.Builder()
-            .url("$baseUrl/auth/v1/token?grant_type=refresh_token")
-            .header("apikey", publishableKey)
-            .post(body.toString().toRequestBody(jsonType))
-            .build()
-        val response = execute(request)
+        val response = execute(
+            Request.Builder()
+                .url("$baseUrl/auth/v1/token?grant_type=refresh_token")
+                .header("apikey", publishableKey)
+                .post(JSONObject().put("refresh_token", current.refreshToken).toString().toRequestBody(jsonType))
+                .build(),
+        )
         if (!response.ok) {
             sessionStore.clear()
             throw ApiException(response.errorMessage ?: "Session expired", response.code)
@@ -57,7 +90,7 @@ class BackendClient(
     }
 
     fun bootstrap(): Bootstrap {
-        val json = invoke("cinerelay-mobile-api", JSONObject().put("action", "bootstrap"))
+        val json = invokeAuthenticated("cinerelay-mobile-api", JSONObject().put("action", "bootstrap"))
         val user = json.optJSONObject("user") ?: JSONObject()
         val counts = json.optJSONObject("counts") ?: JSONObject()
         return Bootstrap(
@@ -68,16 +101,14 @@ class BackendClient(
         )
     }
 
-    fun eventFeed(action: String, limit: Int = 40): List<EventCard> {
-        val json = invoke(
-            "cinerelay-mobile-api",
-            JSONObject().put("action", action).put("limit", limit.coerceIn(1, 100)),
-        )
+    fun eventFeed(action: String, limit: Int = 40, allowGuest: Boolean = false): List<EventCard> {
+        val body = JSONObject().put("action", action).put("limit", limit.coerceIn(1, 100))
+        val json = if (allowGuest) invokeGuestAware("cinerelay-mobile-api", body) else invokeAuthenticated("cinerelay-mobile-api", body)
         return json.optJSONArray("items").toEventCards()
     }
 
     fun alerts(limit: Int = 50): List<AlertItem> {
-        val json = invoke(
+        val json = invokeAuthenticated(
             "cinerelay-mobile-api",
             JSONObject().put("action", "alerts").put("limit", limit.coerceIn(1, 100)),
         )
@@ -101,7 +132,7 @@ class BackendClient(
     }
 
     fun setFollow(entityId: String, active: Boolean) {
-        val result = invoke(
+        val result = invokeAuthenticated(
             "cinerelay-mobile-api",
             JSONObject()
                 .put("action", "setFollow")
@@ -112,7 +143,7 @@ class BackendClient(
     }
 
     fun registerDevice(fcmToken: String, installationId: String) {
-        val result = invoke(
+        val result = invokeAuthenticated(
             "cinerelay-device-registration-api",
             JSONObject()
                 .put("action", "register")
@@ -126,7 +157,17 @@ class BackendClient(
         if (!result.optBoolean("ok", false)) throw ApiException(result.optString("error", "Device registration failed"), 400)
     }
 
-    private fun invoke(function: String, body: JSONObject): JSONObject {
+    private fun invokeGuestAware(function: String, body: JSONObject): JSONObject {
+        val session = sessionStore.read()
+        if (session == null) {
+            val response = invokeOnce(function, body, null)
+            if (!response.ok) throw ApiException(response.errorMessage ?: "CineRelay request failed", response.code)
+            return response.json
+        }
+        return invokeAuthenticated(function, body)
+    }
+
+    private fun invokeAuthenticated(function: String, body: JSONObject): JSONObject {
         var session = validSession()
         var response = invokeOnce(function, body, session.accessToken)
         if (response.code == 401) {
@@ -143,15 +184,14 @@ class BackendClient(
         return if (current.expiresAtEpochSeconds <= now + 60L) refreshSession() else current
     }
 
-    private fun invokeOnce(function: String, body: JSONObject, accessToken: String): JsonResponse {
-        val request = Request.Builder()
+    private fun invokeOnce(function: String, body: JSONObject, accessToken: String?): JsonResponse {
+        val builder = Request.Builder()
             .url("$baseUrl/functions/v1/$function")
             .header("apikey", publishableKey)
-            .header("Authorization", "Bearer $accessToken")
             .header("X-Client-Info", "cinerelay-android/${BuildConfig.VERSION_NAME}")
             .post(body.toString().toRequestBody(jsonType))
-            .build()
-        return execute(request)
+        if (!accessToken.isNullOrBlank()) builder.header("Authorization", "Bearer $accessToken")
+        return execute(builder.build())
     }
 
     private fun execute(request: Request): JsonResponse {
@@ -193,6 +233,11 @@ class BackendClient(
         val errorMessage: String?,
     )
 }
+
+data class SignUpResult(
+    val session: Session?,
+    val confirmationRequired: Boolean,
+)
 
 class ApiException(message: String, val statusCode: Int) : RuntimeException(message)
 
