@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { fetchConsoleOperations } from '../lib/console-api';
 import { ReviewWorkflow } from './ReviewWorkflow';
+import { SourceDiscoveryWorkflow } from './SourceDiscoveryWorkflow';
 
 function fmt(value: string | null | undefined) {
   return value ? new Date(value).toLocaleString() : '—';
@@ -86,6 +87,7 @@ export function OperationsPage() {
         </div>
       </section>
 
+      <SourceDiscoveryWorkflow />
       <ReviewWorkflow />
     </div>
   );
