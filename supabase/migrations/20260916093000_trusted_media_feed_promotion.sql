@@ -3,7 +3,7 @@ begin;
 create or replace function public.operator_promote_media_feed_candidate(
   p_actor_id uuid,
   p_candidate_id uuid,
-  p_authority_tier smallint,
+  p_authority_tier integer,
   p_poll_class text,
   p_reason text
 )
@@ -53,7 +53,7 @@ begin
   ) values (
     v_source_id,
     btrim(v_before.display_name),
-    p_authority_tier,
+    p_authority_tier::smallint,
     v_role,
     v_before.territory,
     coalesce(v_before.languages, '{}'::text[]),
@@ -130,12 +130,12 @@ begin
 end;
 $$;
 
-revoke all on function public.operator_promote_media_feed_candidate(uuid,uuid,smallint,text,text)
+revoke all on function public.operator_promote_media_feed_candidate(uuid,uuid,integer,text,text)
   from public, anon, authenticated;
-grant execute on function public.operator_promote_media_feed_candidate(uuid,uuid,smallint,text,text)
+grant execute on function public.operator_promote_media_feed_candidate(uuid,uuid,integer,text,text)
   to service_role;
 
-comment on function public.operator_promote_media_feed_candidate(uuid,uuid,smallint,text,text) is
+comment on function public.operator_promote_media_feed_candidate(uuid,uuid,integer,text,text) is
   'Audited operator-only promotion of an APPROVED RSS media candidate. Authority is intentionally capped to Tier 3/4 and feed registration is atomic with promotion.';
 
 commit;
