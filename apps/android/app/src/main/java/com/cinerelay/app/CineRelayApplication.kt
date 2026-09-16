@@ -5,6 +5,7 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.os.Build
 import com.cinerelay.app.data.BackendClient
+import com.cinerelay.app.data.EvidenceClient
 import com.cinerelay.app.data.SessionStore
 import com.google.firebase.FirebaseApp
 
@@ -13,11 +14,14 @@ class CineRelayApplication : Application() {
         private set
     lateinit var backendClient: BackendClient
         private set
+    lateinit var evidenceClient: EvidenceClient
+        private set
 
     override fun onCreate() {
         super.onCreate()
         sessionStore = SessionStore(this)
         backendClient = BackendClient(sessionStore)
+        evidenceClient = EvidenceClient(sessionStore, backendClient)
 
         if (BuildConfig.FIREBASE_CONFIGURED && FirebaseApp.getApps(this).isEmpty()) {
             FirebaseApp.initializeApp(this)
