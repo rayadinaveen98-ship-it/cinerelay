@@ -37,6 +37,18 @@ The Android app follows the frozen CineRelay design philosophy:
 - semantic status colors used sparingly;
 - bottom navigation and a single-column mobile feed.
 
+## Android platform baseline
+
+V0.1 uses:
+
+- `minSdk = 26`;
+- `compileSdk = 36`;
+- `targetSdk = 36`;
+- JDK 17;
+- AGP 9.4 / Gradle 9.6.
+
+API 36 is the stable Android 16 platform at this checkpoint. Android 17 / API 37 remains a preview SDK, so V0.1 does not depend on preview SDK channels just to produce a reliable installable canary.
+
 ## V0.1 navigation
 
 The first installable build exposes four working destinations:
@@ -136,7 +148,7 @@ A dedicated Android workflow must prove:
 - `cinerelay-mobile-api` Deno type-check;
 - deployment-native mobile API bundle creation;
 - JDK 17 / Gradle 9.6 Android build;
-- API-37 SDK availability;
+- stable API-36 SDK availability;
 - `:app:assembleDebug` success;
 - installable APK exists and is non-empty;
 - Android source/APK do not contain privileged server-secret markers;
