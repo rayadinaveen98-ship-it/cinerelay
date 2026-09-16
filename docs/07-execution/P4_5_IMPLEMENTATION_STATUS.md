@@ -2,7 +2,7 @@
 
 Date: 2026-09-16
 
-State: **ENGINEERING IMPLEMENTATION IN REVIEW / HOSTED META CREDENTIAL GATE PENDING**
+State: **ENGINEERING COMPLETE / HOSTED FOUNDATION DEPLOYED / REAL META CREDENTIAL + OFFICIAL-MEDIA GATE PENDING**
 
 Implemented on `phase-4/instagram-professional`:
 
@@ -21,6 +21,35 @@ Implemented on `phase-4/instagram-professional`:
 - server-only Meta token / managed IG user ID / API version handling;
 - scheduler dispatcher action prepared but no production cron enabled before credentials exist.
 
+Canonical hosted migration:
+
+`20260916091834_instagram_business_discovery_connector`
+
+Hosted runtime:
+
+- `instagram-business-poll-worker` v1 ACTIVE;
+- `cinerelay-scheduler-dispatch` v5 ACTIVE;
+- Instagram Business Discovery identities `0`;
+- Instagram state rows `0`;
+- Instagram cron jobs `0`.
+
+Hosted security verification:
+
+- state-table RLS enabled;
+- authenticated direct SELECT denied;
+- authenticated registration-RPC execute denied;
+- no source identity was created or trusted by the deployment.
+
+Canonical engineering proof before hosted deployment:
+
+- head `a30e0011270d52aa6f61a7c001249a9d021408a5`;
+- CineRelay CI `#270` / run `35078724368`;
+- all four jobs PASS.
+
+Full hosted proof:
+
+`docs/07-execution/PHASE4_P4_5_HOSTED_ENGINEERING_PROOF_2026-09-16.md`
+
 External production gate:
 
 1. Facebook Login / Instagram API authorization configured;
@@ -29,6 +58,7 @@ External production gate:
 4. one curated official Professional cinema/OTT/studio target;
 5. baseline with zero historical replay;
 6. one real post-baseline media item transported exactly once;
-7. unchanged repeat proving no duplicate work.
+7. unchanged repeat proving no duplicate work;
+8. invalid/expired authorization visibly represented as `AUTH_REQUIRED`.
 
-P4.5 remains stacked behind P4.4 and must not bypass the Phase-4 parent chain.
+P4.5 remains stacked behind P4.4 and must not bypass the Phase-4 parent chain. No Instagram scheduler cron is enabled before the real Meta credential gate is satisfied.
