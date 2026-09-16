@@ -88,6 +88,7 @@ import com.cinerelay.app.data.AlertItem
 import com.cinerelay.app.data.EvidenceBundle
 import com.cinerelay.app.data.EvidenceDetail
 import com.cinerelay.app.data.EventCard
+import com.cinerelay.app.data.NewsroomSignal
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.time.Duration
@@ -103,6 +104,7 @@ private val V2Gold = Color(0xFFE7C36B)
 private val V2GoldDeep = Color(0xFF8F6B25)
 private val V2Green = Color(0xFF72D6A4)
 private val V2Amber = Color(0xFFF0B862)
+private val V2Orange = Color(0xFFFF9D63)
 private val V2Red = Color(0xFFF08079)
 private val V2Blue = Color(0xFF8CB9FF)
 
@@ -238,17 +240,21 @@ private fun androidx.compose.foundation.layout.RowScope.NavV2(
 
 @Composable
 private fun FeedV2(state: CineRelayUiState, viewModel: CineRelayViewModel, onEvidence: (EventCard) -> Unit) {
-    if (!state.loading && state.events.isEmpty()) {
+    val live = state.tab == AppTab.LIVE
+    val empty = if (live) state.newsroomSignals.isEmpty() else state.events.isEmpty()
+    if (!state.loading && empty) {
         EmptyV2(
             when (state.tab) {
+                AppTab.LIVE -> "No newsroom signals"
                 AppTab.FOLLOWING -> "Nothing followed yet"
                 AppTab.RADAR -> "Radar is quiet"
                 else -> "No active signals"
             },
             when (state.tab) {
+                AppTab.LIVE -> "CineRelay is listening to active sources. New useful activity will appear here before canonical enrichment finishes."
                 AppTab.FOLLOWING -> "Follow a title from Live and its updates will collect here."
                 AppTab.RADAR -> "Creator opportunities appear when Radar materializes a signal."
-                else -> "CineRelay has no active canonical events to show right now."
+                else -> "CineRelay has no active signals to show right now."
             },
         )
         return
@@ -258,14 +264,25 @@ private fun FeedV2(state: CineRelayUiState, viewModel: CineRelayViewModel, onEvi
         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 10.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        if (!state.authenticated && state.tab == AppTab.LIVE) item { GuestStripV2(viewModel) }
-        items(state.events, key = { it.id }) { card ->
-            SignalCardV2(
-                card = card,
-                authenticated = state.authenticated,
-                onFollow = { viewModel.toggleFollow(card) },
-                onEvidence = { onEvidence(card) },
-            )
+        if (!state.authenticated && live) item { GuestStripV2(viewModel) }
+        if (live) {
+            items(state.newsroomSignals, key = { it.id }) { signal ->
+                NewsroomSignalCardV2(
+                    signal = signal,
+                    authenticated = state.authenticated,
+                    onFollow = { signal.canonicalEvent?.let(viewModel::toggleFollow) },
+                    onEvidence = { signal.canonicalEvent?.let(onEvidence) },
+                )
+            }
+        } else {
+            items(state.events, key = { it.id }) { card ->
+                SignalCardV2(
+                    card = card,
+                    authenticated = state.authenticated,
+                    onFollow = { viewModel.toggleFollow(card) },
+                    onEvidence = { onEvidence(card) },
+                )
+            }
         }
         item { Spacer(Modifier.height(10.dp)) }
     }
@@ -291,6 +308,129 @@ private fun GuestStripV2(viewModel: CineRelayViewModel) {
             TextButton(onClick = { viewModel.openAuth(AuthMode.CREATE_ACCOUNT) }) {
                 Text("Create account", fontSize = 11.sp)
             }
+        }
+    }
+}
+
+@Composable
+private fun NewsroomSignalCardV2(
+    signal: NewsroomSignal,
+    authenticated: Boolean,
+    onFollow: () -> Unit,
+    onEvidence: () -> Unit,
+) {
+    val context = LocalContext.current
+    val event = signal.canonicalEvent
+    Card(
+        colors = CardDefaults.cardColors(containerColor = V2Panel),
+        shape = RoundedCornerShape(22.dp),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Column(Modifier.padding(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                NewsroomStateV2(signal.state)
+                Spacer(Modifier.width(9.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        signal.source.name ?: signal.source.handle ?: "CineRelay source",
+                        color = V2Gold,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    Text(
+                        listOfNotNull(signal.source.platform, signal.source.handle).joinToString(" • "),
+                        color = V2Muted,
+                        fontSize = 10.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+                Text(timeAgoV2(signal.observedAt), color = V2Muted, fontSize = 10.sp)
+            }
+
+            Spacer(Modifier.height(14.dp))
+            Text(signal.title, color = V2Text, fontSize = 18.sp, fontWeight = FontWeight.SemiBold, lineHeight = 24.sp)
+
+            signal.text?.takeIf { it.isNotBlank() && it.trim() != signal.title.trim() }?.let { body ->
+                Spacer(Modifier.height(8.dp))
+                Text(body, color = V2Muted, fontSize = 12.sp, lineHeight = 18.sp, maxLines = 3, overflow = TextOverflow.Ellipsis)
+            }
+
+            event?.let { canonical ->
+                Spacer(Modifier.height(12.dp))
+                Surface(color = V2Gold.copy(alpha = 0.07f), shape = RoundedCornerShape(13.dp)) {
+                    Column(Modifier.fillMaxWidth().padding(horizontal = 11.dp, vertical = 9.dp)) {
+                        Text("CANONICAL ENRICHMENT", color = V2Gold, fontSize = 9.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.8.sp)
+                        Spacer(Modifier.height(3.dp))
+                        Text(canonical.entityName ?: "Resolved title", color = V2Text, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        Text(
+                            "${prettyV2(canonical.eventType)} • ${prettyV2(canonical.verificationState)} • ${canonical.evidenceCount} linked source${if (canonical.evidenceCount == 1) "" else "s"}",
+                            color = V2Muted,
+                            fontSize = 10.sp,
+                        )
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(13.dp))
+            HorizontalDivider(color = V2Line)
+            Spacer(Modifier.height(10.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text("Source observed ${timeAgoV2(signal.sourceObservedAt).ifBlank { "—" }}", color = V2Muted, fontSize = 10.sp)
+                    Text("CineRelay ingested ${timeAgoV2(signal.ingestedAt).ifBlank { "—" }}", color = V2Muted, fontSize = 10.sp)
+                }
+                if (event != null) {
+                    TextButton(onClick = onEvidence, contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)) {
+                        Icon(Icons.Default.Info, contentDescription = null, modifier = Modifier.size(15.dp))
+                        Spacer(Modifier.width(4.dp))
+                        Text("Evidence", fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                    }
+                    IconButton(onClick = onFollow, modifier = Modifier.size(38.dp)) {
+                        Icon(
+                            if (event.followed) Icons.Default.Star else Icons.Outlined.StarBorder,
+                            contentDescription = if (event.followed) "Unfollow" else if (authenticated) "Follow" else "Create account to follow",
+                            tint = if (event.followed) V2Gold else V2Muted,
+                        )
+                    }
+                }
+            }
+
+            signal.canonicalUrl?.takeIf { it.isNotBlank() }?.let { sourceUrl ->
+                TextButton(
+                    onClick = { runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(sourceUrl))) } },
+                    contentPadding = PaddingValues(horizontal = 0.dp, vertical = 4.dp),
+                ) {
+                    Icon(Icons.Default.OpenInNew, contentDescription = null, modifier = Modifier.size(14.dp))
+                    Spacer(Modifier.width(5.dp))
+                    Text("Open original source", fontSize = 10.sp)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun NewsroomStateV2(value: String) {
+    val color = when (value) {
+        "VERIFIED" -> V2Green
+        "DEVELOPING" -> V2Amber
+        "UNCONFIRMED" -> V2Orange
+        "CONFLICT_RUMOR" -> V2Red
+        else -> V2Muted
+    }
+    Surface(color = color.copy(alpha = 0.10f), shape = RoundedCornerShape(50)) {
+        Row(Modifier.padding(horizontal = 8.dp, vertical = 5.dp), verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.size(7.dp).clip(CircleShape).background(color))
+            Spacer(Modifier.width(5.dp))
+            Text(
+                if (value == "CONFLICT_RUMOR") "Conflict / Rumor" else prettyV2(value),
+                color = color,
+                fontSize = 9.sp,
+                fontWeight = FontWeight.Bold,
+            )
         }
     }
 }
@@ -761,7 +901,7 @@ private fun BrandMarkV2(size: androidx.compose.ui.unit.Dp) {
 private fun AppTab.requiresV2Account(): Boolean = this == AppTab.FOLLOWING || this == AppTab.ALERTS
 
 private fun tabTitleV2(tab: AppTab): String = when (tab) {
-    AppTab.LIVE -> "Live Signals"
+    AppTab.LIVE -> "Live Newsroom"
     AppTab.FOLLOWING -> "Following"
     AppTab.RADAR -> "Creator Radar"
     AppTab.ALERTS -> "Alerts"
