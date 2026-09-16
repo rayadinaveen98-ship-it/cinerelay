@@ -1,0 +1,41 @@
+{
+  "business_discovery": {
+    "id": "17841400000000001",
+    "username": "example.studio",
+    "name": "Example Studio",
+    "biography": "Official studio account",
+    "website": "https://studio.example.com",
+    "profile_picture_url": "https://cdn.example.com/profile.jpg",
+    "followers_count": 126500,
+    "follows_count": 43,
+    "media_count": 502,
+    "media": {
+      "data": [
+        {
+          "id": "18000000000000004",
+          "caption": "Official teaser is out now.",
+          "media_type": "VIDEO",
+          "permalink": "https://www.instagram.com/reel/EXAMPLE4/",
+          "timestamp": "2026-09-16T09:00:00+0000",
+          "thumbnail_url": "https://cdn.example.com/thumb4.jpg"
+        },
+        {
+          "id": "18000000000000003",
+          "caption": "Official poster. Tomorrow at 10 AM.",
+          "media_type": "IMAGE",
+          "permalink": "https://www.instagram.com/p/EXAMPLE3/",
+          "timestamp": "2026-09-16T08:30:00+0000"
+        },
+        {
+          "id": "18000000000000002",
+          "caption": "The journey begins.",
+          "media_type": "VIDEO",
+          "permalink": "https://www.instagram.com/reel/EXAMPLE2/",
+          "timestamp": "2026-09-15T18:00:00+0000",
+          "thumbnail_url": "https://cdn.example.com/thumb2.jpg"
+        }
+      ]
+    }
+  },
+  "id": "17841400000000999"
+}
