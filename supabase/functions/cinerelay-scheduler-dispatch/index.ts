@@ -9,7 +9,7 @@ const supabase = createClient(supabaseUrl, serviceRoleKey, {
   auth: { persistSession: false, autoRefreshToken: false },
 });
 
-type Action = 'youtube-enrichment' | 'process-raw-item' | 'youtube-fallback' | 'youtube-maintenance' | 'feed-poll' | 'page-poll' | 'threads-profile-poll' | 'instagram-business-poll' | 'push-delivery' | 'digest-compose' | 'creator-radar';
+type Action = 'youtube-enrichment' | 'process-raw-item' | 'youtube-fallback' | 'youtube-maintenance' | 'feed-poll' | 'page-poll' | 'threads-profile-poll' | 'instagram-business-poll' | 'push-delivery' | 'digest-compose' | 'creator-radar' | 'evidence-summary';
 
 type DispatchTarget = {
   slug: string;
@@ -28,6 +28,7 @@ const TARGETS: Record<Action, DispatchTarget> = {
   'push-delivery': { slug: 'push-delivery-worker', body: { limit: 25 } },
   'digest-compose': { slug: 'digest-compose-worker', body: { limit: 200 } },
   'creator-radar': { slug: 'creator-radar-worker', body: { limit: 100 } },
+  'evidence-summary': { slug: 'evidence-summary-worker', body: { limit: 100 } },
 };
 
 function json(status: number, body: Record<string, unknown>): Response {
