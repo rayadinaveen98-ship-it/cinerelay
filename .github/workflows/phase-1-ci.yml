@@ -96,6 +96,8 @@ jobs:
         run: deno check --config supabase/functions/youtube-source-admin/deno.json supabase/functions/youtube-source-admin/index.ts
       - name: Type-check youtube-maintenance-worker
         run: deno check --config supabase/functions/youtube-maintenance-worker/deno.json supabase/functions/youtube-maintenance-worker/index.ts
+      - name: Type-check feed-poll-worker
+        run: deno check --config supabase/functions/feed-poll-worker/deno.json supabase/functions/feed-poll-worker/index.ts
       - name: Type-check cinerelay-scheduler-dispatch
         run: deno check --config supabase/functions/cinerelay-scheduler-dispatch/deno.json supabase/functions/cinerelay-scheduler-dispatch/index.ts
       - name: Type-check cinerelay-console-api
@@ -114,6 +116,7 @@ jobs:
             process-raw-item-worker
             youtube-fallback-worker
             youtube-maintenance-worker
+            feed-poll-worker
             cinerelay-scheduler-dispatch
             cinerelay-console-api
             cinerelay-review-api
@@ -138,6 +141,7 @@ jobs:
             supabase/functions
             packages/domain/dist
             packages/youtube-connector/dist
+            packages/feed-connector/dist
           if-no-files-found: error
           retention-days: 7
       - name: Upload deployment-native Edge bundle
