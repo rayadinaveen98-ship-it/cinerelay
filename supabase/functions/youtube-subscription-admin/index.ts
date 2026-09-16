@@ -13,6 +13,7 @@ import {
 import {
   HUB_RETRY_POLICY,
   decideHubRetry,
+  failedRenewalRetryAt,
   planSubscription,
   planUnsubscription,
 } from '../../../packages/youtube-connector/dist/subscription.js';
@@ -27,6 +28,7 @@ const supabase = createClient(supabaseUrl, serviceRoleKey, { auth: { persistSess
 const callbackBaseUrl = `${supabaseUrl.replace(/\/$/, '')}/functions/v1/youtube-websub`;
 
 type HubRequest = { url: string; headers: Record<string, string>; body: string };
+type SubscriptionRow = { id: string; generation: number; state: string; requested_at: string | null; verified_at: string | null; expires_at: string | null; renew_after: string | null };
 
 function authorized(request: Request): boolean {
   const supplied = request.headers.get('x-cinerelay-internal-key') ?? '';
@@ -101,8 +103,9 @@ Deno.serve(async (request) => {
       .order('generation', { ascending: false })
       .limit(20);
     if (subscriptionError) throw subscriptionError;
-    const rows = subscriptions ?? [];
+    const rows = (subscriptions ?? []) as SubscriptionRow[];
     const latestGeneration = Math.max(0, ...rows.map((item) => Number(item.generation)));
+    const activeRenewal = action === 'renew' ? rows.find((item) => item.state === 'ACTIVE') ?? null : null;
 
     if (action === 'unsubscribe') {
       const alreadyStopping = rows.find((item) => item.state === 'UNSUBSCRIBING');
@@ -142,8 +145,7 @@ Deno.serve(async (request) => {
           state: String(inFlight.state),
         });
       }
-      const active = rows.find((item) => item.state === 'ACTIVE');
-      if (!active) return response(409, { error: 'no_active_subscription_to_renew' });
+      if (!activeRenewal) return response(409, { error: 'no_active_subscription_to_renew' });
     }
 
     const channel = await validateChannel(sourceIdentityId, channelId);
@@ -155,7 +157,13 @@ Deno.serve(async (request) => {
     const hub = await postHubWithRetry(plan.hubRequest);
     if (!hub.response.ok) {
       await supabase.from('connector_subscriptions').update({ state: 'ERROR', last_error: `hub request failed with ${hub.response.status} after ${hub.attempts} attempt(s)` }).eq('provider', YOUTUBE_WEBSUB_PROVIDER).eq('source_identity_id', sourceIdentityId).eq('generation', plan.generation);
-      return response(502, { error: 'hub_subscribe_rejected', status: hub.response.status, attempts: hub.attempts });
+      let retryAt: string | null = null;
+      if (action === 'renew' && activeRenewal) {
+        retryAt = failedRenewalRetryAt(new Date());
+        const { error: deferError } = await supabase.from('connector_subscriptions').update({ renew_after: retryAt }).eq('id', activeRenewal.id).eq('state', 'ACTIVE');
+        if (deferError) throw deferError;
+      }
+      return response(502, { error: 'hub_subscribe_rejected', status: hub.response.status, attempts: hub.attempts, retryAt });
     }
 
     return response(202, {
