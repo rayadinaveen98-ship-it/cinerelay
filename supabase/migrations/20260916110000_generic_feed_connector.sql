@@ -15,6 +15,8 @@ create table if not exists public.feed_source_state (
   updated_at timestamptz not null default now()
 );
 
+alter table public.feed_source_state enable row level security;
+
 create index if not exists feed_source_state_due_idx
   on public.feed_source_state (next_check_at nulls first);
 
@@ -28,6 +30,8 @@ create table if not exists public.connector_domain_state (
   last_http_status integer,
   updated_at timestamptz not null default now()
 );
+
+alter table public.connector_domain_state enable row level security;
 
 create index if not exists connector_domain_state_next_allowed_idx
   on public.connector_domain_state (next_allowed_at);
