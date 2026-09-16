@@ -44,6 +44,7 @@ assert.match(parsed.structureFingerprint, /^[a-f0-9]{8}$/);
 const anchorOnlyHtml = `
   <nav><a href="/about">About</a></nav>
   <main>
+    <a href="/news/entertainment/orbit-trailer?utm_source=home"><img src="poster.jpg" alt=""></a>
     <a href="/news/entertainment/orbit-trailer?utm_source=home">Orbit Trailer Released</a>
     <a href="/news/entertainment/orbit-first-look">Orbit First Look</a>
     <a href="https://other.example.com/news/nope">External</a>
