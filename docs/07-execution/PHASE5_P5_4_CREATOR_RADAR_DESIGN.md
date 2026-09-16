@@ -2,7 +2,7 @@
 
 Date: 2026-09-16
 
-State: **IMPLEMENTATION IN REVIEW / CORRECTED CI PENDING / NO HOSTED P5.4 DEPLOYMENT**
+State: **ENGINEERING COMPLETE / HOSTED FOUNDATION DEPLOYED / UNATTENDED RADAR CRON DELIBERATELY DISABLED**
 
 Parent checkpoint:
 
@@ -135,7 +135,9 @@ Timestamps remain an additional signal for event/evidence changes that occur aft
 
 This is deliberate because PostgreSQL `now()` is transaction-stable. CI #319 proved that a timestamp-only selector can miss a factual change made later in the same transaction. The corrected implementation compares current factual scorer inputs directly and uses `clock_timestamp()` for actual generation time.
 
-An unchanged event is not rescored. Repeat refresh therefore returns `0` once the current backlog is clean.
+Corrected CI #322 and the hosted transactional canary both prove same-transaction priority changes are detected and rescored.
+
+An unchanged event is not rescored. Repeat refresh returned `0` in the isolated hosted canary once the relevant backlog was clean.
 
 ## Runtime
 
@@ -146,9 +148,14 @@ An unchanged event is not rescored. Repeat refresh therefore returns `0` once th
 - calls only the bounded refresh RPC;
 - no external AI/provider API;
 - no new secret;
-- scheduler allow-list action `creator-radar` prepared with limit 100.
+- scheduler allow-list action `creator-radar` with limit 100.
 
-No production Creator Radar cron is enabled by this implementation.
+Hosted runtime:
+
+- `creator-radar-worker` ACTIVE v1;
+- `cinerelay-scheduler-dispatch` ACTIVE v8.
+
+No production Creator Radar cron is enabled.
 
 ## Security
 
@@ -163,7 +170,7 @@ A later read API/UI can expose a deliberately shaped Radar projection without ex
 
 ## Explicitly deferred
 
-P5.4 does not yet implement:
+P5.4 does not implement:
 
 - LLM-generated summaries;
 - automated scripts/hooks/titles;
@@ -174,19 +181,31 @@ P5.4 does not yet implement:
 - unattended production Radar cron;
 - Android UI.
 
-## Release gate
+## Completed release gate
 
-Before hosted promotion:
+All P5.4 engineering gates passed:
 
-1. corrected fresh migration applies cleanly;
-2. all Creator Radar pgTAP assertions pass, including same-transaction stale-rescore proof;
-3. existing Phase-1..P5.3 tests remain green;
-4. DB lint passes;
-5. worker and scheduler type-check;
-6. deployment-native Edge bundle includes the new worker;
-7. hosted migration version is reconciled into Git;
-8. canonical CI is green;
-9. exact canonical CI artifact is deployed;
-10. hosted security/zero-side-effect/advisor checks pass;
-11. controlled hosted score/refresh/idempotency proof passes and rolls back;
-12. no Radar cron is enabled without a separate operational decision.
+1. corrected fresh migration applied cleanly;
+2. all 32 Creator Radar pgTAP assertions passed, including same-transaction stale-rescore proof;
+3. existing Phase-1..P5.3 tests stayed green;
+4. DB lint passed;
+5. worker and scheduler type-check/bundle passed;
+6. hosted migration reconciled to `20260916121143_creator_radar_foundation`;
+7. canonical CI #323 / run `35094571102` passed all four jobs;
+8. exact canonical artifact `10445532906` / `sha256:4bb1bd39ceaecedf3d93ee05bafd9b4393481d624fd3c8a259733ad4fa419f3d` was deployed;
+9. hosted security/zero-side-effect/advisor checks passed;
+10. controlled hosted score/refresh/same-transaction-rescore/idempotency proof passed and rolled back;
+11. post-rollback Radar rows and synthetic rows returned to zero;
+12. no Radar cron was enabled.
+
+## Operational activation rule
+
+A recurring Radar refresh cron is intentionally separate from engineering completion. It should be enabled only when CineRelay is ready to expose and monitor Creator Radar continuously.
+
+## Next boundary
+
+The next Phase-5 intelligence slice can implement optional concise evidence-based summaries. Summary text must cite/derive from canonical evidence and must not modify verification state or replace the deterministic Radar score.
+
+Hosted proof:
+
+`docs/07-execution/PHASE5_P5_4_HOSTED_ENGINEERING_PROOF_2026-09-16.md`
