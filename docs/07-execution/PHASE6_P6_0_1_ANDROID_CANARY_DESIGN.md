@@ -2,7 +2,7 @@
 
 Date: 2026-09-16
 
-State: **IMPLEMENTATION IN REVIEW / APK CI PENDING / REAL FIREBASE DEVICE CANARY PENDING**
+State: **ENGINEERING APK COMPLETE / HOSTED MOBILE API DEPLOYED / REAL FIREBASE DEVICE CANARY PENDING**
 
 Parent checkpoint:
 
@@ -165,6 +165,10 @@ Engineering-complete when:
 3. exact CI-built `cinerelay-mobile-api` bundle is deployed hosted;
 4. hosted auth/zero-side-effect boundary is verified;
 5. the exact APK artifact is downloadable and installable.
+
+These engineering conditions are now satisfied. The exact proof is recorded in:
+
+`docs/07-execution/PHASE6_P6_0_1_HOSTED_ENGINEERING_PROOF_2026-09-16.md`
 
 Real-device canary-complete when, in addition:
 
