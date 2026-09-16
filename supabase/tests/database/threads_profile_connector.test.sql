@@ -12,7 +12,7 @@ insert into public.source_identities (
   '82000000-0000-4000-8000-000000000001',
   '81000000-0000-4000-8000-000000000001',
   'THREADS', null, '@Example.Studio', 'https://www.threads.net/@example.studio',
-  'THREADS_PROFILE_API', 'ACTIVE_15M', 'OFFICIAL_API', true
+  'THREADS_PROFILE_API', 'ACTIVE_15M', 'API', true
 );
 
 select lives_ok(
@@ -83,12 +83,12 @@ select throws_ok(
     'threads-profile-v1'
   )$$,
   'P0001',
-  'source_identity_access_mode_must_be_official_api',
-  'registration rejects non-official API access modes'
+  'source_identity_access_mode_must_be_api',
+  'registration rejects non-API access modes'
 );
 
 update public.source_identities
-set access_mode='OFFICIAL_API', handle='@different'
+set access_mode='API', handle='@different'
 where id='82000000-0000-4000-8000-000000000001'::uuid;
 
 select throws_ok(
