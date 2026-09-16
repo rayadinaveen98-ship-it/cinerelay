@@ -121,3 +121,9 @@ verify_jwt = false
 # It never changes event verification, priority or notification state.
 [functions.creator-radar-worker]
 verify_jwt = false
+
+# Evidence summaries are a separate derived layer. V1 is deterministic and only
+# materializes concise text when linked evidence exists; it never writes back to
+# canonical event facts and uses the independent internal worker secret.
+[functions.evidence-summary-worker]
+verify_jwt = false
