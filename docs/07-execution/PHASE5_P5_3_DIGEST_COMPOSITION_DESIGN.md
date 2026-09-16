@@ -2,7 +2,7 @@
 
 Date: 2026-09-16
 
-State: **IMPLEMENTATION IN REVIEW / FRESH CI PENDING / NO HOSTED P5.3 DEPLOYMENT**
+State: **ENGINEERING COMPLETE / HOSTED FOUNDATION DEPLOYED / UNATTENDED DIGEST CRON DELIBERATELY DISABLED**
 
 Parent checkpoint:
 
@@ -10,7 +10,7 @@ Parent checkpoint:
 
 ## Why this is the next slice
 
-The locked Phase-5 roadmap requires digest modes, FCM delivery, Creator Radar scoring, optional evidence-based concise summaries and content-opportunity labels. P5.1 already creates per-event `DIGEST` outbox rows and schedules them at the user's digest hour. P5.2 isolates FCM delivery. The missing Notification Engine responsibility is therefore to turn due digest outbox rows into one durable, bounded user digest before Creator Intelligence begins.
+The locked Phase-5 roadmap requires digest modes, FCM delivery, Creator Radar scoring, optional evidence-based concise summaries and content-opportunity labels. P5.1 already creates per-event `DIGEST` outbox rows and schedules them at the user's digest hour. P5.2 isolates FCM delivery. The missing Notification Engine responsibility was therefore to turn due digest outbox rows into one durable, bounded user digest before Creator Intelligence begins.
 
 Creator Radar remains a later separate slice because the Engine Contract explicitly says creator interpretation is editorial assistance and never changes the factual record.
 
@@ -88,21 +88,34 @@ Future digest rows are never composed early.
 
 ## Scheduler
 
-The scheduler allow-list gains `digest-compose` -> `digest-compose-worker` with a 200-row batch.
+The scheduler allow-list contains `digest-compose` -> `digest-compose-worker` with a 200-row batch.
 
-No production digest cron is enabled by the implementation commit. Hosted migration/runtime/security proof must pass first.
+No production digest cron is enabled by P5.3. The hosted engineering proof passed without creating unattended work.
 
-## Release gate
+## Completed release gate
 
-Before enabling unattended composition:
+All implementation gates passed:
 
 1. fresh migrations pass;
-2. all P5.3 pgTAP assertions pass;
+2. all 31 P5.3 pgTAP assertions pass;
 3. existing P5.1/P5.2 tests stay green;
 4. worker and scheduler type-check/bundle pass;
-5. hosted canonical migration filename is reconciled into Git;
-6. exact green CI artifact is deployed;
-7. hosted RLS/privilege/zero-side-effect checks pass;
-8. advisors show no new P5.3 regression;
-9. a controlled synthetic hosted composition is duplicate-free;
-10. only then consider enabling a digest-composition cron.
+5. hosted canonical migration is reconciled to `20260916114913_digest_composition_foundation`;
+6. canonical CI #313 / run `35092445078` passes all four jobs;
+7. exact artifact `10444439396` / `sha256:819aa8ccc4b924b69bd848c32b65ba9142d9a011215e25568bf5a5e1d4f6e252` is deployed;
+8. hosted RLS/privilege/zero-side-effect checks pass;
+9. advisors show no new P5.3-specific regression;
+10. controlled hosted composition proves `BUILDING -> READY`, stable ordering and duplicate-free repeat;
+11. rollback proves no synthetic or persistent digest residue.
+
+## Operational activation rule
+
+A recurring digest-composition cron is intentionally separate from engineering completion. It should be enabled only when CineRelay is ready to operate real user digest traffic continuously and monitor it operationally.
+
+## Next boundary
+
+The next Phase-5 slice should implement Creator Radar / Creator Intelligence as an independent editorial-assistance layer. It must not mutate canonical event facts or P5.3 notification composition semantics.
+
+Hosted proof:
+
+`docs/07-execution/PHASE5_P5_3_HOSTED_ENGINEERING_PROOF_2026-09-16.md`
