@@ -53,16 +53,17 @@ jobs:
       CINERELAY_SUPABASE_PUBLISHABLE_KEY: sb_publishable_hR65p2JkQ2x5fFLx_kkcNQ_1SxNN3QP
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
       - uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
       - name: Install Android SDK 37
         shell: bash
         run: |
           set -euo pipefail
-          yes | sdkmanager --licenses >/dev/null || true
           sdkmanager 'platforms;android-37' 'platform-tools'
       - uses: gradle/actions/setup-gradle@v4
         with:
