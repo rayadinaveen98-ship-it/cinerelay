@@ -91,3 +91,9 @@ verify_jwt = false
 
 [functions.cinerelay-source-discovery-api]
 verify_jwt = false
+
+# Selected-public-page onboarding is a privileged operator action. Gateway JWT
+# verification remains disabled for CORS consistency, but the function validates
+# the supplied bearer token with auth.getUser() and checks operator_users itself.
+[functions.cinerelay-public-page-onboarding-api]
+verify_jwt = false
