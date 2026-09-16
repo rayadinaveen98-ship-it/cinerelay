@@ -62,6 +62,26 @@ assert.equal(anchorOnly.items[0].canonicalUrl, 'https://studio.example.com/news/
 assert.equal(anchorOnly.items[0].title, 'Orbit Trailer Released');
 assert.equal(anchorOnly.items[1].title, 'Orbit First Look');
 
+const accessibleAnchorHtml = `
+  <main>
+    <a aria-label="Orbit Trailer Released" href="/news/entertainment/orbit-trailer"><picture><img src="poster.jpg" alt=""></picture></a>
+    <a href="/news/entertainment/orbit-trailer">Orbit Trailer Released</a>
+    <a title="Orbit First Look" href="/news/entertainment/orbit-first-look"><img src="first-look.jpg" alt=""></a>
+  </main>`;
+const accessibleAnchors = parseWebPage(accessibleAnchorHtml, 'https://studio.example.com/', {
+  profileVersion: 'accessible-anchor-discovery-v1',
+  itemSelector: 'a[href]',
+  linkSelector: SELF_SELECTOR,
+  titleSelector: SELF_SELECTOR,
+  includeUrlPattern: '^https://studio\\.example\\.com/news/entertainment/[^/?#]+$',
+  minItems: 2,
+});
+assert.equal(accessibleAnchors.items.length, 2);
+assert.equal(accessibleAnchors.items[0].canonicalUrl, 'https://studio.example.com/news/entertainment/orbit-trailer');
+assert.equal(accessibleAnchors.items[0].title, 'Orbit Trailer Released');
+assert.equal(accessibleAnchors.items[1].canonicalUrl, 'https://studio.example.com/news/entertainment/orbit-first-look');
+assert.equal(accessibleAnchors.items[1].title, 'Orbit First Look');
+
 assert.equal(canonicalizePageUrl('/news/test?utm_medium=social&x=1#section', 'https://studio.example.com/news/'), 'https://studio.example.com/news/test?x=1');
 
 const baseline = planPageDelta(parsed.items, null);
@@ -98,7 +118,7 @@ const now = new Date('2026-09-16T00:00:00Z');
 assert.equal(nextPageCheckAt({ now, pollClass: 'ACTIVE_15M' }), '2026-09-16T00:15:00.000Z');
 assert.equal(nextPageCheckAt({ now, pollClass: 'ACTIVE_15M', consecutiveFailures: 2 }), '2026-09-16T01:00:00.000Z');
 assert.equal(parsePageRetryAfterSeconds('90', now), 90);
-assert.equal(WEB_PAGE_PARSER_VERSION, 'first-party-html-v1');
+assert.equal(WEB_PAGE_PARSER_VERSION, 'first-party-html-v2');
 
 assert.throws(() => parseWebPage('', 'https://studio.example.com/news/', profile), /empty_page/);
 assert.throws(() => parseWebPage(html, 'https://studio.example.com/news/', { ...profile, itemSelector: '[' }), /page_profile_invalid_item_selector/);
