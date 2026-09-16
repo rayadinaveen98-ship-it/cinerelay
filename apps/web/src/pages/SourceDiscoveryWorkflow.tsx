@@ -3,17 +3,31 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   fetchSourceDiscoveryBootstrap,
   promoteMediaFeedCandidate,
+  promoteSelectedPublicPageCandidate,
   reviewSourceCandidate,
   submitSourceCandidate,
   type CandidateKind,
   type CandidateReviewStatus,
   type MediaAuthorityTier,
   type MediaPollClass,
+  type PublicPageAuthorityTier,
+  type PublicPageParserProfile,
+  type PublicPagePollClass,
   type SourceDiscoveryItem,
 } from '../lib/source-discovery-api';
 
 const KINDS: CandidateKind[] = ['PUBLIC_WEB', 'RSS_ATOM', 'YOUTUBE_CHANNEL', 'INSTAGRAM_PROFILE', 'THREADS_PROFILE', 'X_PROFILE', 'OTHER'];
 const MEDIA_POLL_CLASSES: MediaPollClass[] = ['ACTIVE_15M', 'NORMAL_60M', 'COLD_6H', 'DAILY'];
+const PUBLIC_PAGE_POLL_CLASSES: PublicPagePollClass[] = ['NORMAL_60M', 'COLD_6H', 'DAILY'];
+const DEFAULT_PUBLIC_PAGE_PROFILE = JSON.stringify({
+  profileVersion: 'selected-public-v1',
+  itemSelector: 'article',
+  linkSelector: 'a',
+  titleSelector: 'h2, h3',
+  maxItems: 30,
+  minItems: 1,
+  order: 'NEWEST_FIRST',
+}, null, 2);
 
 function statusClass(status: string) {
   if (status === 'APPROVED' || status === 'PROMOTED') return 'border-emerald-900 bg-emerald-950/40 text-emerald-300';
@@ -22,20 +36,38 @@ function statusClass(status: string) {
   return 'border-zinc-700 bg-zinc-900 text-zinc-300';
 }
 
-function CandidateCard({ item, onReview, onPromote, busy }: {
+function CandidateCard({ item, onReview, onPromote, onPromotePage, busy }: {
   item: SourceDiscoveryItem;
   onReview: (item: SourceDiscoveryItem, status: CandidateReviewStatus, reason: string) => void;
   onPromote: (item: SourceDiscoveryItem, authorityTier: MediaAuthorityTier, pollClass: MediaPollClass, reason: string) => void;
+  onPromotePage: (item: SourceDiscoveryItem, authorityTier: PublicPageAuthorityTier, pollClass: PublicPagePollClass, parserProfile: PublicPageParserProfile, reason: string) => void;
   busy: boolean;
 }) {
   const [reason, setReason] = useState('');
   const [promotionReason, setPromotionReason] = useState('');
   const [authorityTier, setAuthorityTier] = useState<MediaAuthorityTier>(3);
   const [pollClass, setPollClass] = useState<MediaPollClass>('NORMAL_60M');
+  const [pagePromotionReason, setPagePromotionReason] = useState('');
+  const [pageAuthorityTier, setPageAuthorityTier] = useState<PublicPageAuthorityTier>(5);
+  const [pagePollClass, setPagePollClass] = useState<PublicPagePollClass>('NORMAL_60M');
+  const [pageParserProfile, setPageParserProfile] = useState(DEFAULT_PUBLIC_PAGE_PROFILE);
+  const [pageProfileError, setPageProfileError] = useState<string | null>(null);
   const candidate = item.candidate;
   const exact = item.exactRegistryMatches[0];
   const reviewed = ['APPROVED', 'REJECTED', 'DUPLICATE', 'PROMOTED'].includes(candidate.status);
   const promotableFeed = candidate.status === 'APPROVED' && candidate.candidate_kind === 'RSS_ATOM' && !exact;
+  const promotablePage = candidate.status === 'APPROVED' && candidate.candidate_kind === 'PUBLIC_WEB' && !exact;
+
+  function promotePage() {
+    setPageProfileError(null);
+    try {
+      const parsed = JSON.parse(pageParserProfile) as unknown;
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error('Parser profile must be a JSON object.');
+      onPromotePage(item, pageAuthorityTier, pagePollClass, parsed as PublicPageParserProfile, pagePromotionReason);
+    } catch (error) {
+      setPageProfileError(error instanceof Error ? error.message : 'Parser profile JSON is invalid.');
+    }
+  }
 
   return (
     <article className="rounded-2xl border border-zinc-800 bg-zinc-950/70 p-5">
@@ -86,6 +118,21 @@ function CandidateCard({ item, onReview, onPromote, busy }: {
         <textarea value={promotionReason} onChange={(event) => setPromotionReason(event.target.value)} rows={2} className="mt-2 w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm outline-none focus:border-emerald-500" placeholder="Why is this publisher trusted enough for the selected media tier?" />
         <button disabled={busy || promotionReason.trim().length < 3} onClick={() => onPromote(item, authorityTier, pollClass, promotionReason)} className="mt-3 rounded-lg border border-emerald-800 bg-emerald-950/30 px-3 py-2 text-xs font-medium text-emerald-300 disabled:opacity-40">Promote + register feed</button>
       </div>}
+
+      {promotablePage && <div className="mt-5 rounded-xl border border-sky-900/50 bg-sky-950/10 p-4">
+        <p className="text-xs font-semibold uppercase tracking-wider text-sky-400">P4.7 selected public page promotion</p>
+        <p className="mt-2 text-sm leading-6 text-zinc-400">This reuses the hardened P4.2 page connector, but the source remains lower-authority media/discovery. Verify the target page structure and usage terms before promotion.</p>
+        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+          <Field label="Authority tier"><select value={pageAuthorityTier} onChange={(event) => setPageAuthorityTier(Number(event.target.value) as PublicPageAuthorityTier)} className="input"><option value={3}>Tier 3 · Trade / professional media</option><option value={4}>Tier 4 · General media</option><option value={5}>Tier 5 · Discovery only</option></select></Field>
+          <Field label="Poll class"><select value={pagePollClass} onChange={(event) => setPagePollClass(event.target.value as PublicPagePollClass)} className="input">{PUBLIC_PAGE_POLL_CLASSES.map((value) => <option key={value} value={value}>{value}</option>)}</select></Field>
+        </div>
+        <label className="mt-3 block text-xs font-semibold uppercase tracking-wider text-zinc-500">Parser profile JSON</label>
+        <textarea value={pageParserProfile} onChange={(event) => setPageParserProfile(event.target.value)} rows={9} spellCheck={false} className="mt-2 w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 font-mono text-xs leading-5 outline-none focus:border-sky-500" />
+        {pageProfileError && <p className="mt-2 text-xs text-red-300">{pageProfileError}</p>}
+        <label className="mt-3 block text-xs font-semibold uppercase tracking-wider text-zinc-500">Promotion reason</label>
+        <textarea value={pagePromotionReason} onChange={(event) => setPagePromotionReason(event.target.value)} rows={2} className="mt-2 w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm outline-none focus:border-sky-500" placeholder="Why is this page useful, what is its trust tier, and how was the parser profile verified?" />
+        <button disabled={busy || pagePromotionReason.trim().length < 3} onClick={promotePage} className="mt-3 rounded-lg border border-sky-800 bg-sky-950/30 px-3 py-2 text-xs font-medium text-sky-300 disabled:opacity-40">Promote + register page</button>
+      </div>}
     </article>
   );
 }
@@ -120,6 +167,11 @@ export function SourceDiscoveryWorkflow() {
 
   const promoteMutation = useMutation({
     mutationFn: promoteMediaFeedCandidate,
+    onSuccess: async () => queryClient.invalidateQueries({ queryKey: ['source-discovery'] }),
+  });
+
+  const promotePageMutation = useMutation({
+    mutationFn: promoteSelectedPublicPageCandidate,
     onSuccess: async () => queryClient.invalidateQueries({ queryKey: ['source-discovery'] }),
   });
 
@@ -165,12 +217,16 @@ export function SourceDiscoveryWorkflow() {
     promoteMutation.mutate({ candidateId: item.candidate.id, authorityTier, pollClass, reason: reason.trim() });
   }
 
-  const busy = reviewMutation.isPending || promoteMutation.isPending;
+  function promotePage(item: SourceDiscoveryItem, authorityTier: PublicPageAuthorityTier, pollClass: PublicPagePollClass, parserProfile: PublicPageParserProfile, reason: string) {
+    promotePageMutation.mutate({ candidateId: item.candidate.id, authorityTier, pollClass, parserProfile, reason: reason.trim() });
+  }
+
+  const busy = reviewMutation.isPending || promoteMutation.isPending || promotePageMutation.isPending;
 
   return (
     <section className="rounded-3xl border border-zinc-800 bg-zinc-900/50 p-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
-        <div><p className="text-xs font-semibold uppercase tracking-[0.25em] text-amber-400">Source trust workflow</p><h2 className="mt-2 text-xl font-semibold">Candidate review + explicit media promotion</h2><p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-400">Candidates are untrusted until reviewed. <strong className="text-zinc-200">Approve still does not promote.</strong> P4.6 adds a separate audited promotion action for approved RSS media candidates, capped to Tier 3/4.</p></div>
+        <div><p className="text-xs font-semibold uppercase tracking-[0.25em] text-amber-400">Source trust workflow</p><h2 className="mt-2 text-xl font-semibold">Candidate review + explicit trust promotion</h2><p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-400">Candidates are untrusted until reviewed. <strong className="text-zinc-200">Approve still does not promote.</strong> RSS media and selected public pages each require a separate audited promotion action with capped authority.</p></div>
         {query.data && <p className="text-xs text-zinc-500">Updated {new Date(query.data.generatedAt).toLocaleString()}</p>}
       </div>
 
@@ -185,15 +241,15 @@ export function SourceDiscoveryWorkflow() {
       <details className="mt-6 rounded-2xl border border-zinc-800 bg-zinc-950/50 p-5">
         <summary className="cursor-pointer font-medium text-zinc-200">Add candidate manually</summary>
         <form onSubmit={submit} className="mt-5 grid gap-4 lg:grid-cols-2">
-          <Field label="Candidate HTTPS URL"><input required type="url" value={url} onChange={(e) => setUrl(e.target.value)} className="input" placeholder="https://official.example.com/news" /></Field>
-          <Field label="Display name"><input value={displayName} onChange={(e) => setDisplayName(e.target.value)} className="input" placeholder="Cinema publication feed" /></Field>
+          <Field label="Candidate HTTPS URL"><input required type="url" value={url} onChange={(e) => setUrl(e.target.value)} className="input" placeholder="https://publisher.example.com/news" /></Field>
+          <Field label="Display name"><input value={displayName} onChange={(e) => setDisplayName(e.target.value)} className="input" placeholder="Cinema publication or public page" /></Field>
           <Field label="Kind"><select value={kind} onChange={(e) => setKind(e.target.value as CandidateKind)} className="input">{KINDS.map((value) => <option key={value} value={value}>{value}</option>)}</select></Field>
-          <Field label="Proposed role (not authority)"><input value={role} onChange={(e) => setRole(e.target.value)} className="input" placeholder="TRADE_MEDIA / GENERAL_MEDIA" /></Field>
+          <Field label="Proposed role (not authority)"><input value={role} onChange={(e) => setRole(e.target.value)} className="input" placeholder="TRADE_MEDIA / GENERAL_MEDIA / DISCOVERY_ONLY" /></Field>
           <Field label="Territory"><input value={territory} onChange={(e) => setTerritory(e.target.value)} className="input" placeholder="IN" /></Field>
           <Field label="Languages (comma-separated)"><input value={languages} onChange={(e) => setLanguages(e.target.value)} className="input" placeholder="te, ta, hi, en" /></Field>
           <Field label="Discovery confidence 0–1"><input value={confidence} onChange={(e) => setConfidence(e.target.value)} className="input" inputMode="decimal" /></Field>
-          <Field label="Evidence URL"><input type="url" value={evidenceUrl} onChange={(e) => setEvidenceUrl(e.target.value)} className="input" placeholder="https://publisher.example.com/rss" /></Field>
-          <div className="lg:col-span-2"><Field label="Evidence note"><textarea value={evidenceNote} onChange={(e) => setEvidenceNote(e.target.value)} rows={2} className="input" placeholder="Why is this candidate relevant and who controls it?" /></Field></div>
+          <Field label="Evidence URL"><input type="url" value={evidenceUrl} onChange={(e) => setEvidenceUrl(e.target.value)} className="input" placeholder="https://publisher.example.com/about-or-terms" /></Field>
+          <div className="lg:col-span-2"><Field label="Evidence note"><textarea value={evidenceNote} onChange={(e) => setEvidenceNote(e.target.value)} rows={2} className="input" placeholder="Why is this candidate relevant, who controls it, and what usage/trust evidence was checked?" /></Field></div>
           <div className="lg:col-span-2 flex items-center gap-3"><button disabled={submitMutation.isPending} className="rounded-xl bg-amber-400 px-4 py-2.5 text-sm font-semibold text-zinc-950 disabled:opacity-50">{submitMutation.isPending ? 'Saving…' : 'Add candidate'}</button>{formError && <p className="text-sm text-red-300">{formError}</p>}</div>
         </form>
       </details>
@@ -202,7 +258,8 @@ export function SourceDiscoveryWorkflow() {
       {query.isError && <p className="mt-6 text-sm text-red-300">{query.error.message}</p>}
       {reviewMutation.isError && <p className="mt-4 text-sm text-red-300">{reviewMutation.error.message}</p>}
       {promoteMutation.isError && <p className="mt-4 text-sm text-red-300">{promoteMutation.error.message}</p>}
-      {query.data && <div className="mt-6 space-y-4">{query.data.items.length === 0 ? <p className="text-sm text-zinc-500">No candidates yet.</p> : query.data.items.map((item) => <CandidateCard key={item.candidate.id} item={item} onReview={review} onPromote={promote} busy={busy} />)}</div>}
+      {promotePageMutation.isError && <p className="mt-4 text-sm text-red-300">{promotePageMutation.error.message}</p>}
+      {query.data && <div className="mt-6 space-y-4">{query.data.items.length === 0 ? <p className="text-sm text-zinc-500">No candidates yet.</p> : query.data.items.map((item) => <CandidateCard key={item.candidate.id} item={item} onReview={review} onPromote={promote} onPromotePage={promotePage} busy={busy} />)}</div>}
     </section>
   );
 }
