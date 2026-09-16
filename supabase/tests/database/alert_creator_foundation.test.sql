@@ -195,8 +195,15 @@ select ok(
   'authenticated clients cannot invoke the internal alert planner directly'
 );
 
-insert into public.user_entity_follows (user_id, entity_id, active)
-values ('c1000000-0000-4000-8000-000000000003', 'c2000000-0000-4000-8000-000000000001', true);
+insert into public.user_entity_follows (user_id, entity_id, active, created_at, updated_at)
+select
+  'c1000000-0000-4000-8000-000000000003'::uuid,
+  'c2000000-0000-4000-8000-000000000001'::uuid,
+  true,
+  e.created_at + interval '1 second',
+  e.created_at + interval '1 second'
+from public.events e
+where e.id='c6000000-0000-4000-8000-000000000001'::uuid;
 
 select public.plan_event_alerts('c6000000-0000-4000-8000-000000000001');
 
