@@ -66,11 +66,10 @@ class BackendClient(
             return SignUpResult(session = parseAndStoreSession(response.json), confirmationRequired = false)
         }
 
-        val user = response.json.optJSONObject("user")
-        if (user != null && user.optString("id").isNotBlank()) {
-            return SignUpResult(session = null, confirmationRequired = true)
-        }
-        throw ApiException("Account created but the auth response was incomplete", 500)
+        // With Confirm Email enabled, Supabase intentionally returns a successful signup
+        // response without a session. Existing confirmed accounts can receive an
+        // indistinguishable privacy-safe response to prevent account enumeration.
+        return SignUpResult(session = null, confirmationRequired = true)
     }
 
     fun refreshSession(): Session {
