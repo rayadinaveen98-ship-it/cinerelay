@@ -1,6 +1,6 @@
 # P6.0.19 — Firebase Android Canary Readiness
 
-Status: **CI contract complete; real FCM Android config still pending**
+Status: **Firebase Android client config provisioned to GitHub Actions; Firebase-enabled canary validation in progress**
 
 ## Goal
 
@@ -46,7 +46,7 @@ The artifact now includes a small non-secret marker file:
 
 so an APK artifact can be classified without guessing.
 
-## CI proof
+## Initial CI proof
 
 Implementation commit:
 
@@ -58,24 +58,33 @@ Implementation commit:
 - Android build/package verification: PASS
 - Firebase build-contract verification: PASS
 
-Final Android job log proves the repository secret is currently absent:
+That initial Android run occurred before the repository secret was provisioned and therefore correctly produced the fallback build:
 
-- `FIREBASE_JSON_B64:` empty;
 - `Firebase Android config secret is absent; building the safe fallback canary.`;
 - `CINERELAY_FIREBASE_CONFIGURED=false`;
 - `Fallback CineRelay canary contract verified; FCM is intentionally disabled.`
 
-Fallback APK SHA-256 from the CI job:
+Fallback APK SHA-256:
 
 `921ec4c5dc24922feca3e14b52b36d91bfc0eb02208989dfe8d4bf7dc6406778`
 
-Android artifact id:
+Fallback Android artifact id:
 
 `10481214135`
 
+## Firebase client config provisioned
+
+The operator has now added the validated Android client config to GitHub Actions as repository secret:
+
+`CINERELAY_FIREBASE_GOOGLE_SERVICES_JSON_B64`
+
+The config was validated outside the repository as the Firebase Android client for package `com.cinerelay.app`. The raw JSON is intentionally not committed to this public repository.
+
+A fresh PR-head build is being used to prove that CI now consumes the secret and produces a Firebase-enabled canary with `BuildConfig.FIREBASE_CONFIGURED=true`.
+
 ## Hosted readiness state
 
-At the production check immediately before this slice:
+Before the Firebase-enabled canary is installed on a real device:
 
 - active FCM devices: 0;
 - active device users: 0;
@@ -86,22 +95,19 @@ At the production check immediately before this slice:
 
 This is not a delivery failure. No real FCM-capable APK/device registration has been established yet.
 
-## Remaining external requirement
-
-Create/register Firebase Android app package `com.cinerelay.app`, obtain its **client-side** `google-services.json`, and provide it to CI as base64 secret `CINERELAY_FIREBASE_GOOGLE_SERVICES_JSON_B64`.
+## Security boundary
 
 Never place the Firebase service-account private key in the Android config or repository. Server-side FCM credentials remain isolated in hosted secret `CINERELAY_FCM_SERVICE_ACCOUNT`.
 
 ## Next proof
 
-After the Android Firebase config is available:
-
-1. run a controlled Firebase-required canary build;
-2. install the Firebase-enabled APK on a physical Android device;
-3. sign in;
-4. open Alerts and choose **Enable real alerts**;
-5. grant notification permission;
-6. verify Operations moves from 0 to 1 active FCM device;
-7. follow one canonical entity;
-8. wait for or materialize a naturally eligible canonical DEVELOPING event;
-9. verify the trust-aware lock-screen push end-to-end.
+1. prove the fresh Android canary reports `FIREBASE_CONFIGURED=true`;
+2. verify the Firebase-enabled APK artifact and hash;
+3. install it on a physical Android device;
+4. sign in;
+5. open Alerts and choose **Enable real alerts**;
+6. grant notification permission;
+7. verify Operations moves from 0 to 1 active FCM device;
+8. follow one canonical entity;
+9. wait for or materialize a naturally eligible canonical DEVELOPING event;
+10. verify the trust-aware lock-screen push end-to-end.
