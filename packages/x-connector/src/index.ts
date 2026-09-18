@@ -3,6 +3,7 @@ export const X_API_BASE = 'https://api.x.com/2';
 export const X_TWEET_FIELDS = [
   'id',
   'text',
+  'author_id',
   'created_at',
   'lang',
   'possibly_sensitive',
