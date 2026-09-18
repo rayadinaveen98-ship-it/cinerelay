@@ -9,7 +9,7 @@ const supabase = createClient(supabaseUrl, serviceRoleKey, {
   auth: { persistSession: false, autoRefreshToken: false },
 });
 
-type Action = 'youtube-enrichment' | 'process-raw-item' | 'youtube-fallback' | 'youtube-maintenance' | 'feed-poll' | 'page-poll' | 'threads-profile-poll' | 'instagram-business-poll' | 'push-delivery' | 'digest-compose' | 'creator-radar' | 'evidence-summary';
+type Action = 'youtube-enrichment' | 'process-raw-item' | 'youtube-fallback' | 'youtube-maintenance' | 'feed-poll' | 'page-poll' | 'threads-profile-poll' | 'instagram-business-poll' | 'x-profile-poll' | 'push-delivery' | 'digest-compose' | 'creator-radar' | 'evidence-summary';
 
 type DispatchTarget = {
   slug: string;
@@ -25,6 +25,7 @@ const TARGETS: Record<Action, DispatchTarget> = {
   'page-poll': { slug: 'page-poll-worker', body: { limit: 20 } },
   'threads-profile-poll': { slug: 'threads-profile-poll-worker', body: { limit: 20 } },
   'instagram-business-poll': { slug: 'instagram-business-poll-worker', body: { limit: 20 } },
+  'x-profile-poll': { slug: 'x-profile-poll-worker', body: { limit: 20 } },
   'push-delivery': { slug: 'push-delivery-worker', body: { limit: 25 } },
   'digest-compose': { slug: 'digest-compose-worker', body: { limit: 200 } },
   'creator-radar': { slug: 'creator-radar-worker', body: { limit: 100 } },
@@ -53,7 +54,7 @@ function sanitizedUpstreamError(result: unknown): string | null {
   if (!result || typeof result !== 'object') return null;
   const value = (result as Record<string, unknown>).error;
   if (typeof value !== 'string') return null;
-  return /^fcm_[a-z0-9_]+$/i.test(value) ? value : null;
+  return /^(?:fcm|x_api)_[a-z0-9_]+$/i.test(value) ? value : null;
 }
 
 Deno.serve(async (request) => {
