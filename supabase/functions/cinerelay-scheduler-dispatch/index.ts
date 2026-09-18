@@ -49,6 +49,13 @@ function isAction(value: unknown): value is Action {
   return typeof value === 'string' && Object.prototype.hasOwnProperty.call(TARGETS, value);
 }
 
+function sanitizedUpstreamError(result: unknown): string | null {
+  if (!result || typeof result !== 'object') return null;
+  const value = (result as Record<string, unknown>).error;
+  if (typeof value !== 'string') return null;
+  return /^fcm_[a-z0-9_]+$/i.test(value) ? value : null;
+}
+
 Deno.serve(async (request) => {
   try {
     if (request.method !== 'POST') {
@@ -81,15 +88,18 @@ Deno.serve(async (request) => {
     }
 
     if (!upstream.ok) {
+      const upstreamError = sanitizedUpstreamError(result);
       console.error('scheduler dispatch upstream failure', {
         action: body.action,
         slug: target.slug,
         status: upstream.status,
+        upstreamError,
       });
       return json(502, {
         error: 'upstream_failure',
         action: body.action,
         upstreamStatus: upstream.status,
+        ...(upstreamError ? { upstreamError } : {}),
       });
     }
 
