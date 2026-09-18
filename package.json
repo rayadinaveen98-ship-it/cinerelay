@@ -13,7 +13,8 @@
     "build:web-page": "tsc -p packages/web-page-connector/tsconfig.json",
     "build:threads": "tsc -p packages/threads-connector/tsconfig.json",
     "build:instagram": "tsc -p packages/instagram-connector/tsconfig.json",
-    "build": "npm run build:domain && npm run build:youtube && npm run build:feed && npm run build:web-page && npm run build:threads && npm run build:instagram",
+    "build:x": "tsc -p packages/x-connector/tsconfig.json",
+    "build": "npm run build:domain && npm run build:youtube && npm run build:feed && npm run build:web-page && npm run build:threads && npm run build:instagram && npm run build:x",
     "lint": "node scripts/repo-hygiene.mjs",
     "test:contracts": "npm run build && node scripts/validate-contracts.mjs",
     "test:benchmark": "npm run build && node tests/benchmark/run-benchmark.mjs",
@@ -25,7 +26,8 @@
     "test:web-page": "npm run build:web-page && node tests/web-page-connector/run-web-page-connector.mjs",
     "test:threads": "npm run build:threads && node tests/threads-connector/run-threads-connector.mjs",
     "test:instagram": "npm run build:instagram && node tests/instagram-connector/run-instagram-connector.mjs",
-    "ci": "npm run lint && npm run test:contracts && npm run test:benchmark && npm run test:newsroom && npm run test:newsroom-state && npm run test:push-presentation && npm run test:youtube && npm run test:feed && npm run test:web-page && npm run test:threads && npm run test:instagram"
+    "test:x": "npm run build:x && node tests/x-connector/run-x-connector.mjs",
+    "ci": "npm run lint && npm run test:contracts && npm run test:benchmark && npm run test:newsroom && npm run test:newsroom-state && npm run test:push-presentation && npm run test:youtube && npm run test:feed && npm run test:web-page && npm run test:threads && npm run test:instagram && npm run test:x"
   },
   "dependencies": {
     "fast-xml-parser": "5.2.5",
