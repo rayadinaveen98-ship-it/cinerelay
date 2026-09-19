@@ -49,13 +49,7 @@ class BackendClient(
             Request.Builder()
                 .url("$baseUrl/auth/v1/signup")
                 .header("apikey", publishableKey)
-                .post(
-                    JSONObject()
-                        .put("email", email.trim())
-                        .put("password", password)
-                        .toString()
-                        .toRequestBody(jsonType),
-                )
+                .post(JSONObject().put("email", email.trim()).put("password", password).toString().toRequestBody(jsonType))
                 .build(),
         )
         if (!response.ok) throw ApiException(response.errorMessage ?: "Account creation failed", response.code)
@@ -66,9 +60,6 @@ class BackendClient(
             return SignUpResult(session = parseAndStoreSession(response.json), confirmationRequired = false)
         }
 
-        // With Confirm Email enabled, Supabase intentionally returns a successful signup
-        // response without a session. Existing confirmed accounts can receive an
-        // indistinguishable privacy-safe response to prevent account enumeration.
         return SignUpResult(session = null, confirmationRequired = true)
     }
 
@@ -100,10 +91,13 @@ class BackendClient(
         )
     }
 
-    fun newsroom(limit: Int = 60): List<NewsroomSignal> {
+    fun newsroom(platform: String = "YOUTUBE", limit: Int = 60): List<NewsroomSignal> {
         val json = invokeGuestAware(
             "cinerelay-newsroom-api",
-            JSONObject().put("action", "newsroom").put("limit", limit.coerceIn(1, 100)),
+            JSONObject()
+                .put("action", "newsroom")
+                .put("platform", platform.uppercase())
+                .put("limit", limit.coerceIn(1, 100)),
         )
         return json.optJSONArray("items").toNewsroomSignals()
     }
@@ -141,10 +135,7 @@ class BackendClient(
     fun setFollow(entityId: String, active: Boolean) {
         val result = invokeAuthenticated(
             "cinerelay-mobile-api",
-            JSONObject()
-                .put("action", "setFollow")
-                .put("entityId", entityId)
-                .put("active", active),
+            JSONObject().put("action", "setFollow").put("entityId", entityId).put("active", active),
         )
         if (!result.optBoolean("ok", false)) throw ApiException(result.optString("error", "Follow update failed"), 400)
     }
@@ -206,9 +197,7 @@ class BackendClient(
             http.newCall(request).execute().use { response ->
                 val raw = response.body?.string().orEmpty()
                 val json = if (raw.isBlank()) JSONObject() else runCatching { JSONObject(raw) }.getOrElse { JSONObject().put("raw", raw) }
-                val error = json.optNullableString("error")
-                    ?: json.optNullableString("msg")
-                    ?: json.optNullableString("message")
+                val error = json.optNullableString("error") ?: json.optNullableString("msg") ?: json.optNullableString("message")
                 return JsonResponse(response.code, response.isSuccessful, json, error)
             }
         } catch (error: IOException) {
@@ -241,10 +230,7 @@ class BackendClient(
     )
 }
 
-data class SignUpResult(
-    val session: Session?,
-    val confirmationRequired: Boolean,
-)
+data class SignUpResult(val session: Session?, val confirmationRequired: Boolean)
 
 class ApiException(message: String, val statusCode: Int) : RuntimeException(message)
 
@@ -290,9 +276,7 @@ private fun JSONArray?.toNewsroomSignals(): List<NewsroomSignal> {
 private fun JSONArray?.toEventCards(): List<EventCard> {
     val array = this ?: JSONArray()
     return buildList {
-        for (index in 0 until array.length()) {
-            array.optJSONObject(index)?.let { add(it.toEventCard()) }
-        }
+        for (index in 0 until array.length()) array.optJSONObject(index)?.let { add(it.toEventCard()) }
     }
 }
 
@@ -333,9 +317,7 @@ private fun JSONObject.toEventCard(): EventCard {
             RadarSignal(
                 score = it.optInt("score", 0),
                 label = it.optString("label", "NO_ACTION"),
-                reasons = buildList {
-                    for (index in 0 until reasons.length()) add(reasons.optString(index))
-                },
+                reasons = buildList { for (index in 0 until reasons.length()) add(reasons.optString(index)) },
             )
         },
     )
