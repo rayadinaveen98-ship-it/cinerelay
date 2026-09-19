@@ -10,7 +10,14 @@ import {
   normalizeChannelsListResponse,
 } from '../../../packages/youtube-connector/dist/index.js';
 // @deno-types="../../../packages/youtube-connector/dist/subscription.d.ts"
-import { planSubscription, planUnsubscription } from '../../../packages/youtube-connector/dist/subscription.js';
+import {
+  HUB_RETRY_POLICY,
+  decideHubRetry,
+  decideHubTransportRetry,
+  failedRenewalRetryAt,
+  planSubscription,
+  planUnsubscription,
+} from '../../../packages/youtube-connector/dist/subscription.js';
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL');
 const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
@@ -20,6 +27,10 @@ const youtubeApiKey = Deno.env.get('YOUTUBE_API_KEY');
 if (!supabaseUrl || !serviceRoleKey || !masterSecret || !internalSecret || !youtubeApiKey) throw new Error('Missing YouTube subscription-admin environment');
 const supabase = createClient(supabaseUrl, serviceRoleKey, { auth: { persistSession: false, autoRefreshToken: false } });
 const callbackBaseUrl = `${supabaseUrl.replace(/\/$/, '')}/functions/v1/youtube-websub`;
+
+type HubRequest = { url: string; headers: Record<string, string>; body: string };
+type HubPostResult = { ok: boolean; status: number | null; attempts: number; transportError: boolean };
+type SubscriptionRow = { id: string; generation: number; state: string; requested_at: string | null; verified_at: string | null; expires_at: string | null; renew_after: string | null };
 
 function authorized(request: Request): boolean {
   const supplied = request.headers.get('x-cinerelay-internal-key') ?? '';
@@ -31,6 +42,33 @@ function authorized(request: Request): boolean {
 
 function response(status: number, body: Record<string, unknown>): Response {
   return new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } });
+}
+
+async function pause(delayMs: number): Promise<void> {
+  if (delayMs <= 0) return;
+  await new Promise((resolve) => setTimeout(resolve, delayMs));
+}
+
+async function postHubWithRetry(request: HubRequest): Promise<HubPostResult> {
+  for (let attempt = 1; attempt <= HUB_RETRY_POLICY.maxAttempts; attempt += 1) {
+    try {
+      const hubResponse = await fetch(request.url, {
+        method: 'POST',
+        headers: request.headers,
+        body: request.body,
+        signal: AbortSignal.timeout(HUB_RETRY_POLICY.attemptTimeoutMs),
+      });
+      if (hubResponse.ok) return { ok: true, status: hubResponse.status, attempts: attempt, transportError: false };
+      const retry = decideHubRetry({ attempt, status: hubResponse.status });
+      if (!retry.retry) return { ok: false, status: hubResponse.status, attempts: attempt, transportError: false };
+      await pause(retry.delayMs);
+    } catch {
+      const retry = decideHubTransportRetry(attempt);
+      if (!retry.retry) return { ok: false, status: null, attempts: attempt, transportError: true };
+      await pause(retry.delayMs);
+    }
+  }
+  return { ok: false, status: null, attempts: HUB_RETRY_POLICY.maxAttempts, transportError: true };
 }
 
 async function quotaAllowed(): Promise<boolean> {
@@ -75,8 +113,9 @@ Deno.serve(async (request) => {
       .order('generation', { ascending: false })
       .limit(20);
     if (subscriptionError) throw subscriptionError;
-    const rows = subscriptions ?? [];
+    const rows = (subscriptions ?? []) as SubscriptionRow[];
     const latestGeneration = Math.max(0, ...rows.map((item) => Number(item.generation)));
+    const activeRenewal = action === 'renew' ? rows.find((item) => item.state === 'ACTIVE') ?? null : null;
 
     if (action === 'unsubscribe') {
       const alreadyStopping = rows.find((item) => item.state === 'UNSUBSCRIBING');
@@ -84,11 +123,11 @@ Deno.serve(async (request) => {
       const active = rows.find((item) => item.state === 'ACTIVE') ?? rows.find((item) => item.state === 'SUPERSEDED');
       if (!active) return response(409, { error: 'no_active_subscription' });
       const plan = await planUnsubscription({ sourceIdentityId, channelId, generation: Number(active.generation), callbackBaseUrl, masterSecret: masterSecret! });
-      const hubResponse = await fetch(plan.hubRequest.url, { method: 'POST', headers: plan.hubRequest.headers, body: plan.hubRequest.body });
-      if (!hubResponse.ok) return response(502, { error: 'hub_unsubscribe_rejected', status: hubResponse.status });
+      const hub = await postHubWithRetry(plan.hubRequest);
+      if (!hub.ok) return response(502, { error: 'hub_unsubscribe_rejected', status: hub.status, attempts: hub.attempts, transportError: hub.transportError });
       const { error } = await supabase.from('connector_subscriptions').update({ state: 'UNSUBSCRIBING', last_error: null }).eq('id', active.id);
       if (error) throw error;
-      return response(202, { action, generation: Number(active.generation), hub: YOUTUBE_WEBSUB_HUB_URL });
+      return response(202, { action, generation: Number(active.generation), hub: YOUTUBE_WEBSUB_HUB_URL, hubAttempts: hub.attempts });
     }
 
     if (action === 'subscribe') {
@@ -116,8 +155,7 @@ Deno.serve(async (request) => {
           state: String(inFlight.state),
         });
       }
-      const active = rows.find((item) => item.state === 'ACTIVE');
-      if (!active) return response(409, { error: 'no_active_subscription_to_renew' });
+      if (!activeRenewal) return response(409, { error: 'no_active_subscription_to_renew' });
     }
 
     const channel = await validateChannel(sourceIdentityId, channelId);
@@ -126,13 +164,27 @@ Deno.serve(async (request) => {
     const { error: insertError } = await supabase.from('connector_subscriptions').insert({ source_identity_id: sourceIdentityId, provider: YOUTUBE_WEBSUB_PROVIDER, hub_url: YOUTUBE_WEBSUB_HUB_URL, topic_url: plan.topicUrl, callback_token_hash: plan.callbackTokenHash, generation: plan.generation, signature_required: true, state: plan.state });
     if (insertError) throw insertError;
 
-    const hubResponse = await fetch(plan.hubRequest.url, { method: 'POST', headers: plan.hubRequest.headers, body: plan.hubRequest.body });
-    if (!hubResponse.ok) {
-      await supabase.from('connector_subscriptions').update({ state: 'ERROR', last_error: `hub request failed with ${hubResponse.status}` }).eq('provider', YOUTUBE_WEBSUB_PROVIDER).eq('source_identity_id', sourceIdentityId).eq('generation', plan.generation);
-      return response(502, { error: 'hub_subscribe_rejected', status: hubResponse.status });
+    const hub = await postHubWithRetry(plan.hubRequest);
+    if (!hub.ok) {
+      const failureLabel = hub.transportError ? 'hub transport failure' : `hub request failed with ${hub.status}`;
+      const { error: failError } = await supabase.from('connector_subscriptions').update({ state: 'ERROR', last_error: `${failureLabel} after ${hub.attempts} attempt(s)` }).eq('provider', YOUTUBE_WEBSUB_PROVIDER).eq('source_identity_id', sourceIdentityId).eq('generation', plan.generation);
+      if (failError) throw failError;
+      let retryAt: string | null = null;
+      if (action === 'renew' && activeRenewal) {
+        retryAt = failedRenewalRetryAt(new Date());
+        const { error: deferError } = await supabase.from('connector_subscriptions').update({ renew_after: retryAt }).eq('id', activeRenewal.id).eq('state', 'ACTIVE');
+        if (deferError) throw deferError;
+      }
+      return response(502, { error: 'hub_subscribe_rejected', status: hub.status, attempts: hub.attempts, transportError: hub.transportError, retryAt });
     }
 
-    return response(202, { action, generation: plan.generation, channel: { id: channel.channelId, title: channel.title, uploadsPlaylistId: channel.uploadsPlaylistId ?? null }, hub: YOUTUBE_WEBSUB_HUB_URL });
+    return response(202, {
+      action,
+      generation: plan.generation,
+      channel: { id: channel.channelId, title: channel.title, uploadsPlaylistId: channel.uploadsPlaylistId ?? null },
+      hub: YOUTUBE_WEBSUB_HUB_URL,
+      hubAttempts: hub.attempts,
+    });
   } catch (error) {
     console.error('youtube-subscription-admin failure', error);
     return response(500, { error: 'internal_error' });

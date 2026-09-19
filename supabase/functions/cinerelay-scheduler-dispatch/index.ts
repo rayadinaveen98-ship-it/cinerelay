@@ -9,7 +9,7 @@ const supabase = createClient(supabaseUrl, serviceRoleKey, {
   auth: { persistSession: false, autoRefreshToken: false },
 });
 
-type Action = 'youtube-enrichment' | 'process-raw-item' | 'youtube-fallback' | 'youtube-maintenance' | 'feed-poll' | 'page-poll' | 'threads-profile-poll' | 'instagram-business-poll' | 'push-delivery' | 'digest-compose' | 'creator-radar' | 'evidence-summary';
+type Action = 'youtube-enrichment' | 'process-raw-item' | 'youtube-fallback' | 'youtube-maintenance' | 'feed-poll' | 'page-poll' | 'threads-profile-poll' | 'instagram-business-poll' | 'x-profile-poll' | 'push-delivery' | 'source-activity-push' | 'digest-compose' | 'creator-radar' | 'evidence-summary';
 
 type DispatchTarget = {
   slug: string;
@@ -25,7 +25,9 @@ const TARGETS: Record<Action, DispatchTarget> = {
   'page-poll': { slug: 'page-poll-worker', body: { limit: 20 } },
   'threads-profile-poll': { slug: 'threads-profile-poll-worker', body: { limit: 20 } },
   'instagram-business-poll': { slug: 'instagram-business-poll-worker', body: { limit: 20 } },
+  'x-profile-poll': { slug: 'x-profile-poll-worker', body: { limit: 20 } },
   'push-delivery': { slug: 'push-delivery-worker', body: { limit: 25 } },
+  'source-activity-push': { slug: 'source-activity-push-worker', body: { limit: 50 } },
   'digest-compose': { slug: 'digest-compose-worker', body: { limit: 200 } },
   'creator-radar': { slug: 'creator-radar-worker', body: { limit: 100 } },
   'evidence-summary': { slug: 'evidence-summary-worker', body: { limit: 100 } },
@@ -47,6 +49,13 @@ async function authorized(request: Request): Promise<boolean> {
 
 function isAction(value: unknown): value is Action {
   return typeof value === 'string' && Object.prototype.hasOwnProperty.call(TARGETS, value);
+}
+
+function sanitizedUpstreamError(result: unknown): string | null {
+  if (!result || typeof result !== 'object') return null;
+  const value = (result as Record<string, unknown>).error;
+  if (typeof value !== 'string') return null;
+  return /^(?:fcm|x_api)_[a-z0-9_]+$/i.test(value) ? value : null;
 }
 
 Deno.serve(async (request) => {
@@ -81,15 +90,18 @@ Deno.serve(async (request) => {
     }
 
     if (!upstream.ok) {
+      const upstreamError = sanitizedUpstreamError(result);
       console.error('scheduler dispatch upstream failure', {
         action: body.action,
         slug: target.slug,
         status: upstream.status,
+        upstreamError,
       });
       return json(502, {
         error: 'upstream_failure',
         action: body.action,
         upstreamStatus: upstream.status,
+        ...(upstreamError ? { upstreamError } : {}),
       });
     }
 

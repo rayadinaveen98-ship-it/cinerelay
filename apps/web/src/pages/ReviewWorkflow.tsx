@@ -15,6 +15,14 @@ function fmt(value: string | null | undefined) {
   return value ? new Date(value).toLocaleString() : '—';
 }
 
+function sourceTrustLabel(item: ReviewItem) {
+  const source = item.source;
+  if (!source) return 'Unknown source trust';
+  const tier = Number.isFinite(source.authorityTier) ? `Tier ${source.authorityTier}` : 'Tier unknown';
+  const role = source.sourceRole?.replaceAll('_', ' ') ?? 'Role unknown';
+  return `${tier} · ${role} · ${source.platform}`;
+}
+
 function ReviewItemCard({ item }: { item: ReviewItem }) {
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
@@ -67,9 +75,25 @@ function ReviewItemCard({ item }: { item: ReviewItem }) {
             <span>{item.resolution.resolution_state}</span><span>•</span><span>score {item.resolution.score}</span><span>•</span><span>{item.source?.name ?? 'Unknown source'}</span>
           </div>
           <h3 className="mt-2 font-semibold text-zinc-100">{item.rawItem?.raw_title ?? 'Untitled source item'}</h3>
-          <p className="mt-1 text-xs text-zinc-500">{fmt(item.rawItem?.published_at)} · {item.resolution.engine_version}</p>
+          <p className="mt-1 text-xs text-zinc-500">{item.resolution.engine_version}</p>
         </div>
         {item.rawItem?.canonical_url && <a href={item.rawItem.canonical_url} target="_blank" rel="noreferrer" className="text-sm text-amber-400 hover:text-amber-300">Open evidence ↗</a>}
+      </div>
+
+      <div className="mt-4 rounded-xl border border-amber-900/60 bg-amber-950/20 p-4">
+        <div className="flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-wide text-amber-300">
+          <span>Raw / unresolved signal</span><span>•</span><span>{sourceTrustLabel(item)}</span>
+        </div>
+        <p className="mt-2 text-sm leading-6 text-amber-100/80">Canonical identity and event trust are not established yet. Review the source authority, evidence and title before binding or creating an entity.</p>
+        <div className="mt-3 grid gap-3 text-xs text-zinc-400 sm:grid-cols-2">
+          <div><span className="block uppercase tracking-wide text-zinc-600">Source published</span><span className="mt-1 block text-zinc-300">{fmt(item.rawItem?.published_at)}</span></div>
+          <div><span className="block uppercase tracking-wide text-zinc-600">CineRelay first seen</span><span className="mt-1 block text-zinc-300">{fmt(item.rawItem?.first_seen_at)}</span></div>
+        </div>
+        <div className="mt-3 flex flex-wrap gap-2 text-xs text-zinc-500">
+          {item.source?.handle && <span className="rounded-full border border-zinc-800 bg-zinc-950/60 px-2.5 py-1">{item.source.handle}</span>}
+          {item.source?.connectorType && <span className="rounded-full border border-zinc-800 bg-zinc-950/60 px-2.5 py-1">{item.source.connectorType}</span>}
+          {item.source?.accessMode && <span className="rounded-full border border-zinc-800 bg-zinc-950/60 px-2.5 py-1">{item.source.accessMode}</span>}
+        </div>
       </div>
 
       {item.rawItem?.raw_text && <details className="mt-4 rounded-xl border border-zinc-800 bg-zinc-900/50 p-3"><summary className="cursor-pointer text-sm text-zinc-300">Source text</summary><p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-zinc-400">{item.rawItem.raw_text}</p></details>}

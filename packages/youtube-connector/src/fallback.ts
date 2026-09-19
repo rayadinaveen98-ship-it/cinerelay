@@ -8,6 +8,8 @@ export const YOUTUBE_DISCOVERY_INTERVAL_MS = Object.freeze({
   backoff: 30 * 60 * 1000,
 });
 
+export type YouTubeDiscoveryPriority = 'HIGH' | 'NORMAL';
+
 export type UploadsPlaylistItem = {
   videoId: string;
   title?: string;
@@ -79,11 +81,13 @@ export function normalizeUploadsPlaylistItemsResponse(payload: unknown): Uploads
 export function decideDiscoveryIntervalMs(input: {
   existingErrorCode?: string | null;
   providerFailure?: boolean;
+  priority?: YouTubeDiscoveryPriority;
 }): number {
   if (input.providerFailure) return YOUTUBE_DISCOVERY_INTERVAL_MS.backoff;
   if (input.existingErrorCode === 'WEBSUB_MISSED_DELIVERY' || input.existingErrorCode === 'FALLBACK_WINDOW_GAP') {
     return YOUTUBE_DISCOVERY_INTERVAL_MS.hot;
   }
+  if (input.priority === 'HIGH') return YOUTUBE_DISCOVERY_INTERVAL_MS.hot;
   return YOUTUBE_DISCOVERY_INTERVAL_MS.normal;
 }
 

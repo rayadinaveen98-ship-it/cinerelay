@@ -55,7 +55,7 @@ jobs:
             echo 'VITE Supabase publishable key was not bound into the browser artifact' >&2
             exit 1
           fi
-          if grep -R -E 'SUPABASE_SERVICE_ROLE_KEY|CINERELAY_INTERNAL_ADMIN_SECRET|CINERELAY_WEBSUB_MASTER_SECRET|YOUTUBE_API_KEY|THREADS_PROFILE_DISCOVERY_ACCESS_TOKEN|INSTAGRAM_BUSINESS_DISCOVERY_ACCESS_TOKEN|INSTAGRAM_MANAGED_IG_USER_ID|CINERELAY_FCM_SERVICE_ACCOUNT' apps/web/dist; then
+          if grep -R -E 'SUPABASE_SERVICE_ROLE_KEY|CINERELAY_INTERNAL_ADMIN_SECRET|CINERELAY_WEBSUB_MASTER_SECRET|YOUTUBE_API_KEY|THREADS_PROFILE_DISCOVERY_ACCESS_TOKEN|INSTAGRAM_BUSINESS_DISCOVERY_ACCESS_TOKEN|INSTAGRAM_MANAGED_IG_USER_ID|X_API_BEARER_TOKEN|CINERELAY_FCM_SERVICE_ACCOUNT' apps/web/dist; then
             echo 'Forbidden privileged credential marker found in browser bundle' >&2
             exit 1
           fi
@@ -102,6 +102,8 @@ jobs:
         run: deno check --config supabase/functions/threads-profile-poll-worker/deno.json supabase/functions/threads-profile-poll-worker/index.ts
       - name: Type-check instagram-business-poll-worker
         run: deno check --config supabase/functions/instagram-business-poll-worker/deno.json supabase/functions/instagram-business-poll-worker/index.ts
+      - name: Type-check x-profile-poll-worker
+        run: deno check --config supabase/functions/x-profile-poll-worker/deno.json supabase/functions/x-profile-poll-worker/index.ts
       - name: Type-check cinerelay-scheduler-dispatch
         run: deno check --config supabase/functions/cinerelay-scheduler-dispatch/deno.json supabase/functions/cinerelay-scheduler-dispatch/index.ts
       - name: Type-check cinerelay-console-api
@@ -116,6 +118,8 @@ jobs:
         run: deno check --config supabase/functions/cinerelay-device-registration-api/deno.json supabase/functions/cinerelay-device-registration-api/index.ts
       - name: Type-check push-delivery-worker
         run: deno check --config supabase/functions/push-delivery-worker/deno.json supabase/functions/push-delivery-worker/index.ts
+      - name: Type-check source-activity-push-worker
+        run: deno check --config supabase/functions/source-activity-push-worker/deno.json supabase/functions/source-activity-push-worker/index.ts
       - name: Type-check digest-compose-worker
         run: deno check --config supabase/functions/digest-compose-worker/deno.json supabase/functions/digest-compose-worker/index.ts
       - name: Type-check creator-radar-worker
@@ -138,6 +142,7 @@ jobs:
             page-poll-worker
             threads-profile-poll-worker
             instagram-business-poll-worker
+            x-profile-poll-worker
             cinerelay-scheduler-dispatch
             cinerelay-console-api
             cinerelay-review-api
@@ -145,6 +150,7 @@ jobs:
             cinerelay-public-page-onboarding-api
             cinerelay-device-registration-api
             push-delivery-worker
+            source-activity-push-worker
             digest-compose-worker
             creator-radar-worker
             evidence-summary-worker
@@ -175,6 +181,7 @@ jobs:
             packages/web-page-connector/dist
             packages/threads-connector/dist
             packages/instagram-connector/dist
+            packages/x-connector/dist
           if-no-files-found: error
           retention-days: 7
       - name: Upload deployment-native Edge bundle
