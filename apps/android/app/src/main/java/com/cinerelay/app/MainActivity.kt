@@ -17,6 +17,7 @@ import com.cinerelay.app.ui.AppTab
 import com.cinerelay.app.ui.CineRelayV02App
 import com.cinerelay.app.ui.CineRelayViewModel
 import com.cinerelay.app.ui.NewsroomFilterOverlay
+import com.cinerelay.app.ui.NewsroomPlatformOverlay
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -29,6 +30,13 @@ class MainActivity : ComponentActivity() {
             Box(Modifier.fillMaxSize()) {
                 CineRelayV02App(viewModel)
                 if (state.tab == AppTab.LIVE && state.authMode == null) {
+                    NewsroomPlatformOverlay(
+                        selected = state.newsroomPlatform,
+                        onSelect = viewModel::setNewsroomPlatform,
+                        modifier = Modifier
+                            .align(Alignment.BottomStart)
+                            .padding(start = 16.dp, bottom = 92.dp),
+                    )
                     NewsroomFilterOverlay(
                         selected = state.newsroomFilter,
                         counts = state.newsroomFilterCounts,
