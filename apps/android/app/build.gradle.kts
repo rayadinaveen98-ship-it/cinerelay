@@ -20,6 +20,19 @@ if (firebaseConfigured) {
     apply(plugin = "com.google.gms.google-services")
 }
 
+val configuredVersionCode = providers.environmentVariable("CINERELAY_VERSION_CODE").orNull?.toIntOrNull()
+val configuredVersionName = providers.environmentVariable("CINERELAY_VERSION_NAME").orNull
+val signingStoreFile = providers.environmentVariable("CINERELAY_SIGNING_STORE_FILE").orNull
+val signingStorePassword = providers.environmentVariable("CINERELAY_SIGNING_STORE_PASSWORD").orNull
+val signingKeyAlias = providers.environmentVariable("CINERELAY_SIGNING_KEY_ALIAS").orNull
+val signingKeyPassword = providers.environmentVariable("CINERELAY_SIGNING_KEY_PASSWORD").orNull
+val updateSigningConfigured = listOf(
+    signingStoreFile,
+    signingStorePassword,
+    signingKeyAlias,
+    signingKeyPassword,
+).all { !it.isNullOrBlank() }
+
 android {
     namespace = "com.cinerelay.app"
     compileSdk = 36
@@ -28,12 +41,13 @@ android {
         applicationId = "com.cinerelay.app"
         minSdk = 26
         targetSdk = 36
-        versionCode = 3
-        versionName = "0.2.0-canary"
+        versionCode = configuredVersionCode ?: 4
+        versionName = configuredVersionName ?: "0.2.1-canary"
 
         buildConfigField("String", "SUPABASE_URL", "\"${publicConfig("CINERELAY_SUPABASE_URL", "https://dnqaejljfzwhsainpdxb.supabase.co")}\"")
         buildConfigField("String", "SUPABASE_PUBLISHABLE_KEY", "\"${publicConfig("CINERELAY_SUPABASE_PUBLISHABLE_KEY", "sb_publishable_hR65p2JkQ2x5fFLx_kkcNQ_1SxNN3QP")}\"")
         buildConfigField("boolean", "FIREBASE_CONFIGURED", firebaseConfigured.toString())
+        buildConfigField("boolean", "UPDATE_SIGNING_CONFIGURED", updateSigningConfigured.toString())
     }
 
     buildFeatures {
@@ -50,13 +64,26 @@ android {
         resources.excludes += setOf("/META-INF/{AL2.0,LGPL2.1}")
     }
 
+    val stableSigning = if (updateSigningConfigured) {
+        signingConfigs.create("cinerelayStable") {
+            storeFile = file(signingStoreFile!!)
+            storePassword = signingStorePassword
+            keyAlias = signingKeyAlias
+            keyPassword = signingKeyPassword
+        }
+    } else {
+        null
+    }
+
     buildTypes {
         debug {
             versionNameSuffix = "+debug"
+            stableSigning?.let { signingConfig = it }
         }
         release {
             isMinifyEnabled = true
             isShrinkResources = true
+            stableSigning?.let { signingConfig = it }
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
@@ -66,8 +93,6 @@ android {
 }
 
 dependencies {
-    // Keep the canary on the last stable Compose generation that supports compileSdk 36.
-    // Compose 1.12+ moved its Android floor to compileSdk 37.
     val composeBom = platform("androidx.compose:compose-bom:2026.04.01")
     implementation(composeBom)
 
