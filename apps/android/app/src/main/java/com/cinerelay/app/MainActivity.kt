@@ -17,7 +17,9 @@ import com.cinerelay.app.ui.AppTab
 import com.cinerelay.app.ui.CineRelayV02App
 import com.cinerelay.app.ui.CineRelayViewModel
 import com.cinerelay.app.ui.NewsroomFilterOverlay
+import com.cinerelay.app.ui.NewsroomPlatform
 import com.cinerelay.app.ui.NewsroomPlatformOverlay
+import com.cinerelay.app.ui.NewsroomSourceRoleOverlay
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -30,6 +32,16 @@ class MainActivity : ComponentActivity() {
             Box(Modifier.fillMaxSize()) {
                 CineRelayV02App(viewModel)
                 if (state.tab == AppTab.LIVE && state.authMode == null) {
+                    if (state.newsroomPlatform == NewsroomPlatform.YOUTUBE) {
+                        NewsroomSourceRoleOverlay(
+                            selected = state.newsroomSourceRole,
+                            counts = state.newsroomSourceRoleCounts,
+                            onSelect = viewModel::setNewsroomSourceRole,
+                            modifier = Modifier
+                                .align(Alignment.BottomCenter)
+                                .padding(bottom = 148.dp),
+                        )
+                    }
                     NewsroomPlatformOverlay(
                         selected = state.newsroomPlatform,
                         onSelect = viewModel::setNewsroomPlatform,
