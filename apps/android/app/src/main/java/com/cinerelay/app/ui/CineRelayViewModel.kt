@@ -21,6 +21,7 @@ import kotlinx.coroutines.withContext
 
 enum class AppTab { LIVE, FOLLOWING, RADAR, ALERTS }
 enum class AuthMode { SIGN_IN, CREATE_ACCOUNT }
+enum class NewsroomPlatform { YOUTUBE, X }
 enum class NewsroomFilter { ALL, VERIFIED, DEVELOPING, UNCONFIRMED, CONFLICT_RUMOR }
 
 data class CineRelayUiState(
@@ -33,6 +34,7 @@ data class CineRelayUiState(
     val notice: String? = null,
     val error: String? = null,
     val bootstrap: Bootstrap? = null,
+    val newsroomPlatform: NewsroomPlatform = NewsroomPlatform.YOUTUBE,
     val newsroomFilter: NewsroomFilter = NewsroomFilter.ALL,
     val newsroomFilterCounts: Map<NewsroomFilter, Int> = emptyMap(),
     val newsroomSignals: List<NewsroomSignal> = emptyList(),
@@ -72,6 +74,19 @@ class CineRelayViewModel(application: Application) : AndroidViewModel(applicatio
     fun switchAuthMode(mode: AuthMode) {
         if (_state.value.authBusy) return
         _state.value = _state.value.copy(authMode = mode, error = null, notice = null)
+    }
+
+    fun setNewsroomPlatform(platform: NewsroomPlatform) {
+        if (_state.value.newsroomPlatform == platform || _state.value.loading) return
+        latestNewsroomSignals = emptyList()
+        _state.value = _state.value.copy(
+            newsroomPlatform = platform,
+            newsroomFilterCounts = emptyMap(),
+            newsroomSignals = emptyList(),
+            error = null,
+            notice = null,
+        )
+        if (_state.value.tab == AppTab.LIVE) refresh()
     }
 
     fun setNewsroomFilter(filter: NewsroomFilter) {
@@ -160,7 +175,7 @@ class CineRelayViewModel(application: Application) : AndroidViewModel(applicatio
             runCatching {
                 withContext(Dispatchers.IO) {
                     when (_state.value.tab) {
-                        AppTab.LIVE -> LoadResult.Newsroom(backend.newsroom())
+                        AppTab.LIVE -> LoadResult.Newsroom(backend.newsroom(_state.value.newsroomPlatform.name))
                         AppTab.FOLLOWING -> LoadResult.Events(backend.eventFeed("following"))
                         AppTab.RADAR -> LoadResult.Events(backend.eventFeed("radar", allowGuest = true))
                         AppTab.ALERTS -> LoadResult.Alerts(backend.alerts())
