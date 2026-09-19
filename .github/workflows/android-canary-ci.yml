@@ -226,6 +226,13 @@ jobs:
             APKSIGNER="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -n 1)"
             test -x "$APKSIGNER"
             "$APKSIGNER" verify --print-certs "$APK" | tee "$OUT/CineRelay-v0.2.1-canary.signing-certificate.txt"
+            EXPECTED="$(tr -d '[:space:]' < apps/android/signing/cinerelay-update-cert.sha256 | tr '[:lower:]' '[:upper:]')"
+            ACTUAL="$(awk -F': ' '/certificate SHA-256 digest/{print toupper($2); exit}' "$OUT/CineRelay-v0.2.1-canary.signing-certificate.txt" | tr -d ':[:space:]')"
+            if [[ -z "$ACTUAL" || "$ACTUAL" != "$EXPECTED" ]]; then
+              echo "CineRelay signer mismatch. Expected $EXPECTED, got ${ACTUAL:-missing}." >&2
+              exit 1
+            fi
+            echo "Permanent CineRelay signer verified: $ACTUAL"
           fi
       - name: Explain withheld installable artifact
         if: steps.signing.outputs.configured != 'true'
