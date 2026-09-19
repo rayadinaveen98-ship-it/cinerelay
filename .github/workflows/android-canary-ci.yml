@@ -78,6 +78,39 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '9.6.0'
+      - name: Prepare monotonic CineRelay app version
+        shell: bash
+        run: |
+          set -euo pipefail
+          version_code=$((200000 + GITHUB_RUN_NUMBER))
+          echo "CINERELAY_VERSION_CODE=$version_code" >> "$GITHUB_ENV"
+          echo "CINERELAY_VERSION_NAME=0.2.1-canary.${GITHUB_RUN_NUMBER}" >> "$GITHUB_ENV"
+          echo "CineRelay versionCode=$version_code"
+      - name: Configure stable update signing when available
+        id: signing
+        shell: bash
+        env:
+          KEYSTORE_B64: ${{ secrets.CINERELAY_ANDROID_KEYSTORE_B64 }}
+          STORE_PASSWORD: ${{ secrets.CINERELAY_ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.CINERELAY_ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.CINERELAY_ANDROID_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          if [[ -z "${KEYSTORE_B64:-}" || -z "${STORE_PASSWORD:-}" || -z "${KEY_ALIAS:-}" || -z "${KEY_PASSWORD:-}" ]]; then
+            echo 'configured=false' >> "$GITHUB_OUTPUT"
+            echo 'Stable CineRelay update signing secrets are not configured; CI will compile but will not publish an installable APK.'
+            exit 0
+          fi
+          KEYSTORE="$RUNNER_TEMP/cinerelay-update.jks"
+          printf '%s' "$KEYSTORE_B64" | base64 --decode > "$KEYSTORE"
+          test -s "$KEYSTORE"
+          keytool -list -keystore "$KEYSTORE" -storepass "$STORE_PASSWORD" -alias "$KEY_ALIAS" >/dev/null
+          echo "CINERELAY_SIGNING_STORE_FILE=$KEYSTORE" >> "$GITHUB_ENV"
+          echo "CINERELAY_SIGNING_STORE_PASSWORD=$STORE_PASSWORD" >> "$GITHUB_ENV"
+          echo "CINERELAY_SIGNING_KEY_ALIAS=$KEY_ALIAS" >> "$GITHUB_ENV"
+          echo "CINERELAY_SIGNING_KEY_PASSWORD=$KEY_PASSWORD" >> "$GITHUB_ENV"
+          echo 'configured=true' >> "$GITHUB_OUTPUT"
+          echo 'Stable CineRelay update signing configured.'
       - name: Configure Firebase Android client when available
         id: firebase-config
         shell: bash
@@ -134,7 +167,7 @@ jobs:
             echo 'Privileged server credential marker found in Android source' >&2
             exit 1
           fi
-      - name: Build CineRelay V0.2 Canary APK
+      - name: Build CineRelay V0.2.1 Canary APK
         run: gradle -p apps/android --no-daemon --stacktrace :app:assembleDebug
       - name: Verify Firebase build contract
         shell: bash
@@ -144,40 +177,71 @@ jobs:
             test -s apps/android/app/google-services.json
             if ! grep -R -E 'FIREBASE_CONFIGURED[^[:alnum:]]+true' apps/android/app/build/generated >/dev/null; then
               echo 'Firebase config was supplied but BuildConfig.FIREBASE_CONFIGURED was not generated as true' >&2
-              grep -R -n 'FIREBASE_CONFIGURED' apps/android/app/build/generated || true
               exit 1
             fi
-            echo 'Firebase-enabled CineRelay canary contract verified.'
           else
             test ! -e apps/android/app/google-services.json
             if ! grep -R -E 'FIREBASE_CONFIGURED[^[:alnum:]]+false' apps/android/app/build/generated >/dev/null; then
               echo 'Fallback canary did not generate BuildConfig.FIREBASE_CONFIGURED=false' >&2
-              grep -R -n 'FIREBASE_CONFIGURED' apps/android/app/build/generated || true
               exit 1
             fi
-            echo 'Fallback CineRelay canary contract verified; FCM is intentionally disabled.'
           fi
-      - name: Verify APK and package contract
+      - name: Verify version and update-signing build contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! grep -R -E "VERSION_CODE[^[:digit:]]+${CINERELAY_VERSION_CODE}" apps/android/app/build/generated >/dev/null; then
+            echo "Generated versionCode does not match $CINERELAY_VERSION_CODE" >&2
+            exit 1
+          fi
+          if [[ '${{ steps.signing.outputs.configured }}' == 'true' ]]; then
+            if ! grep -R -E 'UPDATE_SIGNING_CONFIGURED[^[:alnum:]]+true' apps/android/app/build/generated >/dev/null; then
+              echo 'Stable signing was supplied but BuildConfig.UPDATE_SIGNING_CONFIGURED is not true' >&2
+              exit 1
+            fi
+          else
+            if ! grep -R -E 'UPDATE_SIGNING_CONFIGURED[^[:alnum:]]+false' apps/android/app/build/generated >/dev/null; then
+              echo 'Unsigned canary compile did not expose UPDATE_SIGNING_CONFIGURED=false' >&2
+              exit 1
+            fi
+          fi
+      - name: Verify APK and stable signer
         shell: bash
         run: |
           set -euo pipefail
           APK='apps/android/app/build/outputs/apk/debug/app-debug.apk'
-          test -f "$APK"
+          OUT='apps/android/app/build/outputs/apk/debug'
           test -s "$APK"
           unzip -p "$APK" classes.dex > /tmp/cinerelay-classes.dex || true
           if grep -a -E 'SUPABASE_SERVICE_ROLE_KEY|CINERELAY_INTERNAL_ADMIN_SECRET|CINERELAY_FCM_SERVICE_ACCOUNT|BEGIN PRIVATE KEY' "$APK" /tmp/cinerelay-classes.dex; then
             echo 'Privileged credential marker found in APK' >&2
             exit 1
           fi
-          sha256sum "$APK" | tee apps/android/app/build/outputs/apk/debug/CineRelay-v0.2.0-canary.sha256
-          printf '%s\n' "${CINERELAY_FIREBASE_CONFIGURED:-false}" > apps/android/app/build/outputs/apk/debug/CineRelay-v0.2.0-canary.firebase-configured.txt
-      - name: Upload installable CineRelay APK
+          sha256sum "$APK" | tee "$OUT/CineRelay-v0.2.1-canary.sha256"
+          printf '%s\n' "${CINERELAY_FIREBASE_CONFIGURED:-false}" > "$OUT/CineRelay-v0.2.1-canary.firebase-configured.txt"
+          printf '%s\n' "$CINERELAY_VERSION_CODE" > "$OUT/CineRelay-v0.2.1-canary.version-code.txt"
+          printf '%s\n' "$CINERELAY_VERSION_NAME" > "$OUT/CineRelay-v0.2.1-canary.version-name.txt"
+          printf '%s\n' '${{ steps.signing.outputs.configured }}' > "$OUT/CineRelay-v0.2.1-canary.update-signing-configured.txt"
+          if [[ '${{ steps.signing.outputs.configured }}' == 'true' ]]; then
+            APKSIGNER="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -n 1)"
+            test -x "$APKSIGNER"
+            "$APKSIGNER" verify --print-certs "$APK" | tee "$OUT/CineRelay-v0.2.1-canary.signing-certificate.txt"
+          fi
+      - name: Explain withheld installable artifact
+        if: steps.signing.outputs.configured != 'true'
+        run: echo 'Installable APK intentionally withheld until permanent CineRelay signing secrets are configured.'
+      - name: Upload updateable CineRelay APK
+        if: steps.signing.outputs.configured == 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: cinerelay-android-v0.2.0-canary-apk
+          name: cinerelay-android-v0.2.1-update-apk
           path: |
             apps/android/app/build/outputs/apk/debug/app-debug.apk
-            apps/android/app/build/outputs/apk/debug/CineRelay-v0.2.0-canary.sha256
-            apps/android/app/build/outputs/apk/debug/CineRelay-v0.2.0-canary.firebase-configured.txt
+            apps/android/app/build/outputs/apk/debug/CineRelay-v0.2.1-canary.sha256
+            apps/android/app/build/outputs/apk/debug/CineRelay-v0.2.1-canary.firebase-configured.txt
+            apps/android/app/build/outputs/apk/debug/CineRelay-v0.2.1-canary.version-code.txt
+            apps/android/app/build/outputs/apk/debug/CineRelay-v0.2.1-canary.version-name.txt
+            apps/android/app/build/outputs/apk/debug/CineRelay-v0.2.1-canary.update-signing-configured.txt
+            apps/android/app/build/outputs/apk/debug/CineRelay-v0.2.1-canary.signing-certificate.txt
           if-no-files-found: error
-          retention-days: 7
+          retention-days: 14
