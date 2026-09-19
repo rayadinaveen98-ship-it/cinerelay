@@ -23,6 +23,7 @@ enum class AppTab { LIVE, FOLLOWING, RADAR, ALERTS }
 enum class AuthMode { SIGN_IN, CREATE_ACCOUNT }
 enum class NewsroomPlatform { YOUTUBE, X }
 enum class NewsroomFilter { ALL, VERIFIED, DEVELOPING, UNCONFIRMED, CONFLICT_RUMOR }
+enum class NewsroomSourceRole { ALL, PRODUCTION, OTT, MUSIC }
 
 data class CineRelayUiState(
     val authenticated: Boolean = false,
@@ -37,6 +38,8 @@ data class CineRelayUiState(
     val newsroomPlatform: NewsroomPlatform = NewsroomPlatform.YOUTUBE,
     val newsroomFilter: NewsroomFilter = NewsroomFilter.ALL,
     val newsroomFilterCounts: Map<NewsroomFilter, Int> = emptyMap(),
+    val newsroomSourceRole: NewsroomSourceRole = NewsroomSourceRole.ALL,
+    val newsroomSourceRoleCounts: Map<NewsroomSourceRole, Int> = emptyMap(),
     val newsroomSignals: List<NewsroomSignal> = emptyList(),
     val events: List<EventCard> = emptyList(),
     val alerts: List<AlertItem> = emptyList(),
@@ -81,6 +84,8 @@ class CineRelayViewModel(application: Application) : AndroidViewModel(applicatio
         latestNewsroomSignals = emptyList()
         _state.value = _state.value.copy(
             newsroomPlatform = platform,
+            newsroomSourceRole = NewsroomSourceRole.ALL,
+            newsroomSourceRoleCounts = emptyMap(),
             newsroomFilterCounts = emptyMap(),
             newsroomSignals = emptyList(),
             error = null,
@@ -91,9 +96,29 @@ class CineRelayViewModel(application: Application) : AndroidViewModel(applicatio
 
     fun setNewsroomFilter(filter: NewsroomFilter) {
         if (_state.value.newsroomFilter == filter) return
-        _state.value = _state.value.copy(
+        val current = _state.value
+        _state.value = current.copy(
             newsroomFilter = filter,
-            newsroomSignals = filterNewsroom(latestNewsroomSignals, filter),
+            newsroomSignals = filterNewsroom(
+                latestNewsroomSignals,
+                filter,
+                current.newsroomSourceRole,
+                current.newsroomPlatform,
+            ),
+        )
+    }
+
+    fun setNewsroomSourceRole(role: NewsroomSourceRole) {
+        val current = _state.value
+        if (current.newsroomPlatform != NewsroomPlatform.YOUTUBE || current.newsroomSourceRole == role) return
+        _state.value = current.copy(
+            newsroomSourceRole = role,
+            newsroomSignals = filterNewsroom(
+                latestNewsroomSignals,
+                current.newsroomFilter,
+                role,
+                current.newsroomPlatform,
+            ),
         )
     }
 
@@ -185,10 +210,17 @@ class CineRelayViewModel(application: Application) : AndroidViewModel(applicatio
                 _state.value = when (result) {
                     is LoadResult.Newsroom -> {
                         latestNewsroomSignals = result.items
-                        _state.value.copy(
+                        val current = _state.value
+                        current.copy(
                             loading = false,
                             newsroomFilterCounts = newsroomCounts(result.items),
-                            newsroomSignals = filterNewsroom(result.items, _state.value.newsroomFilter),
+                            newsroomSourceRoleCounts = newsroomSourceRoleCounts(result.items),
+                            newsroomSignals = filterNewsroom(
+                                result.items,
+                                current.newsroomFilter,
+                                current.newsroomSourceRole,
+                                current.newsroomPlatform,
+                            ),
                             events = emptyList(),
                             alerts = emptyList(),
                         )
@@ -224,12 +256,18 @@ class CineRelayViewModel(application: Application) : AndroidViewModel(applicatio
                         val event = signal.canonicalEvent
                         if (event?.entityId == card.entityId) signal.copy(canonicalEvent = event.copy(followed = desired)) else signal
                     }
-                    _state.value = _state.value.copy(
-                        newsroomSignals = filterNewsroom(latestNewsroomSignals, _state.value.newsroomFilter),
-                        events = _state.value.events.map { item ->
+                    val current = _state.value
+                    _state.value = current.copy(
+                        newsroomSignals = filterNewsroom(
+                            latestNewsroomSignals,
+                            current.newsroomFilter,
+                            current.newsroomSourceRole,
+                            current.newsroomPlatform,
+                        ),
+                        events = current.events.map { item ->
                             if (item.entityId == card.entityId) item.copy(followed = desired) else item
                         },
-                        bootstrap = _state.value.bootstrap?.let { value ->
+                        bootstrap = current.bootstrap?.let { value ->
                             value.copy(followCount = (value.followCount + if (desired) 1 else -1).coerceAtLeast(0))
                         },
                         error = null,
@@ -309,12 +347,28 @@ class CineRelayViewModel(application: Application) : AndroidViewModel(applicatio
     }
 }
 
-private fun filterNewsroom(items: List<NewsroomSignal>, filter: NewsroomFilter): List<NewsroomSignal> = when (filter) {
-    NewsroomFilter.ALL -> items
-    NewsroomFilter.VERIFIED -> items.filter { it.state == "VERIFIED" }
-    NewsroomFilter.DEVELOPING -> items.filter { it.state == "DEVELOPING" }
-    NewsroomFilter.UNCONFIRMED -> items.filter { it.state == "UNCONFIRMED" }
-    NewsroomFilter.CONFLICT_RUMOR -> items.filter { it.state == "CONFLICT_RUMOR" }
+private fun filterNewsroom(
+    items: List<NewsroomSignal>,
+    filter: NewsroomFilter,
+    sourceRole: NewsroomSourceRole,
+    platform: NewsroomPlatform,
+): List<NewsroomSignal> {
+    val byState = when (filter) {
+        NewsroomFilter.ALL -> items
+        NewsroomFilter.VERIFIED -> items.filter { it.state == "VERIFIED" }
+        NewsroomFilter.DEVELOPING -> items.filter { it.state == "DEVELOPING" }
+        NewsroomFilter.UNCONFIRMED -> items.filter { it.state == "UNCONFIRMED" }
+        NewsroomFilter.CONFLICT_RUMOR -> items.filter { it.state == "CONFLICT_RUMOR" }
+    }
+    if (platform != NewsroomPlatform.YOUTUBE || sourceRole == NewsroomSourceRole.ALL) return byState
+    return byState.filter { signal ->
+        when (sourceRole) {
+            NewsroomSourceRole.ALL -> true
+            NewsroomSourceRole.PRODUCTION -> signal.source.role == "PRODUCTION_HOUSE"
+            NewsroomSourceRole.OTT -> signal.source.role == "OTT_PLATFORM"
+            NewsroomSourceRole.MUSIC -> signal.source.role == "MUSIC_LABEL"
+        }
+    }
 }
 
 private fun newsroomCounts(items: List<NewsroomSignal>): Map<NewsroomFilter, Int> = buildMap {
@@ -323,6 +377,13 @@ private fun newsroomCounts(items: List<NewsroomSignal>): Map<NewsroomFilter, Int
     put(NewsroomFilter.DEVELOPING, items.count { it.state == "DEVELOPING" })
     put(NewsroomFilter.UNCONFIRMED, items.count { it.state == "UNCONFIRMED" })
     put(NewsroomFilter.CONFLICT_RUMOR, items.count { it.state == "CONFLICT_RUMOR" })
+}
+
+private fun newsroomSourceRoleCounts(items: List<NewsroomSignal>): Map<NewsroomSourceRole, Int> = buildMap {
+    put(NewsroomSourceRole.ALL, items.size)
+    put(NewsroomSourceRole.PRODUCTION, items.count { it.source.role == "PRODUCTION_HOUSE" })
+    put(NewsroomSourceRole.OTT, items.count { it.source.role == "OTT_PLATFORM" })
+    put(NewsroomSourceRole.MUSIC, items.count { it.source.role == "MUSIC_LABEL" })
 }
 
 private fun AppTab.requiresAccount(): Boolean = this == AppTab.FOLLOWING || this == AppTab.ALERTS
