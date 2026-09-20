@@ -318,6 +318,13 @@ class MainActivity : ComponentActivity() {
                                         canonicalUrl = event.evidence?.canonicalUrl,
                                     )
                                 },
+                                onOpenUpdate = { signal ->
+                                    consumerViewModel.openNotification(
+                                        eventId = signal.canonicalEvent?.id,
+                                        rawItemId = signal.id,
+                                        canonicalUrl = signal.canonicalUrl,
+                                    )
+                                },
                                 modifier = Modifier.fillMaxSize(),
                             )
                         }
