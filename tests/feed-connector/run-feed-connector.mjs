@@ -79,7 +79,7 @@ assert.equal(
 
 assert.equal(parseRetryAfterSeconds('120', now), 120);
 assert.equal(parseRetryAfterSeconds('Wed, 16 Sep 2026 00:05:00 GMT', now), 300);
-assert.equal(FEED_PARSER_VERSION, 'feed-parser-v1');
+assert.equal(FEED_PARSER_VERSION, 'feed-parser-v2');
 
 const baseline = planFeedDelta(parsedRss.entries, null);
 assert.equal(baseline.baseline, true);
