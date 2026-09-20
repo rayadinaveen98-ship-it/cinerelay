@@ -19,6 +19,7 @@ data class SourceDirectoryItem(
     val role: String?,
     val authorityTier: Int?,
     val canonicalUrl: String?,
+    val artworkUrl: String?,
     val newCount24h: Int,
     val latestObservedAt: String?,
 )
@@ -109,6 +110,7 @@ private fun JSONArray?.toSourceDirectoryItems(): List<SourceDirectoryItem> {
                     role = row.optNullableStringForSources("role"),
                     authorityTier = if (row.has("authorityTier") && !row.isNull("authorityTier")) row.optInt("authorityTier") else null,
                     canonicalUrl = row.optNullableStringForSources("canonicalUrl"),
+                    artworkUrl = row.optNullableStringForSources("artworkUrl"),
                     newCount24h = row.optInt("newCount24h", 0),
                     latestObservedAt = row.optNullableStringForSources("latestObservedAt"),
                 ),
