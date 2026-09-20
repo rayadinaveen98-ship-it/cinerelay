@@ -26,10 +26,13 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.cinerelay.app.data.SourceDirectoryItem
 import com.cinerelay.app.push.CineRelayMessagingService
 import com.cinerelay.app.ui.AppTab
-import com.cinerelay.app.ui.CineRelayHomeV055
+import com.cinerelay.app.ui.ArchiveV058
+import com.cinerelay.app.ui.ArchiveViewModelV058
+import com.cinerelay.app.ui.CineRelayHomeV058
 import com.cinerelay.app.ui.CineRelayRootV049
 import com.cinerelay.app.ui.CineRelaySetupLoadingV050
 import com.cinerelay.app.ui.CineRelayViewModel
+import com.cinerelay.app.ui.CineRelayWelcomeV058
 import com.cinerelay.app.ui.ConsumerViewModelV055
 import com.cinerelay.app.ui.FirstRunAuthV050
 import com.cinerelay.app.ui.NewsroomPlatform
@@ -41,7 +44,7 @@ import com.cinerelay.app.ui.OttReleasesV054
 import com.cinerelay.app.ui.OttViewModelV054
 import com.cinerelay.app.ui.P6039BottomNavOverlay
 import com.cinerelay.app.ui.PersonalizationOnboardingV055
-import com.cinerelay.app.ui.RadarV056
+import com.cinerelay.app.ui.RadarV058
 import com.cinerelay.app.ui.SettingsV055
 import com.cinerelay.app.ui.SourcesDirectoryV039
 import com.cinerelay.app.ui.SourcesViewModel
@@ -69,18 +72,30 @@ class MainActivity : ComponentActivity() {
             val searchViewModel: UniversalSearchViewModelV056 = viewModel()
             val ottViewModel: OttViewModelV054 = viewModel()
             val consumerViewModel: ConsumerViewModelV055 = viewModel()
+            val archiveViewModel: ArchiveViewModelV058 = viewModel()
             val state by viewModel.state.collectAsStateWithLifecycle()
             val sourcesState by sourcesViewModel.state.collectAsStateWithLifecycle()
             val onboardingState by onboardingViewModel.state.collectAsStateWithLifecycle()
             val searchState by searchViewModel.state.collectAsStateWithLifecycle()
             val ottState by ottViewModel.state.collectAsStateWithLifecycle()
             val consumerState by consumerViewModel.state.collectAsStateWithLifecycle()
+            val archiveState by archiveViewModel.state.collectAsStateWithLifecycle()
             val pendingNotificationRoute by notificationRoute.collectAsStateWithLifecycle()
             val context = LocalContext.current
             var settingsVisible by remember { mutableStateOf(false) }
             var personalizationEditorVisible by remember { mutableStateOf(false) }
             var ottVisible by remember { mutableStateOf(false) }
             var historyVisible by remember { mutableStateOf(false) }
+            var archiveVisible by remember { mutableStateOf(false) }
+            var welcomeVisible by remember { mutableStateOf(pendingNotificationRoute == null) }
+
+            if (welcomeVisible) {
+                CineRelayWelcomeV058(
+                    onFinished = { welcomeVisible = false },
+                    modifier = Modifier.fillMaxSize(),
+                )
+                return@setContent
+            }
 
             val notificationPermissionLauncher = rememberLauncherForActivityResult(
                 contract = ActivityResultContracts.RequestPermission(),
@@ -101,6 +116,7 @@ class MainActivity : ComponentActivity() {
                     personalizationEditorVisible = false
                     ottVisible = false
                     historyVisible = false
+                    archiveVisible = false
                     searchViewModel.close()
                     consumerViewModel.closeNotification()
                 }
@@ -109,9 +125,6 @@ class MainActivity : ComponentActivity() {
             }
 
             LaunchedEffect(state.tab, state.authenticated) {
-                if (state.authenticated && state.tab == AppTab.LIVE) {
-                    consumerViewModel.loadOnThisDay()
-                }
                 if (state.tab == AppTab.ALERTS && state.authenticated) {
                     onboardingViewModel.sync(authenticated = true, force = true)
                 }
@@ -124,6 +137,7 @@ class MainActivity : ComponentActivity() {
                 personalizationEditorVisible = false
                 ottVisible = false
                 historyVisible = false
+                archiveVisible = false
                 searchViewModel.close()
                 consumerViewModel.openNotification(
                     eventId = route.eventId,
@@ -141,6 +155,14 @@ class MainActivity : ComponentActivity() {
 
             LaunchedEffect(ottVisible, state.authenticated) {
                 if (ottVisible && state.authenticated) ottViewModel.load()
+            }
+
+            LaunchedEffect(historyVisible, state.authenticated) {
+                if (historyVisible && state.authenticated) consumerViewModel.loadOnThisDay(force = true)
+            }
+
+            LaunchedEffect(archiveVisible, state.authenticated) {
+                if (archiveVisible && state.authenticated) archiveViewModel.load()
             }
 
             val personalizationResolved = consumerState.personalization != null
@@ -170,9 +192,7 @@ class MainActivity : ComponentActivity() {
                         )
                     }
 
-                    notificationRouteWaiting -> {
-                        CineRelaySetupLoadingV050(Modifier.fillMaxSize())
-                    }
+                    notificationRouteWaiting -> CineRelaySetupLoadingV050(Modifier.fillMaxSize())
 
                     deepLinkVisible -> {
                         NotificationDetailV055(
@@ -182,9 +202,7 @@ class MainActivity : ComponentActivity() {
                         )
                     }
 
-                    setupResolving -> {
-                        CineRelaySetupLoadingV050(Modifier.fillMaxSize())
-                    }
+                    setupResolving -> CineRelaySetupLoadingV050(Modifier.fillMaxSize())
 
                     personalizationVisible -> {
                         PersonalizationOnboardingV055(
@@ -192,9 +210,7 @@ class MainActivity : ComponentActivity() {
                             onToggleLanguage = consumerViewModel::toggleLanguage,
                             onToggleSource = consumerViewModel::toggleFavoriteSource,
                             onSave = {
-                                consumerViewModel.savePersonalization {
-                                    personalizationEditorVisible = false
-                                }
+                                consumerViewModel.savePersonalization { personalizationEditorVisible = false }
                             },
                             modifier = Modifier.fillMaxSize(),
                         )
@@ -211,42 +227,48 @@ class MainActivity : ComponentActivity() {
                             onEnableNotifications = {
                                 val needsRuntimePermission = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
                                     ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
-                                if (needsRuntimePermission) {
-                                    notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-                                } else {
-                                    onboardingViewModel.completeSetup(enableNotifications = true)
-                                }
+                                if (needsRuntimePermission) notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                                else onboardingViewModel.completeSetup(enableNotifications = true)
                             },
-                            onFinishWithoutNotifications = {
-                                onboardingViewModel.completeSetup(enableNotifications = false)
-                            },
+                            onFinishWithoutNotifications = { onboardingViewModel.completeSetup(enableNotifications = false) },
                             modifier = Modifier.fillMaxSize(),
                         )
                     }
 
-                    historyVisible -> {
-                        OnThisDayV057(
-                            state = consumerState,
-                            onBack = { historyVisible = false },
-                            onLoadDate = { date -> consumerViewModel.loadOnThisDay(force = true, date = date) },
-                            onToday = { consumerViewModel.loadOnThisDay(force = true, date = null) },
+                    archiveVisible -> {
+                        ArchiveV058(
+                            state = archiveState,
+                            onBack = { archiveVisible = false },
+                            onRefresh = archiveViewModel::refresh,
+                            onQueryChange = archiveViewModel::setQuery,
+                            onLoadMore = archiveViewModel::loadMore,
+                            onOpen = { update ->
+                                archiveVisible = false
+                                consumerViewModel.openNotification(
+                                    eventId = update.eventId,
+                                    rawItemId = update.id,
+                                    canonicalUrl = update.canonicalUrl,
+                                )
+                            },
                             modifier = Modifier.fillMaxSize(),
                         )
                     }
 
                     else -> {
                         val personalization = consumerState.personalization!!
-                        if (state.tab == AppTab.LIVE && state.authMode == null) {
-                            CineRelayHomeV055(
+                        if (state.tab == AppTab.LIVE && state.authMode == null && !historyVisible) {
+                            CineRelayHomeV058(
                                 state = state,
                                 personalization = personalization,
-                                onThisDayMovies = consumerState.onThisDayMovies,
-                                onThisDayLoading = consumerState.onThisDayLoading,
                                 onRefresh = {
                                     viewModel.refresh()
-                                    consumerViewModel.loadOnThisDay(force = true)
+                                    consumerViewModel.syncPersonalization(authenticated = true, force = true)
                                 },
                                 onSearch = searchViewModel::open,
+                                onOpenArchive = {
+                                    archiveVisible = true
+                                    archiveViewModel.load()
+                                },
                                 onOpenUpdate = { signal ->
                                     consumerViewModel.openNotification(
                                         eventId = signal.canonicalEvent?.id,
@@ -254,12 +276,9 @@ class MainActivity : ComponentActivity() {
                                         canonicalUrl = signal.canonicalUrl,
                                     )
                                 },
-                                onOpenOnThisDay = {
-                                    historyVisible = true
-                                },
                                 modifier = Modifier.fillMaxSize(),
                             )
-                        } else {
+                        } else if (!historyVisible) {
                             CineRelayRootV049(viewModel)
                         }
 
@@ -267,6 +286,7 @@ class MainActivity : ComponentActivity() {
                             !settingsVisible &&
                             !searchState.visible &&
                             !ottVisible &&
+                            !historyVisible &&
                             state.tab == AppTab.FOLLOWING &&
                             state.authMode == null
                         ) {
@@ -275,9 +295,7 @@ class MainActivity : ComponentActivity() {
                                 onRefresh = sourcesViewModel::refresh,
                                 onOpenSource = sourcesViewModel::openSource,
                                 onCloseSource = sourcesViewModel::closeSource,
-                                onToggleNotification = { source, enabled ->
-                                    sourcesViewModel.toggleNotification(source, enabled)
-                                },
+                                onToggleNotification = { source, enabled -> sourcesViewModel.toggleNotification(source, enabled) },
                                 modifier = Modifier.fillMaxSize(),
                             )
                         }
@@ -286,10 +304,11 @@ class MainActivity : ComponentActivity() {
                             !settingsVisible &&
                             !searchState.visible &&
                             !ottVisible &&
+                            !historyVisible &&
                             state.tab == AppTab.RADAR &&
                             state.authMode == null
                         ) {
-                            RadarV056(
+                            RadarV058(
                                 state = state,
                                 onRefresh = viewModel::refresh,
                                 onOpen = { event ->
@@ -303,12 +322,7 @@ class MainActivity : ComponentActivity() {
                             )
                         }
 
-                        if (
-                            !settingsVisible &&
-                            !searchState.visible &&
-                            ottVisible &&
-                            state.authMode == null
-                        ) {
+                        if (!settingsVisible && !searchState.visible && ottVisible && !historyVisible && state.authMode == null) {
                             OttReleasesV054(
                                 state = ottState,
                                 onRefresh = ottViewModel::refresh,
@@ -321,10 +335,21 @@ class MainActivity : ComponentActivity() {
                             )
                         }
 
+                        if (!settingsVisible && !searchState.visible && historyVisible && state.authMode == null) {
+                            OnThisDayV057(
+                                state = consumerState,
+                                onBack = { historyVisible = false },
+                                onLoadDate = { date -> consumerViewModel.loadOnThisDay(force = true, date = date) },
+                                onToday = { consumerViewModel.loadOnThisDay(force = true, date = null) },
+                                modifier = Modifier.fillMaxSize(),
+                            )
+                        }
+
                         if (!settingsVisible && !searchState.visible && state.authMode == null) {
                             P6039BottomNavOverlay(
                                 selected = state.tab,
                                 ottSelected = ottVisible,
+                                historySelected = historyVisible,
                                 onSelect = { tab ->
                                     ottVisible = false
                                     historyVisible = false
@@ -335,6 +360,12 @@ class MainActivity : ComponentActivity() {
                                     historyVisible = false
                                     ottVisible = true
                                     ottViewModel.load()
+                                },
+                                onOpenHistory = {
+                                    settingsVisible = false
+                                    ottVisible = false
+                                    historyVisible = true
+                                    consumerViewModel.loadOnThisDay(force = true)
                                 },
                                 onOpenControlRoom = {
                                     ottVisible = false
@@ -360,19 +391,16 @@ class MainActivity : ComponentActivity() {
                                 onOpenSources = {
                                     settingsVisible = false
                                     ottVisible = false
+                                    historyVisible = false
                                     viewModel.selectTab(AppTab.FOLLOWING)
                                 },
                                 onToggleNotificationMaster = { enabled ->
-                                    if (!enabled) {
-                                        onboardingViewModel.setMasterEnabled(false)
-                                    } else {
+                                    if (!enabled) onboardingViewModel.setMasterEnabled(false)
+                                    else {
                                         val needsRuntimePermission = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
                                             ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
-                                        if (needsRuntimePermission) {
-                                            masterNotificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-                                        } else {
-                                            onboardingViewModel.setMasterEnabled(true)
-                                        }
+                                        if (needsRuntimePermission) masterNotificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                                        else onboardingViewModel.setMasterEnabled(true)
                                     }
                                 },
                                 onSignOut = {
@@ -380,6 +408,7 @@ class MainActivity : ComponentActivity() {
                                     personalizationEditorVisible = false
                                     ottVisible = false
                                     historyVisible = false
+                                    archiveVisible = false
                                     consumerViewModel.closeNotification()
                                     searchViewModel.close()
                                     viewModel.signOut()
@@ -397,20 +426,14 @@ class MainActivity : ComponentActivity() {
                                 onOpenHub = searchViewModel::openHub,
                                 onToggleFollow = searchViewModel::toggleFollow,
                                 onOpenUpdate = { update ->
-                                    consumerViewModel.openNotification(
-                                        eventId = null,
-                                        rawItemId = update.id,
-                                        canonicalUrl = update.canonicalUrl,
-                                    )
+                                    consumerViewModel.openNotification(eventId = null, rawItemId = update.id, canonicalUrl = update.canonicalUrl)
                                 },
                                 onOpenChannel = { channel ->
                                     searchViewModel.close()
                                     settingsVisible = false
                                     ottVisible = false
                                     historyVisible = false
-                                    if (state.newsroomPlatform != NewsroomPlatform.YOUTUBE) {
-                                        viewModel.setNewsroomPlatform(NewsroomPlatform.YOUTUBE)
-                                    }
+                                    if (state.newsroomPlatform != NewsroomPlatform.YOUTUBE) viewModel.setNewsroomPlatform(NewsroomPlatform.YOUTUBE)
                                     viewModel.selectTab(AppTab.FOLLOWING)
                                     sourcesViewModel.openSource(
                                         SourceDirectoryItem(
@@ -445,12 +468,9 @@ class MainActivity : ComponentActivity() {
 
     private fun captureNotificationIntent(intent: Intent?) {
         intent ?: return
-        val eventId = intent.getStringExtra(CineRelayMessagingService.EXTRA_EVENT_ID)
-            ?: intent.getStringExtra("eventId")
-        val rawItemId = intent.getStringExtra(CineRelayMessagingService.EXTRA_RAW_ITEM_ID)
-            ?: intent.getStringExtra("rawItemId")
-        val canonicalUrl = intent.getStringExtra(CineRelayMessagingService.EXTRA_CANONICAL_URL)
-            ?: intent.getStringExtra("canonicalUrl")
+        val eventId = intent.getStringExtra(CineRelayMessagingService.EXTRA_EVENT_ID) ?: intent.getStringExtra("eventId")
+        val rawItemId = intent.getStringExtra(CineRelayMessagingService.EXTRA_RAW_ITEM_ID) ?: intent.getStringExtra("rawItemId")
+        val canonicalUrl = intent.getStringExtra(CineRelayMessagingService.EXTRA_CANONICAL_URL) ?: intent.getStringExtra("canonicalUrl")
         val markedNotification = intent.getBooleanExtra(CineRelayMessagingService.EXTRA_FROM_NOTIFICATION, false)
         if (!markedNotification && eventId.isNullOrBlank() && rawItemId.isNullOrBlank()) return
 
