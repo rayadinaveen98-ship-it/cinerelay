@@ -41,6 +41,7 @@ data class CineRelayUiState(
     val newsroomSourceRole: NewsroomSourceRole = NewsroomSourceRole.ALL,
     val newsroomSourceRoleCounts: Map<NewsroomSourceRole, Int> = emptyMap(),
     val newsroomSignals: List<NewsroomSignal> = emptyList(),
+    val homeSignals: List<NewsroomSignal> = emptyList(),
     val events: List<EventCard> = emptyList(),
     val alerts: List<AlertItem> = emptyList(),
     val pushState: PushState = PushState(BuildConfig.FIREBASE_CONFIGURED),
@@ -195,7 +196,11 @@ class CineRelayViewModel(application: Application) : AndroidViewModel(applicatio
             runCatching {
                 withContext(Dispatchers.IO) {
                     when (_state.value.tab) {
-                        AppTab.LIVE -> LoadResult.Newsroom(backend.newsroom(_state.value.newsroomPlatform.name))
+                        AppTab.LIVE -> {
+                            val youtube = backend.newsroom(NewsroomPlatform.YOUTUBE.name, limit = 100)
+                            val web = backend.newsroom(NewsroomPlatform.WEB.name, limit = 80)
+                            LoadResult.Home(youtube = youtube, web = web)
+                        }
                         AppTab.FOLLOWING -> LoadResult.Events(backend.eventFeed("following"))
                         AppTab.RADAR -> LoadResult.Events(backend.eventFeed("radar", allowGuest = true))
                         AppTab.ALERTS -> LoadResult.Alerts(backend.alerts())
@@ -203,15 +208,24 @@ class CineRelayViewModel(application: Application) : AndroidViewModel(applicatio
                 }
             }.onSuccess { result ->
                 _state.value = when (result) {
-                    is LoadResult.Newsroom -> {
-                        latestNewsroomSignals = result.items
+                    is LoadResult.Home -> {
                         val current = _state.value
+                        val combined = (result.youtube + result.web)
+                            .distinctBy { it.id }
+                            .sortedWith(compareByDescending<NewsroomSignal> { it.observedAt ?: it.ingestedAt ?: "" })
+                        val selectedLane = when (current.newsroomPlatform) {
+                            NewsroomPlatform.YOUTUBE -> result.youtube
+                            NewsroomPlatform.WEB -> result.web
+                            NewsroomPlatform.X -> emptyList()
+                        }
+                        latestNewsroomSignals = selectedLane
                         current.copy(
                             loading = false,
-                            newsroomFilterCounts = newsroomCounts(result.items),
-                            newsroomSourceRoleCounts = newsroomSourceRoleCounts(result.items),
+                            homeSignals = combined,
+                            newsroomFilterCounts = newsroomCounts(selectedLane),
+                            newsroomSourceRoleCounts = newsroomSourceRoleCounts(selectedLane),
                             newsroomSignals = filterNewsroom(
-                                result.items,
+                                selectedLane,
                                 current.newsroomFilter,
                                 current.newsroomSourceRole,
                                 current.newsroomPlatform,
@@ -252,7 +266,12 @@ class CineRelayViewModel(application: Application) : AndroidViewModel(applicatio
                         if (event?.entityId == card.entityId) signal.copy(canonicalEvent = event.copy(followed = desired)) else signal
                     }
                     val current = _state.value
+                    val updatedHome = current.homeSignals.map { signal ->
+                        val event = signal.canonicalEvent
+                        if (event?.entityId == card.entityId) signal.copy(canonicalEvent = event.copy(followed = desired)) else signal
+                    }
                     _state.value = current.copy(
+                        homeSignals = updatedHome,
                         newsroomSignals = filterNewsroom(
                             latestNewsroomSignals,
                             current.newsroomFilter,
@@ -344,7 +363,7 @@ class CineRelayViewModel(application: Application) : AndroidViewModel(applicatio
     }
 
     private sealed interface LoadResult {
-        data class Newsroom(val items: List<NewsroomSignal>) : LoadResult
+        data class Home(val youtube: List<NewsroomSignal>, val web: List<NewsroomSignal>) : LoadResult
         data class Events(val items: List<EventCard>) : LoadResult
         data class Alerts(val items: List<AlertItem>) : LoadResult
     }
