@@ -1,6 +1,7 @@
 package com.cinerelay.app
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
@@ -24,26 +25,40 @@ import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.cinerelay.app.push.CineRelayMessagingService
 import com.cinerelay.app.ui.AppTab
 import com.cinerelay.app.ui.CineRelayRootV049
 import com.cinerelay.app.ui.CineRelaySetupLoadingV050
 import com.cinerelay.app.ui.CineRelayViewModel
+import com.cinerelay.app.ui.ConsumerViewModelV055
 import com.cinerelay.app.ui.ControlRoomV051
 import com.cinerelay.app.ui.FirstRunAuthV050
 import com.cinerelay.app.ui.IntelligenceSearchLauncherV053
 import com.cinerelay.app.ui.IntelligenceSearchV053
 import com.cinerelay.app.ui.IntelligenceViewModel
+import com.cinerelay.app.ui.NotificationDetailV055
 import com.cinerelay.app.ui.NotificationOnboardingV044
 import com.cinerelay.app.ui.NotificationOnboardingViewModel
 import com.cinerelay.app.ui.OttReleasesV054
 import com.cinerelay.app.ui.OttViewModelV054
 import com.cinerelay.app.ui.P6039BottomNavOverlay
+import com.cinerelay.app.ui.PersonalizationOnboardingV055
 import com.cinerelay.app.ui.SourcesDirectoryV039
 import com.cinerelay.app.ui.SourcesViewModel
+import kotlinx.coroutines.flow.MutableStateFlow
+
+private data class NotificationRouteV055(
+    val eventId: String?,
+    val rawItemId: String?,
+    val canonicalUrl: String?,
+)
 
 class MainActivity : ComponentActivity() {
+    private val notificationRoute = MutableStateFlow<NotificationRouteV055?>(null)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        captureNotificationIntent(intent)
         WindowCompat.setDecorFitsSystemWindows(window, false)
         setContent {
             val viewModel: CineRelayViewModel = viewModel()
@@ -51,11 +66,14 @@ class MainActivity : ComponentActivity() {
             val onboardingViewModel: NotificationOnboardingViewModel = viewModel()
             val intelligenceViewModel: IntelligenceViewModel = viewModel()
             val ottViewModel: OttViewModelV054 = viewModel()
+            val consumerViewModel: ConsumerViewModelV055 = viewModel()
             val state by viewModel.state.collectAsStateWithLifecycle()
             val sourcesState by sourcesViewModel.state.collectAsStateWithLifecycle()
             val onboardingState by onboardingViewModel.state.collectAsStateWithLifecycle()
             val intelligenceState by intelligenceViewModel.state.collectAsStateWithLifecycle()
             val ottState by ottViewModel.state.collectAsStateWithLifecycle()
+            val consumerState by consumerViewModel.state.collectAsStateWithLifecycle()
+            val pendingNotificationRoute by notificationRoute.collectAsStateWithLifecycle()
             val context = LocalContext.current
             var controlRoomVisible by remember { mutableStateOf(false) }
             var ottVisible by remember { mutableStateOf(false) }
@@ -78,8 +96,24 @@ class MainActivity : ComponentActivity() {
                     controlRoomVisible = false
                     ottVisible = false
                     intelligenceViewModel.close()
+                    consumerViewModel.closeNotification()
                 }
                 onboardingViewModel.sync(state.authenticated)
+                consumerViewModel.syncPersonalization(state.authenticated)
+            }
+
+            LaunchedEffect(pendingNotificationRoute, state.authenticated) {
+                val route = pendingNotificationRoute ?: return@LaunchedEffect
+                if (!state.authenticated) return@LaunchedEffect
+                controlRoomVisible = false
+                ottVisible = false
+                intelligenceViewModel.close()
+                consumerViewModel.openNotification(
+                    eventId = route.eventId,
+                    rawItemId = route.rawItemId,
+                    canonicalUrl = route.canonicalUrl,
+                )
+                notificationRoute.value = null
             }
 
             LaunchedEffect(state.tab, state.authenticated) {
@@ -98,11 +132,19 @@ class MainActivity : ComponentActivity() {
                 if (ottVisible && state.authenticated) ottViewModel.load()
             }
 
-            val setupResolving = state.authenticated && !onboardingState.authenticated
+            val personalizationResolved = consumerState.personalization != null || consumerState.personalizationError != null
+            val setupResolving = state.authenticated && (!onboardingState.authenticated || !personalizationResolved)
+            val personalizationVisible = state.authenticated &&
+                consumerState.personalization?.completed == false &&
+                state.authMode == null
             val onboardingVisible = state.authenticated &&
                 onboardingState.authenticated &&
                 onboardingState.shouldShow &&
                 state.authMode == null
+            val deepLinkVisible = consumerState.deepLinkLoading ||
+                consumerState.deepLinkTarget != null ||
+                consumerState.deepLinkError != null
+            val notificationRouteWaiting = state.authenticated && pendingNotificationRoute != null && !deepLinkVisible
 
             Box(Modifier.fillMaxSize()) {
                 when {
@@ -117,8 +159,30 @@ class MainActivity : ComponentActivity() {
                         )
                     }
 
+                    notificationRouteWaiting -> {
+                        CineRelaySetupLoadingV050(Modifier.fillMaxSize())
+                    }
+
+                    deepLinkVisible -> {
+                        NotificationDetailV055(
+                            state = consumerState,
+                            onBack = consumerViewModel::closeNotification,
+                            modifier = Modifier.fillMaxSize(),
+                        )
+                    }
+
                     setupResolving -> {
                         CineRelaySetupLoadingV050(Modifier.fillMaxSize())
+                    }
+
+                    personalizationVisible -> {
+                        PersonalizationOnboardingV055(
+                            state = consumerState,
+                            onToggleLanguage = consumerViewModel::toggleLanguage,
+                            onToggleSource = consumerViewModel::toggleFavoriteSource,
+                            onSave = { consumerViewModel.savePersonalization() },
+                            modifier = Modifier.fillMaxSize(),
+                        )
                     }
 
                     onboardingVisible -> {
@@ -201,6 +265,7 @@ class MainActivity : ComponentActivity() {
                                 onOpenControlRoom = {
                                     ottVisible = false
                                     onboardingViewModel.sync(authenticated = true, force = true)
+                                    consumerViewModel.syncPersonalization(authenticated = true, force = true)
                                     controlRoomVisible = true
                                 },
                                 modifier = Modifier.align(Alignment.BottomCenter),
@@ -246,6 +311,7 @@ class MainActivity : ComponentActivity() {
                                 onSignOut = {
                                     controlRoomVisible = false
                                     ottVisible = false
+                                    consumerViewModel.closeNotification()
                                     viewModel.signOut()
                                 },
                                 modifier = Modifier.fillMaxSize(),
@@ -267,5 +333,21 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        captureNotificationIntent(intent)
+    }
+
+    private fun captureNotificationIntent(intent: Intent?) {
+        if (intent?.getBooleanExtra(CineRelayMessagingService.EXTRA_FROM_NOTIFICATION, false) != true) return
+        notificationRoute.value = NotificationRouteV055(
+            eventId = intent.getStringExtra(CineRelayMessagingService.EXTRA_EVENT_ID),
+            rawItemId = intent.getStringExtra(CineRelayMessagingService.EXTRA_RAW_ITEM_ID),
+            canonicalUrl = intent.getStringExtra(CineRelayMessagingService.EXTRA_CANONICAL_URL),
+        )
+        intent.removeExtra(CineRelayMessagingService.EXTRA_FROM_NOTIFICATION)
     }
 }
