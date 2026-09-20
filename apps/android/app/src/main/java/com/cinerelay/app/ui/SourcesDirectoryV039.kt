@@ -25,6 +25,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.OpenInNew
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Card
@@ -69,6 +70,7 @@ fun SourcesDirectoryV039(
     onRefresh: () -> Unit,
     onOpenSource: (SourceDirectoryItem) -> Unit,
     onCloseSource: () -> Unit,
+    onToggleNotification: (SourceDirectoryItem, Boolean) -> Unit = { _, _ -> },
     modifier: Modifier = Modifier,
 ) {
     Surface(modifier = modifier.fillMaxSize(), color = SourcesInk) {
@@ -101,12 +103,26 @@ fun SourcesDirectoryV039(
             }
 
             if (state.selectedSource == null) {
-                SourcesDirectoryList(state = state, onOpenSource = onOpenSource)
+                SourcesDirectoryList(
+                    state = state,
+                    onOpenSource = onOpenSource,
+                    onToggleNotification = onToggleNotification,
+                )
             } else {
                 SourceDetailFeed(
                     source = state.selectedSource,
                     signals = state.selectedSignals,
                     loading = state.loading,
+                    notificationSelected = state.selectedSource.identityId in state.notificationSourceIds,
+                    notificationMasterEnabled = state.notificationMasterEnabled,
+                    notificationBusy = state.notificationBusySourceId == state.selectedSource.identityId,
+                    canManageNotifications = state.platform == NewsroomPlatform.YOUTUBE,
+                    onToggleNotification = {
+                        onToggleNotification(
+                            state.selectedSource,
+                            state.selectedSource.identityId !in state.notificationSourceIds,
+                        )
+                    },
                 )
             }
         }
@@ -191,6 +207,7 @@ private fun SourceBrandMark() {
 private fun SourcesDirectoryList(
     state: SourcesUiState,
     onOpenSource: (SourceDirectoryItem) -> Unit,
+    onToggleNotification: (SourceDirectoryItem, Boolean) -> Unit,
 ) {
     if (!state.loading && state.sources.isEmpty()) {
         Box(
@@ -239,7 +256,16 @@ private fun SourcesDirectoryList(
             }
         }
         items(state.sources, key = { it.identityId }) { source ->
-            SourceRow(source = source, onClick = { onOpenSource(source) })
+            val selected = source.identityId in state.notificationSourceIds
+            SourceRow(
+                source = source,
+                notificationSelected = selected,
+                notificationMasterEnabled = state.notificationMasterEnabled,
+                notificationBusy = state.notificationBusySourceId == source.identityId,
+                canManageNotifications = state.platform == NewsroomPlatform.YOUTUBE,
+                onToggleNotification = { onToggleNotification(source, !selected) },
+                onClick = { onOpenSource(source) },
+            )
         }
     }
 }
@@ -264,6 +290,15 @@ private fun SourcesSummaryCard(state: SourcesUiState) {
                 color = SourcesMuted,
                 fontSize = 11.sp,
             )
+            if (state.platform == NewsroomPlatform.YOUTUBE && state.authenticated && state.notificationSetupCompleted) {
+                Spacer(Modifier.height(5.dp))
+                Text(
+                    "${state.notificationSourceIds.size} notification sources • ${if (state.notificationMasterEnabled) "alerts on" else "alerts paused"}",
+                    color = if (state.notificationMasterEnabled) SourcesGreen else SourcesAmber,
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold,
+                )
+            }
             Spacer(Modifier.height(13.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 MetricPill(label = "Sources", value = state.sourceCount.toString())
@@ -289,7 +324,15 @@ private fun RowScope.MetricPill(label: String, value: String) {
 }
 
 @Composable
-private fun SourceRow(source: SourceDirectoryItem, onClick: () -> Unit) {
+private fun SourceRow(
+    source: SourceDirectoryItem,
+    notificationSelected: Boolean,
+    notificationMasterEnabled: Boolean,
+    notificationBusy: Boolean,
+    canManageNotifications: Boolean,
+    onToggleNotification: () -> Unit,
+    onClick: () -> Unit,
+) {
     Surface(
         color = SourcesPanel,
         shape = RoundedCornerShape(18.dp),
@@ -341,7 +384,26 @@ private fun SourceRow(source: SourceDirectoryItem, onClick: () -> Unit) {
                         )
                     }
                 }
-                Spacer(Modifier.width(4.dp))
+                Spacer(Modifier.width(2.dp))
+            }
+
+            if (canManageNotifications) {
+                IconButton(onClick = onToggleNotification, enabled = !notificationBusy) {
+                    if (notificationBusy) {
+                        CircularProgressIndicator(Modifier.size(17.dp), strokeWidth = 2.dp, color = SourcesGold)
+                    } else {
+                        Icon(
+                            Icons.Default.Notifications,
+                            contentDescription = if (notificationSelected) "Disable source notifications" else "Enable source notifications",
+                            tint = when {
+                                notificationSelected && notificationMasterEnabled -> SourcesGold
+                                notificationSelected -> SourcesAmber
+                                else -> SourcesMuted.copy(alpha = 0.55f)
+                            },
+                            modifier = Modifier.size(19.dp),
+                        )
+                    }
+                }
             }
 
             Icon(Icons.Default.KeyboardArrowRight, contentDescription = null, tint = SourcesMuted, modifier = Modifier.size(20.dp))
@@ -374,12 +436,26 @@ private fun SourceDetailFeed(
     source: SourceDirectoryItem,
     signals: List<NewsroomSignal>,
     loading: Boolean,
+    notificationSelected: Boolean,
+    notificationMasterEnabled: Boolean,
+    notificationBusy: Boolean,
+    canManageNotifications: Boolean,
+    onToggleNotification: () -> Unit,
 ) {
     LazyColumn(
         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 6.dp, bottom = 160.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        item { SourceDetailHeader(source) }
+        item {
+            SourceDetailHeader(
+                source = source,
+                notificationSelected = notificationSelected,
+                notificationMasterEnabled = notificationMasterEnabled,
+                notificationBusy = notificationBusy,
+                canManageNotifications = canManageNotifications,
+                onToggleNotification = onToggleNotification,
+            )
+        }
 
         if (!loading && signals.isEmpty()) {
             item {
@@ -407,7 +483,14 @@ private fun SourceDetailFeed(
 }
 
 @Composable
-private fun SourceDetailHeader(source: SourceDirectoryItem) {
+private fun SourceDetailHeader(
+    source: SourceDirectoryItem,
+    notificationSelected: Boolean,
+    notificationMasterEnabled: Boolean,
+    notificationBusy: Boolean,
+    canManageNotifications: Boolean,
+    onToggleNotification: () -> Unit,
+) {
     Surface(
         color = SourcesPanelRaised,
         shape = RoundedCornerShape(20.dp),
@@ -439,6 +522,24 @@ private fun SourceDetailHeader(source: SourceDirectoryItem) {
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.padding(horizontal = 9.dp, vertical = 6.dp),
                     )
+                }
+            }
+            if (canManageNotifications) {
+                Spacer(Modifier.width(4.dp))
+                IconButton(onClick = onToggleNotification, enabled = !notificationBusy) {
+                    if (notificationBusy) {
+                        CircularProgressIndicator(Modifier.size(17.dp), strokeWidth = 2.dp, color = SourcesGold)
+                    } else {
+                        Icon(
+                            Icons.Default.Notifications,
+                            contentDescription = if (notificationSelected) "Disable source notifications" else "Enable source notifications",
+                            tint = when {
+                                notificationSelected && notificationMasterEnabled -> SourcesGold
+                                notificationSelected -> SourcesAmber
+                                else -> SourcesMuted.copy(alpha = 0.55f)
+                            },
+                        )
+                    }
                 }
             }
         }
