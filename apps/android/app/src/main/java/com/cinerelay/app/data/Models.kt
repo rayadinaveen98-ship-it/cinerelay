@@ -77,6 +77,7 @@ data class NewsroomSource(
     val role: String?,
     val platform: String?,
     val handle: String?,
+    val artworkUrl: String?,
 )
 
 data class NewsroomSignal(
@@ -88,6 +89,7 @@ data class NewsroomSignal(
     val languageCode: String?,
     val title: String,
     val text: String?,
+    val thumbnailUrl: String?,
     val canonicalUrl: String?,
     val sourceObservedAt: String?,
     val observedAt: String?,
