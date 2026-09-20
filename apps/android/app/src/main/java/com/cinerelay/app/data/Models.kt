@@ -78,6 +78,7 @@ data class NewsroomSource(
     val platform: String?,
     val handle: String?,
     val artworkUrl: String?,
+    val identityId: String? = null,
 )
 
 data class NewsroomSignal(
