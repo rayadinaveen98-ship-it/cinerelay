@@ -7,6 +7,7 @@ import android.os.Build
 import com.cinerelay.app.data.BackendClient
 import com.cinerelay.app.data.EvidenceClient
 import com.cinerelay.app.data.IntelligenceClient
+import com.cinerelay.app.data.OttCalendarClient
 import com.cinerelay.app.data.SessionStore
 import com.google.firebase.FirebaseApp
 
@@ -19,6 +20,8 @@ class CineRelayApplication : Application() {
         private set
     lateinit var intelligenceClient: IntelligenceClient
         private set
+    lateinit var ottCalendarClient: OttCalendarClient
+        private set
 
     override fun onCreate() {
         super.onCreate()
@@ -26,6 +29,7 @@ class CineRelayApplication : Application() {
         backendClient = BackendClient(sessionStore)
         evidenceClient = EvidenceClient(sessionStore, backendClient)
         intelligenceClient = IntelligenceClient(sessionStore, backendClient)
+        ottCalendarClient = OttCalendarClient(sessionStore, backendClient)
 
         if (BuildConfig.FIREBASE_CONFIGURED && FirebaseApp.getApps(this).isEmpty()) {
             FirebaseApp.initializeApp(this)
