@@ -55,7 +55,7 @@ assert.equal(reported.confidence, 0.92);
 
 const poojaMeriJaan = extractOttMovieReleaseSignal({
   title: "OTT: Mrunal Thakur-Huma Qureshi's Thriller &#8216;Pooja Meri Jaan&#8217; Gets Streaming Date",
-  text: 'The Bollywood thriller will premiere directly on ZEE5 on October 2, 2026. The makers have now confirmed its OTT release and direct digital debut.',
+  text: 'After being delayed for nearly four years, Bollywood thriller Pooja Meri Jaan is finally set to make its direct digital debut. The film, starring Mrunal Thakur and Huma Qureshi in the lead roles, will premiere directly on ZEE5 on October 2, 2026. Directed by Navjot Gulati and produced by Dinesh Vijan’s Maddock Films, the film completed production in 2022 but remained unreleased for a long time. The makers have now confirmed its OTT release, bringing the much-delayed project to audiences. Mrunal Thakur plays Pooja, whose life takes a disturbing turn following the death of her lover, Aniket. Huma Qureshi portrays Sana, a lawyer and Pooja’s close friend, who becomes involved in the complicated circumstances surrounding the case. The thriller deals with themes of obsession, suspicion, allegations and the consequences of prejudice. Vikram Singh Chauhan and veteran actor Vijay Raaz are also part of the key cast. The film is expected to be one of the notable Hindi thriller releases on the platform around the festival season. The post Pooja Meri Jaan first appeared on Latest Telugu cinema news | Movie reviews | OTT Updates.',
   publishedAt: '2026-09-20T05:30:25Z',
   source: { authorityTier: 3, role: 'TRADE_MEDIA', name: '123Telugu — Movie News' },
 });
