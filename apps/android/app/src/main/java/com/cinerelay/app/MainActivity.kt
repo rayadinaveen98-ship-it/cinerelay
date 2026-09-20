@@ -22,7 +22,7 @@ import androidx.core.view.WindowCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.cinerelay.app.ui.AppTab
-import com.cinerelay.app.ui.CineRelayV02App
+import com.cinerelay.app.ui.CineRelayRootV049
 import com.cinerelay.app.ui.CineRelayViewModel
 import com.cinerelay.app.ui.NewsroomFilterOverlay
 import com.cinerelay.app.ui.NewsroomPlatform
@@ -80,7 +80,7 @@ class MainActivity : ComponentActivity() {
             val onboardingVisible = onboardingState.shouldShow && state.authMode == null
 
             Box(Modifier.fillMaxSize()) {
-                CineRelayV02App(viewModel)
+                CineRelayRootV049(viewModel)
 
                 if (!onboardingVisible && state.tab == AppTab.FOLLOWING && state.authMode == null) {
                     SourcesDirectoryV039(
