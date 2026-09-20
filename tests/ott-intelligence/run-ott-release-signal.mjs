@@ -53,6 +53,34 @@ assert.equal(reported.providerCode, 'SONYLIV');
 assert.equal(reported.evidenceStatus, 'REPORTED');
 assert.equal(reported.confidence, 0.92);
 
+const poojaMeriJaan = extractOttMovieReleaseSignal({
+  title: "OTT: Mrunal Thakur-Huma Qureshi's Thriller &#8216;Pooja Meri Jaan&#8217; Gets Streaming Date",
+  text: 'The film will premiere directly on ZEE5 on October 2, 2026. The makers have now confirmed its OTT release and direct digital debut.',
+  publishedAt: '2026-09-20T05:30:25Z',
+  source: { authorityTier: 3, role: 'TRADE_MEDIA', name: '123Telugu — Movie News' },
+});
+assert.ok(poojaMeriJaan, 'explicit trusted trade streaming-date headlines should become reported calendar evidence');
+assert.equal(poojaMeriJaan.title, 'Pooja Meri Jaan');
+assert.equal(poojaMeriJaan.providerCode, 'ZEE5');
+assert.equal(poojaMeriJaan.releaseDate, '2026-10-02');
+assert.equal(poojaMeriJaan.state, 'UPCOMING');
+assert.equal(poojaMeriJaan.evidenceStatus, 'REPORTED');
+assert.equal(poojaMeriJaan.releaseType, 'ORIGINAL');
+
+const agadha = extractOttMovieReleaseSignal({
+  title: "MS Raju's Agadha Locked for ZEE5 Premiere &#8211; Can It Find Redemption on OTT?",
+  text: 'ZEE5 has locked September 25, 2026, as its digital premiere date for the movie.',
+  publishedAt: '2026-09-20T02:30:18Z',
+  source: { authorityTier: 3, role: 'TRADE_MEDIA', name: '123Telugu — Movie News' },
+});
+assert.ok(agadha, 'provider-premiere trade headlines should be retained as reported evidence');
+assert.equal(agadha.title, 'Agadha');
+assert.equal(agadha.providerCode, 'ZEE5');
+assert.equal(agadha.releaseDate, '2026-09-25');
+assert.equal(agadha.state, 'UPCOMING');
+assert.equal(agadha.evidenceStatus, 'REPORTED');
+assert.equal(agadha.releaseType, 'POST_THEATRICAL');
+
 const nowStreaming = extractOttMovieReleaseSignal({
   title: 'Example Movie - Now Streaming on Netflix',
   publishedAt: '2026-09-20T10:00:00Z',
@@ -113,6 +141,28 @@ assert.equal(
   }),
   undefined,
   'a provider must be explicit in the source identity or evidence text',
+);
+
+assert.equal(
+  extractOttMovieReleaseSignal({
+    title: 'Cult gets theatrical release date',
+    text: 'The movie opens in theatres on October 30, 2026. ZEE5 is mentioned only as an unrelated catalog example.',
+    publishedAt: '2026-09-20T04:30:16Z',
+    source: { authorityTier: 3, role: 'TRADE_MEDIA', name: 'Reliable Trade' },
+  }),
+  undefined,
+  'an incidental OTT provider mention must not turn a theatrical date story into OTT calendar evidence',
+);
+
+assert.equal(
+  extractOttMovieReleaseSignal({
+    title: 'Rumor Film Gets Streaming Date',
+    text: 'Netflix is reportedly considering an October 2, 2026 release.',
+    publishedAt: '2026-09-20T04:30:16Z',
+    source: { authorityTier: 4, role: 'OTHER_MEDIA', name: 'Rumor Page' },
+  }),
+  undefined,
+  'low-authority general media cannot enter reported OTT calendar discovery',
 );
 
 assert.equal(
