@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Movie
@@ -28,6 +29,7 @@ private val NavMuted = Color(0xFFA7ADB7)
 fun P6039BottomNavOverlay(
     selected: AppTab,
     onSelect: (AppTab) -> Unit,
+    onOpenControlRoom: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     NavigationBar(
@@ -39,6 +41,7 @@ fun P6039BottomNavOverlay(
         NavItem(AppTab.FOLLOWING, selected, Icons.Default.List, "Sources", onSelect)
         NavItem(AppTab.RADAR, selected, Icons.Default.Movie, "Radar", onSelect)
         NavItem(AppTab.ALERTS, selected, Icons.Default.Notifications, "Alerts", onSelect)
+        ControlNavItem(onOpenControlRoom)
     }
 }
 
@@ -55,12 +58,32 @@ private fun RowScope.NavItem(
         onClick = { onSelect(tab) },
         icon = { Icon(icon, contentDescription = label, modifier = Modifier.size(22.dp)) },
         label = { Text(label, maxLines = 1, fontSize = 10.sp) },
-        colors = NavigationBarItemDefaults.colors(
-            selectedIconColor = NavGold,
-            selectedTextColor = NavGold,
-            indicatorColor = NavGold.copy(alpha = 0.13f),
-            unselectedIconColor = NavMuted,
-            unselectedTextColor = NavMuted,
-        ),
+        colors = navigationItemColors(),
     )
 }
+
+@Composable
+private fun RowScope.ControlNavItem(onOpenControlRoom: () -> Unit) {
+    NavigationBarItem(
+        selected = false,
+        onClick = onOpenControlRoom,
+        icon = {
+            Icon(
+                Icons.Default.AccountCircle,
+                contentDescription = "Open Control Room",
+                modifier = Modifier.size(22.dp),
+            )
+        },
+        label = { Text("You", maxLines = 1, fontSize = 10.sp) },
+        colors = navigationItemColors(),
+    )
+}
+
+@Composable
+private fun navigationItemColors() = NavigationBarItemDefaults.colors(
+    selectedIconColor = NavGold,
+    selectedTextColor = NavGold,
+    indicatorColor = NavGold.copy(alpha = 0.13f),
+    unselectedIconColor = NavMuted,
+    unselectedTextColor = NavMuted,
+)
