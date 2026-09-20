@@ -2,6 +2,7 @@ package com.cinerelay.app.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.collectIsDraggedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -163,10 +164,13 @@ private fun HomeHeaderV058(loading: Boolean, onRefresh: () -> Unit, onSearch: ()
 @Composable
 private fun HomeHeroPagerV058(heroItems: List<NewsroomSignal>, onOpenUpdate: (NewsroomSignal) -> Unit) {
     val pagerState = rememberPagerState(initialPage = 0, pageCount = { heroItems.size })
-    LaunchedEffect(pagerState.currentPage, heroItems.size) {
-        if (heroItems.size <= 1) return@LaunchedEffect
-        delay(6_500)
-        if (!pagerState.isScrollInProgress) {
+    val isDragged by pagerState.interactionSource.collectIsDraggedAsState()
+
+    LaunchedEffect(heroItems.size, isDragged) {
+        if (heroItems.size <= 1 || isDragged) return@LaunchedEffect
+        while (true) {
+            delay(6_500)
+            if (pagerState.isScrollInProgress) continue
             pagerState.animateScrollToPage((pagerState.currentPage + 1) % heroItems.size)
         }
     }
