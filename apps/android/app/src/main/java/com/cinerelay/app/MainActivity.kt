@@ -30,7 +30,6 @@ import com.cinerelay.app.ui.CineRelayRootV049
 import com.cinerelay.app.ui.CineRelaySetupLoadingV050
 import com.cinerelay.app.ui.CineRelayViewModel
 import com.cinerelay.app.ui.ConsumerViewModelV055
-import com.cinerelay.app.ui.ControlRoomV051
 import com.cinerelay.app.ui.FirstRunAuthV050
 import com.cinerelay.app.ui.IntelligenceSearchV053
 import com.cinerelay.app.ui.IntelligenceViewModel
@@ -41,6 +40,7 @@ import com.cinerelay.app.ui.OttReleasesV054
 import com.cinerelay.app.ui.OttViewModelV054
 import com.cinerelay.app.ui.P6039BottomNavOverlay
 import com.cinerelay.app.ui.PersonalizationOnboardingV055
+import com.cinerelay.app.ui.SettingsV055
 import com.cinerelay.app.ui.SourcesDirectoryV039
 import com.cinerelay.app.ui.SourcesViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -73,7 +73,8 @@ class MainActivity : ComponentActivity() {
             val consumerState by consumerViewModel.state.collectAsStateWithLifecycle()
             val pendingNotificationRoute by notificationRoute.collectAsStateWithLifecycle()
             val context = LocalContext.current
-            var controlRoomVisible by remember { mutableStateOf(false) }
+            var settingsVisible by remember { mutableStateOf(false) }
+            var personalizationEditorVisible by remember { mutableStateOf(false) }
             var ottVisible by remember { mutableStateOf(false) }
 
             val notificationPermissionLauncher = rememberLauncherForActivityResult(
@@ -91,7 +92,8 @@ class MainActivity : ComponentActivity() {
 
             LaunchedEffect(state.authenticated) {
                 if (!state.authenticated) {
-                    controlRoomVisible = false
+                    settingsVisible = false
+                    personalizationEditorVisible = false
                     ottVisible = false
                     intelligenceViewModel.close()
                     consumerViewModel.closeNotification()
@@ -103,7 +105,8 @@ class MainActivity : ComponentActivity() {
             LaunchedEffect(pendingNotificationRoute, state.authenticated) {
                 val route = pendingNotificationRoute ?: return@LaunchedEffect
                 if (!state.authenticated) return@LaunchedEffect
-                controlRoomVisible = false
+                settingsVisible = false
+                personalizationEditorVisible = false
                 ottVisible = false
                 intelligenceViewModel.close()
                 consumerViewModel.openNotification(
@@ -133,7 +136,7 @@ class MainActivity : ComponentActivity() {
             val personalizationResolved = consumerState.personalization != null
             val setupResolving = state.authenticated && (!onboardingState.authenticated || !personalizationResolved)
             val personalizationVisible = state.authenticated &&
-                consumerState.personalization?.completed == false &&
+                (consumerState.personalization?.completed == false || personalizationEditorVisible) &&
                 state.authMode == null
             val onboardingVisible = state.authenticated &&
                 onboardingState.authenticated &&
@@ -178,7 +181,11 @@ class MainActivity : ComponentActivity() {
                             state = consumerState,
                             onToggleLanguage = consumerViewModel::toggleLanguage,
                             onToggleSource = consumerViewModel::toggleFavoriteSource,
-                            onSave = { consumerViewModel.savePersonalization() },
+                            onSave = {
+                                consumerViewModel.savePersonalization {
+                                    personalizationEditorVisible = false
+                                }
+                            },
                             modifier = Modifier.fillMaxSize(),
                         )
                     }
@@ -217,7 +224,7 @@ class MainActivity : ComponentActivity() {
                                 onSearch = intelligenceViewModel::open,
                                 onOpenUpdate = { signal ->
                                     consumerViewModel.openNotification(
-                                        eventId = null,
+                                        eventId = signal.canonicalEvent?.id,
                                         rawItemId = signal.id,
                                         canonicalUrl = signal.canonicalUrl,
                                     )
@@ -229,7 +236,7 @@ class MainActivity : ComponentActivity() {
                         }
 
                         if (
-                            !controlRoomVisible &&
+                            !settingsVisible &&
                             !intelligenceState.visible &&
                             !ottVisible &&
                             state.tab == AppTab.FOLLOWING &&
@@ -248,7 +255,7 @@ class MainActivity : ComponentActivity() {
                         }
 
                         if (
-                            !controlRoomVisible &&
+                            !settingsVisible &&
                             !intelligenceState.visible &&
                             ottVisible &&
                             state.authMode == null
@@ -265,7 +272,7 @@ class MainActivity : ComponentActivity() {
                             )
                         }
 
-                        if (!controlRoomVisible && !intelligenceState.visible && state.authMode == null) {
+                        if (!settingsVisible && !intelligenceState.visible && state.authMode == null) {
                             P6039BottomNavOverlay(
                                 selected = state.tab,
                                 ottSelected = ottVisible,
@@ -274,7 +281,7 @@ class MainActivity : ComponentActivity() {
                                     viewModel.selectTab(tab)
                                 },
                                 onOpenOtt = {
-                                    controlRoomVisible = false
+                                    settingsVisible = false
                                     ottVisible = true
                                     ottViewModel.load()
                                 },
@@ -282,20 +289,27 @@ class MainActivity : ComponentActivity() {
                                     ottVisible = false
                                     onboardingViewModel.sync(authenticated = true, force = true)
                                     consumerViewModel.syncPersonalization(authenticated = true, force = true)
-                                    controlRoomVisible = true
+                                    settingsVisible = true
                                 },
                                 modifier = Modifier.align(Alignment.BottomCenter),
                             )
                         }
 
-                        if (controlRoomVisible && state.authMode == null) {
-                            ControlRoomV051(
+                        if (settingsVisible && state.authMode == null) {
+                            SettingsV055(
                                 state = state,
                                 notificationState = onboardingState,
-                                onBack = { controlRoomVisible = false },
-                                onSelectPlatform = viewModel::setNewsroomPlatform,
-                                onSelectFilter = viewModel::setNewsroomFilter,
-                                onSelectSourceRole = viewModel::setNewsroomSourceRole,
+                                consumerState = consumerState,
+                                onBack = { settingsVisible = false },
+                                onEditFavorites = {
+                                    settingsVisible = false
+                                    personalizationEditorVisible = true
+                                },
+                                onOpenSources = {
+                                    settingsVisible = false
+                                    ottVisible = false
+                                    viewModel.selectTab(AppTab.FOLLOWING)
+                                },
                                 onToggleNotificationMaster = { enabled ->
                                     if (!enabled) {
                                         onboardingViewModel.setMasterEnabled(false)
@@ -310,7 +324,8 @@ class MainActivity : ComponentActivity() {
                                     }
                                 },
                                 onSignOut = {
-                                    controlRoomVisible = false
+                                    settingsVisible = false
+                                    personalizationEditorVisible = false
                                     ottVisible = false
                                     consumerViewModel.closeNotification()
                                     viewModel.signOut()
@@ -319,7 +334,7 @@ class MainActivity : ComponentActivity() {
                             )
                         }
 
-                        if (intelligenceState.visible && !controlRoomVisible && state.authMode == null) {
+                        if (intelligenceState.visible && !settingsVisible && state.authMode == null) {
                             IntelligenceSearchV053(
                                 state = intelligenceState,
                                 onBack = intelligenceViewModel::back,
