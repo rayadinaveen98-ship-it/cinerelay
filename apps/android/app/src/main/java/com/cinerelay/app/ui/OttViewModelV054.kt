@@ -7,19 +7,17 @@ import com.cinerelay.app.CineRelayApplication
 import com.cinerelay.app.data.ApiException
 import com.cinerelay.app.data.OttProvider
 import com.cinerelay.app.data.OttRelease
-import com.cinerelay.app.data.OttReleaseFeed
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.time.LocalDate
 
 enum class OttWindow(val apiValue: String) {
     TODAY("today"),
     THIS_WEEK("this_week"),
-    UPCOMING("upcoming"),
+    UPCOMING("next_30_days"),
     RELEASED("released"),
 }
 
@@ -53,7 +51,7 @@ data class OttUiState(
 
 class OttViewModelV054(application: Application) : AndroidViewModel(application) {
     private val app = application as CineRelayApplication
-    private val client = app.intelligenceClient
+    private val client = app.ottCalendarClient
 
     private val _state = MutableStateFlow(OttUiState())
     val state: StateFlow<OttUiState> = _state.asStateFlow()
@@ -61,11 +59,14 @@ class OttViewModelV054(application: Application) : AndroidViewModel(application)
     fun load(force: Boolean = false) {
         val current = _state.value
         if (current.loading) return
-        // OTT sources are continuously refreshed server-side. Reopening the OTT
-        // destination should always pick up newer canonical evidence rather than
-        // keeping a process-lifetime snapshot. `force` remains for call-site
-        // compatibility and documents the intent when an explicit refresh is used.
-        if (force || current.loaded || !current.loaded) refresh()
+        if (force && current.loaded) {
+            refresh()
+            return
+        }
+        // Reopening OTT always asks the backend again. Source ingestion runs much
+        // more frequently than daily, so the calendar should never be a stale
+        // process-lifetime snapshot.
+        refresh()
     }
 
     fun refresh() {
@@ -86,14 +87,13 @@ class OttViewModelV054(application: Application) : AndroidViewModel(application)
                     )
                 }
             }.onSuccess { feed ->
-                val rolling = rollingWindow(feed, request.window)
                 _state.value = _state.value.copy(
                     loading = false,
                     loaded = true,
                     providers = feed.providers,
-                    items = rolling.items,
+                    items = feed.items,
                     today = feed.today,
-                    windowEnd = rolling.windowEnd,
+                    windowEnd = feed.windowEnd,
                     error = null,
                 )
             }.onFailure(::handleFailure)
@@ -132,19 +132,6 @@ class OttViewModelV054(application: Application) : AndroidViewModel(application)
         refresh()
     }
 
-    private fun rollingWindow(feed: OttReleaseFeed, window: OttWindow): RollingOttWindow {
-        if (window != OttWindow.UPCOMING) return RollingOttWindow(feed.items, feed.windowEnd)
-        val start = feed.today?.let(::parseDateOrNull) ?: return RollingOttWindow(feed.items, feed.windowEnd)
-        val end = start.plusDays(29)
-        val items = feed.items.filter { release ->
-            val date = release.releaseDate?.let(::parseDateOrNull) ?: return@filter false
-            !date.isBefore(start) && !date.isAfter(end)
-        }
-        return RollingOttWindow(items, end.toString())
-    }
-
-    private fun parseDateOrNull(value: String): LocalDate? = runCatching { LocalDate.parse(value) }.getOrNull()
-
     private fun handleFailure(error: Throwable) {
         val message = when {
             error is ApiException && error.statusCode == 401 -> "Your session expired. Sign in again to refresh OTT releases."
@@ -152,9 +139,4 @@ class OttViewModelV054(application: Application) : AndroidViewModel(application)
         }
         _state.value = _state.value.copy(loading = false, loaded = true, error = message)
     }
-
-    private data class RollingOttWindow(
-        val items: List<OttRelease>,
-        val windowEnd: String?,
-    )
 }
