@@ -15,7 +15,7 @@ const corsHeaders = {
   'cache-control': 'no-store',
 };
 
-type SourcePlatform = 'YOUTUBE' | 'X';
+type SourcePlatform = 'YOUTUBE' | 'WEB' | 'X';
 
 function json(status: number, body: Record<string, unknown>): Response {
   return new Response(JSON.stringify(body), {
@@ -27,7 +27,11 @@ function json(status: number, body: Record<string, unknown>): Response {
 function platformOf(value: unknown): SourcePlatform | null {
   if (value === undefined || value === null || value === '') return 'YOUTUBE';
   const normalized = String(value).trim().toUpperCase();
-  return normalized === 'YOUTUBE' || normalized === 'X' ? normalized : null;
+  return normalized === 'YOUTUBE' || normalized === 'WEB' || normalized === 'X' ? normalized : null;
+}
+
+function storagePlatforms(platform: SourcePlatform): string[] {
+  return platform === 'WEB' ? ['WEB', 'RSS'] : [platform];
 }
 
 function recordValue(value: unknown): Record<string, unknown> {
@@ -42,7 +46,7 @@ async function sourceDirectory(platform: SourcePlatform) {
   const identityResult = await admin.from('source_identities')
     .select('id,source_id,platform,handle,canonical_url,connector_config,active')
     .eq('active', true)
-    .eq('platform', platform);
+    .in('platform', storagePlatforms(platform));
   if (identityResult.error) throw identityResult.error;
 
   const identities = identityResult.data ?? [];
@@ -62,7 +66,7 @@ async function sourceDirectory(platform: SourcePlatform) {
   const sourceMap = new Map((sourceResult.data ?? []).map((row) => [row.id, row]));
   const identityIds = identities.map((row) => row.id);
 
-  // Keep this bounded while still comfortably covering the current official-source mesh.
+  // Keep this bounded while still comfortably covering the current source mesh.
   // Activity is judged by the provider-published timestamp when present, falling back to
   // CineRelay's first-seen time only when the provider timestamp is unavailable.
   const rawResult = await admin.from('raw_items')
@@ -104,6 +108,7 @@ async function sourceDirectory(platform: SourcePlatform) {
         name: source.display_name ?? identity.handle ?? 'CineRelay source',
         handle: identity.handle ?? null,
         platform: identity.platform,
+        lane: platform,
         role: source.source_role ?? null,
         authorityTier: source.authority_tier ?? null,
         canonicalUrl: identity.canonical_url ?? null,
@@ -116,6 +121,8 @@ async function sourceDirectory(platform: SourcePlatform) {
     .sort((left, right) => {
       const activityDelta = Number(right!.newCount24h) - Number(left!.newCount24h);
       if (activityDelta !== 0) return activityDelta;
+      const authorityDelta = Number(left!.authorityTier ?? 99) - Number(right!.authorityTier ?? 99);
+      if (authorityDelta !== 0) return authorityDelta;
       return String(left!.name).localeCompare(String(right!.name));
     });
 
