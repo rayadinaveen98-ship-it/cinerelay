@@ -13,7 +13,7 @@ insert into public.source_identities (
 ) values
   (
     '34000000-0000-4000-8000-000000000001', '24000000-0000-4000-8000-000000000001', 'RSS',
-    'precision-trade', 'https://precision.example/feed.xml', 'RSS_ATOM', 'WARM_15M', 'FEED', true
+    'precision-trade', 'https://precision.example/feed.xml', 'RSS_ATOM', 'ACTIVE_15M', 'FEED', true
   ),
   (
     '34000000-0000-4000-8000-000000000002', '24000000-0000-4000-8000-000000000002', 'YOUTUBE',
