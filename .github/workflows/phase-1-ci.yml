@@ -118,6 +118,8 @@ jobs:
         run: deno check --config supabase/functions/cinerelay-device-registration-api/deno.json supabase/functions/cinerelay-device-registration-api/index.ts
       - name: Type-check cinerelay-sources-api
         run: deno check --config supabase/functions/cinerelay-sources-api/deno.json supabase/functions/cinerelay-sources-api/index.ts
+      - name: Type-check cinerelay-intelligence-api
+        run: deno check --config supabase/functions/cinerelay-intelligence-api/deno.json supabase/functions/cinerelay-intelligence-api/index.ts
       - name: Type-check push-delivery-worker
         run: deno check --config supabase/functions/push-delivery-worker/deno.json supabase/functions/push-delivery-worker/index.ts
       - name: Type-check source-activity-push-worker
@@ -152,6 +154,7 @@ jobs:
             cinerelay-public-page-onboarding-api
             cinerelay-device-registration-api
             cinerelay-sources-api
+            cinerelay-intelligence-api
             push-delivery-worker
             source-activity-push-worker
             digest-compose-worker
