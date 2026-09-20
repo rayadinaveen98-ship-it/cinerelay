@@ -140,9 +140,9 @@ function extractMovieTitle(title: string, text: string): string | undefined {
 
   for (const value of candidates) {
     const patterns = [
-      /^(.{2,100}?)\s+(?:movie|film)\s*[,|:\-–—]\s*(?:stream(?:ing|s)?|premier(?:e|es|ing)|releas(?:e|es|ing))/i,
-      /^(.{2,100}?)\s+(?:movie|film)\s+(?:is\s+)?(?:stream(?:ing|s)?|premier(?:e|es|ing)|releas(?:e|es|ing))/i,
-      /(?:watch|catch)\s+(?:the\s+)?(?:movie|film)\s+(.{2,100}?)\s+(?:stream(?:ing|s)?|premier(?:e|es|ing)|releas(?:e|es|ing))/i,
+      /^(.{2,100}?)\s+(?:movie|film)\s*[,|:\-–—]\s*(?:now\s+)?(?:stream(?:ing|s)?|premier(?:e|es|ing)|releas(?:e|es|ing))/i,
+      /^(.{2,100}?)\s+(?:movie|film)\s+(?:is\s+)?(?:now\s+)?(?:stream(?:ing|s)?|premier(?:e|es|ing)|releas(?:e|es|ing))/i,
+      /(?:watch|catch)\s+(?:the\s+)?(?:movie|film)\s+(.{2,100}?)\s+(?:now\s+)?(?:stream(?:ing|s)?|premier(?:e|es|ing)|releas(?:e|es|ing))/i,
     ];
     for (const pattern of patterns) {
       const match = value.match(pattern);
