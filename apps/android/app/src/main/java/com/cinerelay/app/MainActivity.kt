@@ -28,6 +28,7 @@ import com.cinerelay.app.ui.NewsroomFilterOverlay
 import com.cinerelay.app.ui.NewsroomPlatform
 import com.cinerelay.app.ui.NewsroomPlatformOverlay
 import com.cinerelay.app.ui.NewsroomSourceRoleOverlay
+import com.cinerelay.app.ui.NotificationMasterOverlay
 import com.cinerelay.app.ui.NotificationOnboardingV044
 import com.cinerelay.app.ui.NotificationOnboardingViewModel
 import com.cinerelay.app.ui.P6039BottomNavOverlay
@@ -53,8 +54,21 @@ class MainActivity : ComponentActivity() {
                 onboardingViewModel.completeSetup(enableNotifications = granted)
             }
 
+            val masterNotificationPermissionLauncher = rememberLauncherForActivityResult(
+                contract = ActivityResultContracts.RequestPermission(),
+            ) { granted ->
+                if (granted) onboardingViewModel.setMasterEnabled(true)
+                else onboardingViewModel.notificationPermissionDenied()
+            }
+
             LaunchedEffect(state.authenticated) {
                 onboardingViewModel.sync(state.authenticated)
+            }
+
+            LaunchedEffect(state.tab, state.authenticated) {
+                if (state.tab == AppTab.ALERTS && state.authenticated) {
+                    onboardingViewModel.sync(authenticated = true, force = true)
+                }
             }
 
             LaunchedEffect(state.tab, state.newsroomPlatform, state.authMode, state.authenticated) {
@@ -115,6 +129,28 @@ class MainActivity : ComponentActivity() {
                             modifier = Modifier
                                 .align(Alignment.BottomEnd)
                                 .padding(end = 16.dp, bottom = 92.dp),
+                        )
+                    }
+
+                    if (state.tab == AppTab.ALERTS && state.authenticated) {
+                        NotificationMasterOverlay(
+                            state = onboardingState,
+                            onToggle = { enabled ->
+                                if (!enabled) {
+                                    onboardingViewModel.setMasterEnabled(false)
+                                } else {
+                                    val needsRuntimePermission = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                                        ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+                                    if (needsRuntimePermission) {
+                                        masterNotificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                                    } else {
+                                        onboardingViewModel.setMasterEnabled(true)
+                                    }
+                                }
+                            },
+                            modifier = Modifier
+                                .align(Alignment.TopCenter)
+                                .padding(start = 16.dp, end = 16.dp, top = 88.dp),
                         )
                     }
 
