@@ -29,6 +29,20 @@ assert.equal(dayFirst.releaseDate, '2026-09-24');
 assert.equal(dayFirst.state, 'UPCOMING');
 assert.equal(dayFirst.evidenceStatus, 'CONFIRMED');
 
+const directStreaming = extractOttMovieReleaseSignal({
+  title: 'Paranthu Po | Streaming Now on JioHotstar',
+  text: '#ParanthuPoOnJioHotstar #ParanthuPo #ParanthuPoNowStreaming #JioHotStarTamil',
+  publishedAt: '2026-09-20T11:15:31Z',
+  source: { authorityTier: 1, role: 'OTT_PLATFORM', name: 'JioHotstar Tamil' },
+});
+assert.ok(directStreaming, 'clean first-party provider headlines should not require the literal word movie');
+assert.equal(directStreaming.title, 'Paranthu Po');
+assert.equal(directStreaming.providerCode, 'JIOHOTSTAR');
+assert.equal(directStreaming.state, 'RELEASED');
+assert.equal(directStreaming.datePrecision, 'TBA');
+assert.equal(directStreaming.evidenceStatus, 'CONFIRMED');
+assert.equal(directStreaming.primaryLanguage, 'ta');
+
 const reported = extractOttMovieReleaseSignal({
   title: 'Habeebi Movie streaming from September 25 on Sony LIV',
   publishedAt: '2026-09-20T10:00:00Z',
@@ -69,6 +83,26 @@ assert.equal(
   }),
   undefined,
   'series/episode promos without an explicit movie marker must not be classified as movie releases',
+);
+
+assert.equal(
+  extractOttMovieReleaseSignal({
+    title: 'Chef Mantra Project K S6 Ep 3 | Streaming Now on aha',
+    publishedAt: '2026-09-20T04:30:16Z',
+    source: { authorityTier: 1, role: 'OTT_PLATFORM', name: 'aha videoIN' },
+  }),
+  undefined,
+  'direct OTT headline parsing must still reject episode titles',
+);
+
+assert.equal(
+  extractOttMovieReleaseSignal({
+    title: 'Best Comedy Scene | Streaming Now on JioHotstar',
+    publishedAt: '2026-09-20T04:30:16Z',
+    source: { authorityTier: 1, role: 'OTT_PLATFORM', name: 'JioHotstar Tamil' },
+  }),
+  undefined,
+  'direct OTT headline parsing must still reject scene and clip content',
 );
 
 assert.equal(
