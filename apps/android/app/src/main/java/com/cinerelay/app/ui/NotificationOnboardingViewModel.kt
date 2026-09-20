@@ -52,10 +52,11 @@ class NotificationOnboardingViewModel(application: Application) : AndroidViewMod
         }
         if (!force && current.authenticated && current.setupKnown) return
 
+        val preserveCompletedSetup = force && current.setupKnown && current.setupCompleted
         val generation = ++syncGeneration
         _state.value = current.copy(
             authenticated = true,
-            setupKnown = false,
+            setupKnown = preserveCompletedSetup,
             loading = true,
             error = null,
         )
@@ -86,7 +87,7 @@ class NotificationOnboardingViewModel(application: Application) : AndroidViewMod
                 if (generation != syncGeneration) return@onFailure
                 _state.value = _state.value.copy(
                     authenticated = true,
-                    setupKnown = false,
+                    setupKnown = preserveCompletedSetup,
                     loading = false,
                     error = error.message ?: "Could not load notification setup",
                 )
