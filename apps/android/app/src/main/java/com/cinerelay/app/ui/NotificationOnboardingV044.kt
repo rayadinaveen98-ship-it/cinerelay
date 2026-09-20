@@ -516,9 +516,14 @@ private fun PrimaryOnboardingButton(text: String, onClick: () -> Unit, enabled: 
 
 @Composable
 private fun BrandOrb() {
-    Surface(color = OnboardingGold.copy(alpha = 0.12f), shape = RoundedCornerShape(24.dp), modifier = Modifier.size(82.dp)) {
+    Surface(color = OnboardingGold.copy(alpha = 0.08f), shape = RoundedCornerShape(24.dp), modifier = Modifier.size(82.dp)) {
         Box(contentAlignment = Alignment.Center) {
-            Text("CR", color = OnboardingGold, fontSize = 23.sp, fontWeight = FontWeight.Black)
+            Icon(
+                painter = androidx.compose.ui.res.painterResource(com.cinerelay.app.R.drawable.ic_cinerelay_mark),
+                contentDescription = null,
+                tint = Color.Unspecified,
+                modifier = Modifier.size(72.dp),
+            )
         }
     }
 }
