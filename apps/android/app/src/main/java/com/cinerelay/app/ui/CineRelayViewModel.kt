@@ -21,7 +21,7 @@ import kotlinx.coroutines.withContext
 
 enum class AppTab { LIVE, FOLLOWING, RADAR, ALERTS }
 enum class AuthMode { SIGN_IN, CREATE_ACCOUNT }
-enum class NewsroomPlatform { YOUTUBE, X }
+enum class NewsroomPlatform { YOUTUBE, WEB, X }
 enum class NewsroomFilter { ALL, VERIFIED, DEVELOPING, UNCONFIRMED, CONFLICT_RUMOR }
 enum class NewsroomSourceRole { ALL, PRODUCTION, OTT, MUSIC }
 
