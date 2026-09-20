@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -588,6 +589,29 @@ private fun SourceNewsroomCard(signal: NewsroomSignal) {
                     overflow = TextOverflow.Ellipsis,
                 )
                 Text(sourceTimeAgo(signal.observedAt), color = SourcesMuted, fontSize = 9.sp)
+            }
+
+            signal.thumbnailUrl?.takeIf { it.isNotBlank() }?.let { thumbnailUrl ->
+                Spacer(Modifier.height(12.dp))
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .aspectRatio(16f / 9f)
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(SourcesPanelRaised)
+                        .clickable(enabled = !signal.canonicalUrl.isNullOrBlank()) {
+                            signal.canonicalUrl?.let { sourceUrl ->
+                                runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(sourceUrl))) }
+                            }
+                        },
+                ) {
+                    AsyncImage(
+                        model = thumbnailUrl,
+                        contentDescription = signal.title,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                }
             }
 
             Spacer(Modifier.height(12.dp))
