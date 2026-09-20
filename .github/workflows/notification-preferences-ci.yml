@@ -1,0 +1,46 @@
+name: CineRelay Notification Preferences CI
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: cinerelay-notification-preferences-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  notification-preferences-api:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - name: Type-check notification preferences API
+        run: deno check --config supabase/functions/cinerelay-notification-preferences-api/deno.json supabase/functions/cinerelay-notification-preferences-api/index.ts
+      - name: Build deployment-native notification preferences bundle
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p notification-preferences-deploy/cinerelay-notification-preferences-api
+          npx --yes esbuild@0.25.9 supabase/functions/cinerelay-notification-preferences-api/index.ts \
+            --bundle \
+            --format=esm \
+            --platform=neutral \
+            --main-fields=module,main \
+            --target=es2022 \
+            --minify \
+            --external:@supabase/supabase-js \
+            --outfile=notification-preferences-deploy/cinerelay-notification-preferences-api/index.js
+          cp supabase/functions/cinerelay-notification-preferences-api/deno.json notification-preferences-deploy/cinerelay-notification-preferences-api/deno.json
+      - name: Upload deployment-native notification preferences bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: cinerelay-notification-preferences-deploy-bundle
+          path: notification-preferences-deploy
+          if-no-files-found: error
+          retention-days: 7
