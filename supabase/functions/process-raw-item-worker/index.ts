@@ -9,6 +9,7 @@ if (!supabaseUrl || !serviceRoleKey || !internalSecret) throw new Error('Missing
 
 const supabase = createClient(supabaseUrl, serviceRoleKey, { auth: { persistSession: false, autoRefreshToken: false } });
 const RESOLVER_VERSION = 'source-scope-resolver-v1';
+const TITLE_RESOLVER_VERSION = 'canonical-title-resolver-v1';
 const OPERATOR_RESOLVER_VERSION = 'operator-override-v1';
 const CLASSIFIER_VERSION = 'deterministic-domain-v1.1';
 
@@ -70,18 +71,40 @@ async function loadSource(sourceIdentityId: string): Promise<SourceDescriptor> {
 }
 
 async function loadEntity(entityId: string): Promise<EntityCandidate | undefined> {
-  const [{ data: entity, error: entityError }, { data: aliases, error: aliasError }] = await Promise.all([
-    supabase.from('entities').select('id,canonical_name,entity_type,status').eq('id', entityId).eq('status', 'ACTIVE').maybeSingle(),
-    supabase.from('entity_aliases').select('alias').eq('entity_id', entityId),
+  const entities = await loadEntities([entityId]);
+  return entities[0];
+}
+
+async function loadEntities(ids: string[]): Promise<EntityCandidate[]> {
+  const uniqueIds = [...new Set(ids.filter(Boolean))];
+  if (uniqueIds.length === 0) return [];
+
+  const [{ data: entities, error: entityError }, { data: aliases, error: aliasError }] = await Promise.all([
+    supabase.from('entities')
+      .select('id,canonical_name,entity_type,status')
+      .in('id', uniqueIds)
+      .in('entity_type', ['MOVIE', 'SERIES', 'SEASON'])
+      .eq('status', 'ACTIVE'),
+    supabase.from('entity_aliases').select('entity_id,alias').in('entity_id', uniqueIds).is('valid_to', null),
   ]);
   if (entityError) throw entityError;
   if (aliasError) throw aliasError;
-  if (!entity || !['MOVIE', 'SERIES', 'SEASON'].includes(String(entity.entity_type))) return undefined;
-  return {
-    id: String(entity.id),
-    canonicalName: String(entity.canonical_name),
-    aliases: (aliases ?? []).map((row) => String(row.alias ?? '')).filter(Boolean),
-  };
+
+  const aliasMap = new Map<string, string[]>();
+  for (const row of aliases ?? []) {
+    const entityId = String((row as Record<string, unknown>).entity_id);
+    const alias = String((row as Record<string, unknown>).alias ?? '').trim();
+    if (!alias) continue;
+    const current = aliasMap.get(entityId) ?? [];
+    current.push(alias);
+    aliasMap.set(entityId, current);
+  }
+
+  return (entities ?? []).map((row: Record<string, unknown>) => ({
+    id: String(row.id),
+    canonicalName: String(row.canonical_name),
+    aliases: aliasMap.get(String(row.id)) ?? [],
+  }));
 }
 
 async function loadOperatorOverride(rawItemId: string): Promise<{ id: string; entity: EntityCandidate } | undefined> {
@@ -102,27 +125,19 @@ async function loadCandidates(sourceIdentityId: string): Promise<EntityCandidate
     .order('priority', { ascending: true }).order('confidence', { ascending: false });
   if (scopeError) throw scopeError;
   const ids = [...new Set((scopeRows ?? []).map((row: Record<string, unknown>) => String(row.entity_id)).filter(Boolean))];
-  if (ids.length === 0) return [];
+  return loadEntities(ids);
+}
 
-  const { data: entities, error: entityError } = await supabase.from('entities')
-    .select('id,canonical_name,entity_type,status').in('id', ids).in('entity_type', ['MOVIE', 'SERIES', 'SEASON']).eq('status', 'ACTIVE');
-  if (entityError) throw entityError;
-  const { data: aliases, error: aliasError } = await supabase.from('entity_aliases').select('entity_id,alias').in('entity_id', ids);
-  if (aliasError) throw aliasError;
-
-  const aliasMap = new Map<string, string[]>();
-  for (const row of aliases ?? []) {
-    const entityId = String((row as Record<string, unknown>).entity_id);
-    const alias = String((row as Record<string, unknown>).alias ?? '').trim();
-    if (!alias) continue;
-    const current = aliasMap.get(entityId) ?? [];
-    current.push(alias);
-    aliasMap.set(entityId, current);
-  }
-
-  return (entities ?? []).map((row: Record<string, unknown>) => ({
-    id: String(row.id), canonicalName: String(row.canonical_name), aliases: aliasMap.get(String(row.id)) ?? [],
-  }));
+async function loadTitleCandidates(title: string): Promise<EntityCandidate[]> {
+  const trimmed = title.trim();
+  if (!trimmed) return [];
+  const { data, error } = await supabase.rpc('find_entity_candidates_for_title', {
+    p_title: trimmed,
+    p_limit: 12,
+  });
+  if (error) throw error;
+  const ids = [...new Set((data ?? []).map((row: Record<string, unknown>) => String(row.entity_id)).filter(Boolean))];
+  return loadEntities(ids);
 }
 
 async function currentTheatricalDate(entityId: string): Promise<string | undefined> {
@@ -188,6 +203,7 @@ async function processJob(job: Record<string, unknown>, workerId: string): Promi
     text: typeof raw.raw_text === 'string' ? raw.raw_text : '',
     url: String(raw.canonical_url),
   };
+  const normalized = normalizeItem(fixtureItem, source);
 
   const operatorOverride = await loadOperatorOverride(rawItemId);
   let resolution: Resolution;
@@ -195,15 +211,50 @@ async function processJob(job: Record<string, unknown>, workerId: string): Promi
     resolution = { state: 'RESOLVED', score: 1, entity: operatorOverride.entity, matchedAlias: operatorOverride.entity.canonicalName };
     await persistResolution(rawItemId, resolution, [{ method: 'OPERATOR_OVERRIDE', overrideId: operatorOverride.id }], OPERATOR_RESOLVER_VERSION);
   } else {
-    const candidates = await loadCandidates(sourceIdentityId);
-    if (candidates.length === 0) {
-      await persistResolution(rawItemId, { state: 'UNRESOLVED', score: 0 }, [{ method: 'SOURCE_ENTITY_SCOPE', candidateCount: 0, matchedAlias: null }], RESOLVER_VERSION);
-      await completeJob(job, workerId);
-      return { resolution: 'UNRESOLVED' };
+    const scopedCandidates = await loadCandidates(sourceIdentityId);
+    const scopedResolution = scopedCandidates.length > 0
+      ? resolveEntity(normalized, { candidateEntities: scopedCandidates }) as Resolution
+      : { state: 'UNRESOLVED', score: 0 } as Resolution;
+
+    if (scopedResolution.state === 'RESOLVED' && scopedResolution.entity?.id) {
+      resolution = scopedResolution;
+      await persistResolution(rawItemId, resolution, [{
+        method: 'SOURCE_ENTITY_SCOPE',
+        candidateCount: scopedCandidates.length,
+        matchedAlias: resolution.matchedAlias ?? null,
+      }], RESOLVER_VERSION);
+    } else {
+      const titleCandidates = await loadTitleCandidates(fixtureItem.title);
+      if (titleCandidates.length > 0) {
+        resolution = resolveEntity(normalized, { candidateEntities: titleCandidates }) as Resolution;
+        await persistResolution(rawItemId, resolution, [
+          {
+            method: 'SOURCE_ENTITY_SCOPE',
+            candidateCount: scopedCandidates.length,
+            state: scopedResolution.state,
+            matchedAlias: scopedResolution.matchedAlias ?? null,
+          },
+          {
+            method: 'CANONICAL_TITLE_ALIAS',
+            candidateCount: titleCandidates.length,
+            matchedAlias: resolution.matchedAlias ?? null,
+            titleOnlyCandidateDiscovery: true,
+          },
+        ], TITLE_RESOLVER_VERSION);
+      } else {
+        resolution = scopedResolution;
+        await persistResolution(rawItemId, resolution, [{
+          method: 'SOURCE_ENTITY_SCOPE',
+          candidateCount: scopedCandidates.length,
+          matchedAlias: scopedResolution.matchedAlias ?? null,
+        }, {
+          method: 'CANONICAL_TITLE_ALIAS',
+          candidateCount: 0,
+          matchedAlias: null,
+          titleOnlyCandidateDiscovery: true,
+        }], scopedCandidates.length > 0 ? RESOLVER_VERSION : TITLE_RESOLVER_VERSION);
+      }
     }
-    const normalized = normalizeItem(fixtureItem, source);
-    resolution = resolveEntity(normalized, { candidateEntities: candidates }) as Resolution;
-    await persistResolution(rawItemId, resolution, [{ method: 'SOURCE_ENTITY_SCOPE', candidateCount: candidates.length, matchedAlias: resolution.matchedAlias ?? null }], RESOLVER_VERSION);
   }
 
   if (resolution.state !== 'RESOLVED' || !resolution.entity?.id) {
