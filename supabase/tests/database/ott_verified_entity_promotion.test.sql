@@ -13,7 +13,7 @@ insert into public.source_identities (
 ) values
   (
     '36100000-0000-4000-8000-000000000001', '26100000-0000-4000-8000-000000000001', 'YOUTUBE',
-    'ott-promotion-official', 'https://youtube.example/ott-promotion-official', 'YOUTUBE_WEBSUB', 'PUSH_PRIMARY', 'API', true
+    'ott-promotion-official', 'https://youtube.example/ott-promotion-official', 'YOUTUBE_WEBSUB', 'PUSH', 'WEBHOOK', true
   ),
   (
     '36100000-0000-4000-8000-000000000002', '26100000-0000-4000-8000-000000000002', 'RSS',
