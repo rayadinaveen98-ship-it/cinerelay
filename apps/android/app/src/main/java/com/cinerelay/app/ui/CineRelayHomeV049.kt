@@ -24,7 +24,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material.icons.filled.OpenInNew
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Star
@@ -171,7 +170,11 @@ private fun HomeTopBarV049(state: CineRelayUiState, viewModel: CineRelayViewMode
                             shape = RoundedCornerShape(50),
                         ) {
                             Text(
-                                if (state.newsroomPlatform == NewsroomPlatform.YOUTUBE) "YouTube" else "X",
+                                when (state.newsroomPlatform) {
+                                    NewsroomPlatform.YOUTUBE -> "YouTube"
+                                    NewsroomPlatform.WEB -> "Web"
+                                    NewsroomPlatform.X -> "X"
+                                },
                                 color = HomeMuted,
                                 fontSize = 9.sp,
                                 fontWeight = FontWeight.Bold,
@@ -190,11 +193,7 @@ private fun HomeTopBarV049(state: CineRelayUiState, viewModel: CineRelayViewMode
                     Icon(Icons.Default.Refresh, contentDescription = "Refresh Home", tint = HomeMuted)
                 }
             }
-            if (state.authenticated) {
-                IconButton(onClick = viewModel::signOut) {
-                    Icon(Icons.Default.Logout, contentDescription = "Sign out", tint = HomeMuted)
-                }
-            } else {
+            if (!state.authenticated) {
                 FilledTonalButton(
                     onClick = { viewModel.openAuth(AuthMode.SIGN_IN) },
                     colors = androidx.compose.material3.ButtonDefaults.filledTonalButtonColors(
@@ -234,7 +233,7 @@ private fun HomeFeedV049(
                 Text("Nothing new right now", color = HomeText, fontSize = 20.sp, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.height(7.dp))
                 Text(
-                    "CineRelay is still listening to the selected newsroom lane. Fresh official activity will appear here automatically.",
+                    "CineRelay is still listening to the selected newsroom lane. Fresh source activity will appear here automatically.",
                     color = HomeMuted,
                     fontSize = 12.sp,
                     lineHeight = 18.sp,
@@ -293,6 +292,12 @@ private fun HomeNewsroomCardV049(
 ) {
     val context = LocalContext.current
     val event = signal.canonicalEvent
+    val authorityTier = signal.source.authorityTier
+    val sourceBadge = when {
+        authorityTier != null && authorityTier <= 1 -> "First-party source"
+        signal.source.platform == "WEB" || signal.source.platform == "RSS" -> "Tracked web source"
+        else -> "Official source"
+    }
 
     Card(
         colors = CardDefaults.cardColors(containerColor = HomePanel),
@@ -365,7 +370,7 @@ private fun HomeNewsroomCardV049(
                                 modifier = Modifier.size(12.dp),
                             )
                             Spacer(Modifier.width(4.dp))
-                            Text("Official source", color = HomeText, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                            Text(sourceBadge, color = HomeText, fontSize = 9.sp, fontWeight = FontWeight.Bold)
                         }
                     }
                 }
@@ -673,6 +678,7 @@ private fun prettyHomeRoleV049(value: String?): String = when (value) {
     "OTT_PLATFORM" -> "OTT"
     "MUSIC_LABEL" -> "Music"
     "MEDIA_LIBRARY" -> "Media"
+    "TRADE_MEDIA" -> "Trade media"
     null -> ""
     else -> prettyHomeValueV049(value)
 }
