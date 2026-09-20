@@ -1,7 +1,7 @@
 begin;
 
 create extension if not exists pgtap with schema extensions;
-select plan(13);
+select plan(15);
 
 select results_eq(
   $$select count(*) from public.ott_providers where code in ('NETFLIX','PRIME_VIDEO','JIOHOTSTAR','ZEE5','SONYLIV','AHA','SUN_NXT','ETV_WIN') and active=true$$,
