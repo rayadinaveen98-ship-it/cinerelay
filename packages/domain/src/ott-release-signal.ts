@@ -156,7 +156,7 @@ function extractMovieTitle(title: string, text: string, allowDirectOttHeadline: 
       /(?:watch|catch)\s+(?:the\s+)?(?:movie|film)\s+(.{2,100}?)\s+(?:now\s+)?(?:stream(?:ing|s)?|premier(?:e|es|ing)|releas(?:e|es|ing))/i,
     ];
     if (allowDirectOttHeadline) {
-      patterns.unshift(
+      patterns.push(
         /^(.{2,100}?)\s*[|,:;\-–—]\s*(?:(?:now\s+)?streaming(?:\s+now)?|watch\s+now|available\s+now|streaming\s+from|premier(?:e|es|ing)\s+on|releas(?:e|es|ing)\s+on)\b/i,
       );
     }
