@@ -244,10 +244,10 @@ export function extractOttMovieReleaseSignal(input: OttMovieReleaseSignalInput):
   }
 
   const originalLanguage = /\b(original\s+(?:movie|film)|(?:movie|film)\s+original|direct\s+digital\s+debut)\b/i.test(combined);
-  // A trade outlet's brand can contain a language name (for example 123Telugu),
-  // but that describes the publication, not the movie. Only first-party title-
-  // specific channels may contribute source-name language context.
-  const languageContext = firstParty ? `${input.source.name ?? ''} ${combined}` : combined;
+  // Trade feeds often append publication-brand footers such as "Latest Telugu cinema news".
+  // Those labels describe the outlet, not the title. Restrict trade language inference to
+  // the article lead; if the language is not stated there, leave it unknown rather than guess.
+  const languageContext = firstParty ? `${input.source.name ?? ''} ${combined}` : combined.slice(0, 900);
   const sourceLanguage = languageCode(languageContext);
 
   return {
