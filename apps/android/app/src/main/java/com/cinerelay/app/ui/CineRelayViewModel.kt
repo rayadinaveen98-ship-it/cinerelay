@@ -202,7 +202,12 @@ class CineRelayViewModel(application: Application) : AndroidViewModel(applicatio
                             LoadResult.Home(youtube = youtube, web = web)
                         }
                         AppTab.FOLLOWING -> LoadResult.Events(backend.eventFeed("following"))
-                        AppTab.RADAR -> LoadResult.Events(backend.eventFeed("radar", allowGuest = true))
+                        AppTab.RADAR -> {
+                            val events = backend.eventFeed("radar", limit = 80, allowGuest = true)
+                            val youtube = backend.newsroom(NewsroomPlatform.YOUTUBE.name, limit = 100)
+                            val web = backend.newsroom(NewsroomPlatform.WEB.name, limit = 80)
+                            LoadResult.Radar(events = events, youtube = youtube, web = web)
+                        }
                         AppTab.ALERTS -> LoadResult.Alerts(backend.alerts())
                     }
                 }
@@ -210,9 +215,7 @@ class CineRelayViewModel(application: Application) : AndroidViewModel(applicatio
                 _state.value = when (result) {
                     is LoadResult.Home -> {
                         val current = _state.value
-                        val combined = (result.youtube + result.web)
-                            .distinctBy { it.id }
-                            .sortedWith(compareByDescending<NewsroomSignal> { it.observedAt ?: it.ingestedAt ?: "" })
+                        val combined = combineHomeSignals(result.youtube, result.web)
                         val selectedLane = when (current.newsroomPlatform) {
                             NewsroomPlatform.YOUTUBE -> result.youtube
                             NewsroomPlatform.WEB -> result.web
@@ -234,6 +237,13 @@ class CineRelayViewModel(application: Application) : AndroidViewModel(applicatio
                             alerts = emptyList(),
                         )
                     }
+                    is LoadResult.Radar -> _state.value.copy(
+                        loading = false,
+                        homeSignals = combineHomeSignals(result.youtube, result.web),
+                        newsroomSignals = emptyList(),
+                        events = result.events,
+                        alerts = emptyList(),
+                    )
                     is LoadResult.Events -> _state.value.copy(
                         loading = false,
                         newsroomSignals = emptyList(),
@@ -364,10 +374,20 @@ class CineRelayViewModel(application: Application) : AndroidViewModel(applicatio
 
     private sealed interface LoadResult {
         data class Home(val youtube: List<NewsroomSignal>, val web: List<NewsroomSignal>) : LoadResult
+        data class Radar(
+            val events: List<EventCard>,
+            val youtube: List<NewsroomSignal>,
+            val web: List<NewsroomSignal>,
+        ) : LoadResult
         data class Events(val items: List<EventCard>) : LoadResult
         data class Alerts(val items: List<AlertItem>) : LoadResult
     }
 }
+
+private fun combineHomeSignals(youtube: List<NewsroomSignal>, web: List<NewsroomSignal>): List<NewsroomSignal> =
+    (youtube + web)
+        .distinctBy { it.id }
+        .sortedWith(compareByDescending<NewsroomSignal> { it.observedAt ?: it.ingestedAt ?: "" })
 
 private fun filterNewsroom(
     items: List<NewsroomSignal>,
