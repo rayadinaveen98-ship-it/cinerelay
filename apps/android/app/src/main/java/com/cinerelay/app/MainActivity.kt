@@ -10,6 +10,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -18,6 +19,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -28,6 +30,9 @@ import com.cinerelay.app.ui.CineRelaySetupLoadingV050
 import com.cinerelay.app.ui.CineRelayViewModel
 import com.cinerelay.app.ui.ControlRoomV051
 import com.cinerelay.app.ui.FirstRunAuthV050
+import com.cinerelay.app.ui.IntelligenceSearchLauncherV053
+import com.cinerelay.app.ui.IntelligenceSearchV053
+import com.cinerelay.app.ui.IntelligenceViewModel
 import com.cinerelay.app.ui.NotificationOnboardingV044
 import com.cinerelay.app.ui.NotificationOnboardingViewModel
 import com.cinerelay.app.ui.P6039BottomNavOverlay
@@ -42,9 +47,11 @@ class MainActivity : ComponentActivity() {
             val viewModel: CineRelayViewModel = viewModel()
             val sourcesViewModel: SourcesViewModel = viewModel()
             val onboardingViewModel: NotificationOnboardingViewModel = viewModel()
+            val intelligenceViewModel: IntelligenceViewModel = viewModel()
             val state by viewModel.state.collectAsStateWithLifecycle()
             val sourcesState by sourcesViewModel.state.collectAsStateWithLifecycle()
             val onboardingState by onboardingViewModel.state.collectAsStateWithLifecycle()
+            val intelligenceState by intelligenceViewModel.state.collectAsStateWithLifecycle()
             val context = LocalContext.current
             var controlRoomVisible by remember { mutableStateOf(false) }
 
@@ -62,7 +69,10 @@ class MainActivity : ComponentActivity() {
             }
 
             LaunchedEffect(state.authenticated) {
-                if (!state.authenticated) controlRoomVisible = false
+                if (!state.authenticated) {
+                    controlRoomVisible = false
+                    intelligenceViewModel.close()
+                }
                 onboardingViewModel.sync(state.authenticated)
             }
 
@@ -128,7 +138,7 @@ class MainActivity : ComponentActivity() {
                     else -> {
                         CineRelayRootV049(viewModel)
 
-                        if (!controlRoomVisible && state.tab == AppTab.FOLLOWING && state.authMode == null) {
+                        if (!controlRoomVisible && !intelligenceState.visible && state.tab == AppTab.FOLLOWING && state.authMode == null) {
                             SourcesDirectoryV039(
                                 state = sourcesState,
                                 onRefresh = sourcesViewModel::refresh,
@@ -141,7 +151,7 @@ class MainActivity : ComponentActivity() {
                             )
                         }
 
-                        if (!controlRoomVisible && state.authMode == null) {
+                        if (!controlRoomVisible && !intelligenceState.visible && state.authMode == null) {
                             P6039BottomNavOverlay(
                                 selected = state.tab,
                                 onSelect = viewModel::selectTab,
@@ -150,6 +160,20 @@ class MainActivity : ComponentActivity() {
                                     controlRoomVisible = true
                                 },
                                 modifier = Modifier.align(Alignment.BottomCenter),
+                            )
+                        }
+
+                        if (
+                            !controlRoomVisible &&
+                            !intelligenceState.visible &&
+                            state.tab == AppTab.LIVE &&
+                            state.authMode == null
+                        ) {
+                            IntelligenceSearchLauncherV053(
+                                onClick = intelligenceViewModel::open,
+                                modifier = Modifier
+                                    .align(Alignment.BottomEnd)
+                                    .padding(end = 16.dp, bottom = 92.dp),
                             )
                         }
 
@@ -178,6 +202,18 @@ class MainActivity : ComponentActivity() {
                                     controlRoomVisible = false
                                     viewModel.signOut()
                                 },
+                                modifier = Modifier.fillMaxSize(),
+                            )
+                        }
+
+                        if (intelligenceState.visible && !controlRoomVisible && state.authMode == null) {
+                            IntelligenceSearchV053(
+                                state = intelligenceState,
+                                onBack = intelligenceViewModel::back,
+                                onQueryChange = intelligenceViewModel::updateQuery,
+                                onSearch = intelligenceViewModel::search,
+                                onOpenHub = intelligenceViewModel::openHub,
+                                onToggleFollow = intelligenceViewModel::toggleFollow,
                                 modifier = Modifier.fillMaxSize(),
                             )
                         }
