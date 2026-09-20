@@ -40,6 +40,7 @@ import com.cinerelay.app.ui.OttReleasesV054
 import com.cinerelay.app.ui.OttViewModelV054
 import com.cinerelay.app.ui.P6039BottomNavOverlay
 import com.cinerelay.app.ui.PersonalizationOnboardingV055
+import com.cinerelay.app.ui.RadarV056
 import com.cinerelay.app.ui.SettingsV055
 import com.cinerelay.app.ui.SourcesDirectoryV039
 import com.cinerelay.app.ui.SourcesViewModel
@@ -251,6 +252,27 @@ class MainActivity : ComponentActivity() {
                                 onCloseSource = sourcesViewModel::closeSource,
                                 onToggleNotification = { source, enabled ->
                                     sourcesViewModel.toggleNotification(source, enabled)
+                                },
+                                modifier = Modifier.fillMaxSize(),
+                            )
+                        }
+
+                        if (
+                            !settingsVisible &&
+                            !searchState.visible &&
+                            !ottVisible &&
+                            state.tab == AppTab.RADAR &&
+                            state.authMode == null
+                        ) {
+                            RadarV056(
+                                state = state,
+                                onRefresh = viewModel::refresh,
+                                onOpen = { event ->
+                                    consumerViewModel.openNotification(
+                                        eventId = event.id,
+                                        rawItemId = null,
+                                        canonicalUrl = event.evidence?.canonicalUrl,
+                                    )
                                 },
                                 modifier = Modifier.fillMaxSize(),
                             )
