@@ -57,8 +57,8 @@ select results_eq(
 
 select results_eq(
   $$select count(*) from public.source_entity_candidates where source_identity_id='32000000-0000-4000-8000-000000000001'::uuid and entity_id='42000000-0000-4000-8000-000000000001'::uuid and active=true$$,
-  array[1::bigint],
-  'operator resolution teaches the source candidate scope'
+  array[0::bigint],
+  'operator resolution does not teach broad production-house source scope'
 );
 
 select results_eq(
