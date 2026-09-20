@@ -890,11 +890,19 @@ private fun EmptyV2(title: String, body: String) {
 
 @Composable
 private fun BrandMarkV2(size: androidx.compose.ui.unit.Dp) {
-    Box(
-        modifier = Modifier.size(size).background(Brush.linearGradient(listOf(V2Gold, Color(0xFFD9A93E))), RoundedCornerShape(size / 3)),
-        contentAlignment = Alignment.Center,
+    Surface(
+        color = V2Gold.copy(alpha = 0.08f),
+        shape = RoundedCornerShape(size / 3),
+        modifier = Modifier.size(size),
     ) {
-        Icon(Icons.Default.PlayArrow, contentDescription = null, tint = V2Ink, modifier = Modifier.size(size * 0.62f))
+        Box(contentAlignment = Alignment.Center) {
+            Icon(
+                painter = androidx.compose.ui.res.painterResource(com.cinerelay.app.R.drawable.ic_cinerelay_mark),
+                contentDescription = null,
+                tint = Color.Unspecified,
+                modifier = Modifier.size(size * 0.9f),
+            )
+        }
     }
 }
 
