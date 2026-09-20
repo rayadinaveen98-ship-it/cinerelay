@@ -175,6 +175,7 @@ private fun SourcesTopBar(
             if (state.selectedSource != null) {
                 Text(
                     listOfNotNull(
+                        prettySourcePlatform(state.selectedSource.platform),
                         state.selectedSource.handle,
                         prettySourceRole(state.selectedSource.role),
                     ).joinToString(" • "),
@@ -229,17 +230,22 @@ private fun SourcesDirectoryList(
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(
-                    if (state.platform == NewsroomPlatform.X) "No active X sources" else "No sources available",
+                    when (state.platform) {
+                        NewsroomPlatform.X -> "No active X sources"
+                        NewsroomPlatform.WEB -> "No active Web sources"
+                        NewsroomPlatform.YOUTUBE -> "No sources available"
+                    },
                     color = SourcesText,
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
                 )
                 Spacer(Modifier.height(8.dp))
                 Text(
-                    if (state.platform == NewsroomPlatform.X)
-                        "X is intentionally dormant. Switch back to YouTube for the active newsroom source directory."
-                    else
-                        "CineRelay could not find an active source directory for this platform.",
+                    when (state.platform) {
+                        NewsroomPlatform.X -> "X is intentionally dormant. Switch to YouTube or Web for an active source directory."
+                        NewsroomPlatform.WEB -> "CineRelay could not find an active RSS or first-party Web source right now."
+                        NewsroomPlatform.YOUTUBE -> "CineRelay could not find an active YouTube source directory right now."
+                    },
                     color = SourcesMuted,
                     fontSize = 12.sp,
                     lineHeight = 18.sp,
@@ -261,7 +267,17 @@ private fun SourcesDirectoryList(
                     .padding(top = 4.dp, bottom = 2.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text("OFFICIAL SOURCES", color = SourcesMuted, fontSize = 9.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.2.sp)
+                Text(
+                    when (state.platform) {
+                        NewsroomPlatform.YOUTUBE -> "OFFICIAL SOURCES"
+                        NewsroomPlatform.WEB -> "WEB SOURCES"
+                        NewsroomPlatform.X -> "X SOURCES"
+                    },
+                    color = SourcesMuted,
+                    fontSize = 9.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 1.2.sp,
+                )
                 Spacer(Modifier.weight(1f))
                 Text("Recent activity first", color = SourcesMuted, fontSize = 9.sp)
             }
@@ -290,14 +306,21 @@ private fun SourcesSummaryCard(state: SourcesUiState) {
     ) {
         Column(Modifier.padding(16.dp)) {
             Text(
-                if (state.platform == NewsroomPlatform.YOUTUBE) "YouTube source desk" else "X source desk",
+                when (state.platform) {
+                    NewsroomPlatform.YOUTUBE -> "YouTube source desk"
+                    NewsroomPlatform.WEB -> "Web source desk"
+                    NewsroomPlatform.X -> "X source desk"
+                },
                 color = SourcesText,
                 fontSize = 15.sp,
                 fontWeight = FontWeight.Bold,
             )
             Spacer(Modifier.height(4.dp))
             Text(
-                "${state.sourceCount} official sources • ${state.activeInLast24h} active in the last 24h",
+                if (state.platform == NewsroomPlatform.YOUTUBE)
+                    "${state.sourceCount} official sources • ${state.activeInLast24h} active in the last 24h"
+                else
+                    "${state.sourceCount} tracked sources • ${state.activeInLast24h} active in the last 24h",
                 color = SourcesMuted,
                 fontSize = 11.sp,
             )
@@ -368,7 +391,11 @@ private fun SourceRow(
                 )
                 Spacer(Modifier.height(2.dp))
                 Text(
-                    listOfNotNull(source.handle, prettySourceRole(source.role)).joinToString(" • "),
+                    listOfNotNull(
+                        prettySourcePlatform(source.platform),
+                        source.handle,
+                        prettySourceRole(source.role),
+                    ).joinToString(" • "),
                     color = SourcesMuted,
                     fontSize = 10.sp,
                     maxLines = 1,
@@ -441,7 +468,7 @@ private fun SourceAvatar(source: SourceDirectoryItem, size: Dp = 42.dp) {
             source.artworkUrl?.let { url ->
                 AsyncImage(
                     model = url,
-                    contentDescription = "${source.name} channel artwork",
+                    contentDescription = "${source.name} source artwork",
                     contentScale = ContentScale.Crop,
                     modifier = Modifier
                         .fillMaxSize()
@@ -526,7 +553,11 @@ private fun SourceDetailHeader(
             Column(Modifier.weight(1f)) {
                 Text(source.name, color = SourcesText, fontSize = 15.sp, fontWeight = FontWeight.Bold)
                 Text(
-                    listOfNotNull(source.handle, prettySourceRole(source.role)).joinToString(" • "),
+                    listOfNotNull(
+                        prettySourcePlatform(source.platform),
+                        source.handle,
+                        prettySourceRole(source.role),
+                    ).joinToString(" • "),
                     color = SourcesMuted,
                     fontSize = 10.sp,
                 )
@@ -638,7 +669,7 @@ private fun SourceNewsroomCard(signal: NewsroomSignal) {
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    listOfNotNull(signal.mediaType, signal.languageCode).joinToString(" • ").ifBlank { "Official source activity" },
+                    listOfNotNull(signal.mediaType, signal.languageCode).joinToString(" • ").ifBlank { "Source activity" },
                     color = SourcesMuted,
                     fontSize = 9.sp,
                     modifier = Modifier.weight(1f),
@@ -678,11 +709,21 @@ private fun SourceStateBadge(state: String) {
     }
 }
 
+private fun prettySourcePlatform(platform: String?): String? = when (platform) {
+    "YOUTUBE" -> "YouTube"
+    "WEB" -> "Web"
+    "RSS" -> "RSS"
+    "X" -> "X"
+    null, "" -> null
+    else -> platform.lowercase().replaceFirstChar { it.uppercase() }
+}
+
 private fun prettySourceRole(role: String?): String? = when (role) {
     "PRODUCTION_HOUSE" -> "Production"
     "OTT_PLATFORM" -> "OTT"
     "MUSIC_LABEL" -> "Music"
     "MEDIA_LIBRARY" -> "Media"
+    "TRADE_MEDIA" -> "Trade media"
     null, "" -> null
     else -> role.lowercase().replace('_', ' ').replaceFirstChar { it.uppercase() }
 }
