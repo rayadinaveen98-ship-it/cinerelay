@@ -18,6 +18,7 @@ const corsHeaders = {
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const ENTITY_TYPES = ['MOVIE', 'SERIES', 'SEASON'];
 const ACTIVE_EVENT_STATUSES = ['ACTIVE', 'NEEDS_REVIEW'];
+const OTT_WINDOWS = ['today', 'this_week', 'upcoming', 'released', 'tba', 'all'];
 
 type AuthenticatedUser = { id: string; email: string | null };
 type EntityRow = {
@@ -51,11 +52,8 @@ type EventRow = {
   occurred_at: string | null;
   announced_at: string | null;
 };
-
 type EvidenceRow = { event_id: string; evidence_role: string };
-
 type ResolutionRow = { raw_item_id: string; score: number | null; resolution_state: string };
-
 type RawRow = {
   id: string;
   source_identity_id: string;
@@ -66,6 +64,38 @@ type RawRow = {
   media_type: string | null;
   published_at: string | null;
   first_seen_at: string | null;
+};
+type OttProviderRow = {
+  id: string;
+  code: string;
+  display_name: string;
+  homepage_url: string | null;
+  territory: string;
+  active: boolean;
+  sort_order: number;
+};
+type OttReleaseRow = {
+  id: string;
+  entity_id: string;
+  provider_id: string;
+  territory: string;
+  languages: string[] | null;
+  release_type: string;
+  release_date: string | null;
+  date_precision: string;
+  state: string;
+  evidence_status: string;
+  previous_release_date: string | null;
+  first_observed_at: string;
+  last_verified_at: string;
+};
+type OttEvidenceRow = {
+  ott_release_id: string;
+  raw_item_id: string;
+  event_id: string | null;
+  evidence_role: string;
+  is_first_party: boolean;
+  observed_at: string;
 };
 
 function json(status: number, body: Record<string, unknown>): Response {
@@ -101,6 +131,35 @@ function normalizeQuery(value: unknown): string {
     .replace(/[^\p{L}\p{N}]+/gu, ' ')
     .replace(/\s+/g, ' ')
     .trim();
+}
+
+function normalizedUpper(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const normalized = value.trim().toUpperCase();
+  return normalized || null;
+}
+
+function normalizedLower(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const normalized = value.trim().toLowerCase();
+  return normalized || null;
+}
+
+function indiaDateString(date = new Date()): string {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Kolkata',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(date);
+  const part = (type: string) => parts.find((entry) => entry.type === type)?.value ?? '';
+  return `${part('year')}-${part('month')}-${part('day')}`;
+}
+
+function addDateDays(date: string, days: number): string {
+  const instant = new Date(`${date}T00:00:00.000Z`);
+  instant.setUTCDate(instant.getUTCDate() + days);
+  return instant.toISOString().slice(0, 10);
 }
 
 function entityRank(entity: EntityRow, aliases: AliasRow[], query: string): number {
@@ -264,6 +323,226 @@ async function loadEntity(body: Record<string, unknown>): Promise<EntityRow | nu
   return (data ?? null) as EntityRow | null;
 }
 
+async function activeOttProviders(): Promise<OttProviderRow[]> {
+  const { data, error } = await admin
+    .from('ott_providers')
+    .select('id,code,display_name,homepage_url,territory,active,sort_order')
+    .eq('active', true)
+    .order('sort_order', { ascending: true })
+    .order('display_name', { ascending: true });
+  if (error) throw error;
+  return (data ?? []) as OttProviderRow[];
+}
+
+async function ottReleases(user: AuthenticatedUser | null, body: Record<string, unknown>): Promise<Record<string, unknown>> {
+  const requestedWindow = normalizedLower(body.window) ?? 'this_week';
+  const window = OTT_WINDOWS.includes(requestedWindow) ? requestedWindow : 'this_week';
+  const territory = normalizedUpper(body.territory) ?? 'IN';
+  const providerCode = normalizedUpper(body.providerCode ?? body.provider);
+  const language = normalizedLower(body.language);
+  const contentType = normalizedUpper(body.contentType ?? body.type);
+  const state = normalizedUpper(body.state);
+  const evidenceStatus = normalizedUpper(body.evidenceStatus);
+  const entityId = typeof body.entityId === 'string' && UUID_PATTERN.test(body.entityId.trim()) ? body.entityId.trim() : null;
+  const limit = boundedLimit(body.limit, 30, 75);
+  const fetchLimit = Math.min(250, Math.max(limit * 4, 80));
+  const today = indiaDateString();
+  const weekEnd = addDateDays(today, 6);
+
+  const providers = await activeOttProviders();
+  const providerById = new Map(providers.map((provider) => [provider.id, provider]));
+  const requestedProvider = providerCode ? providers.find((provider) => provider.code === providerCode) : undefined;
+  if (providerCode && !requestedProvider) {
+    return {
+      generatedAt: new Date().toISOString(),
+      guest: user === null,
+      window,
+      territory,
+      providers: providers.map((provider) => ({
+        code: provider.code,
+        name: provider.display_name,
+        homepageUrl: provider.homepage_url,
+      })),
+      count: 0,
+      items: [],
+    };
+  }
+
+  let query = admin
+    .from('ott_releases')
+    .select('id,entity_id,provider_id,territory,languages,release_type,release_date,date_precision,state,evidence_status,previous_release_date,first_observed_at,last_verified_at')
+    .eq('territory', territory);
+
+  if (entityId) query = query.eq('entity_id', entityId);
+  if (requestedProvider) query = query.eq('provider_id', requestedProvider.id);
+  if (language) query = query.contains('languages', [language]);
+  if (state) query = query.eq('state', state);
+  if (evidenceStatus) query = query.eq('evidence_status', evidenceStatus);
+
+  if (window === 'today') {
+    query = query.eq('release_date', today);
+  } else if (window === 'this_week') {
+    query = query.gte('release_date', today).lte('release_date', weekEnd).neq('state', 'RELEASED');
+  } else if (window === 'upcoming') {
+    query = query.gte('release_date', today).neq('state', 'RELEASED');
+  } else if (window === 'released') {
+    query = query.eq('state', 'RELEASED');
+  } else if (window === 'tba') {
+    query = query.eq('date_precision', 'TBA').is('release_date', null);
+  }
+
+  query = window === 'released'
+    ? query.order('release_date', { ascending: false, nullsFirst: false })
+    : query.order('release_date', { ascending: true, nullsFirst: false });
+  const { data, error } = await query.limit(fetchLimit);
+  if (error) throw error;
+  let releases = (data ?? []) as OttReleaseRow[];
+
+  const entityIds = [...new Set(releases.map((release) => release.entity_id))];
+  const entityResult = entityIds.length
+    ? await admin
+      .from('entities')
+      .select('id,entity_type,canonical_name,slug,primary_language,country_code,status')
+      .in('id', entityIds)
+      .eq('status', 'ACTIVE')
+      .in('entity_type', ENTITY_TYPES)
+    : { data: [], error: null };
+  if (entityResult.error) throw entityResult.error;
+  const entityMap = new Map(((entityResult.data ?? []) as EntityRow[]).map((entity) => [entity.id, entity]));
+
+  if (contentType && ENTITY_TYPES.includes(contentType)) {
+    releases = releases.filter((release) => entityMap.get(release.entity_id)?.entity_type === contentType);
+  }
+  releases = releases.filter((release) => entityMap.has(release.entity_id)).slice(0, limit);
+
+  const releaseIds = releases.map((release) => release.id);
+  const evidenceResult = releaseIds.length
+    ? await admin
+      .from('ott_release_evidence')
+      .select('ott_release_id,raw_item_id,event_id,evidence_role,is_first_party,observed_at')
+      .in('ott_release_id', releaseIds)
+      .order('observed_at', { ascending: false })
+    : { data: [], error: null };
+  if (evidenceResult.error) throw evidenceResult.error;
+  const evidenceRows = (evidenceResult.data ?? []) as OttEvidenceRow[];
+  const rawIds = [...new Set(evidenceRows.map((evidence) => evidence.raw_item_id))];
+  const rawResult = rawIds.length
+    ? await admin
+      .from('raw_items')
+      .select('id,source_identity_id,canonical_url,raw_title,raw_text,item_type,media_type,published_at,first_seen_at')
+      .in('id', rawIds)
+    : { data: [], error: null };
+  if (rawResult.error) throw rawResult.error;
+  const rawRows = (rawResult.data ?? []) as RawRow[];
+  const rawMap = new Map(rawRows.map((raw) => [raw.id, raw]));
+
+  const identityIds = [...new Set(rawRows.map((raw) => raw.source_identity_id))];
+  const identityResult = identityIds.length
+    ? await admin.from('source_identities').select('id,source_id,platform,handle').in('id', identityIds)
+    : { data: [], error: null };
+  if (identityResult.error) throw identityResult.error;
+  const identities = identityResult.data ?? [];
+  const identityMap = new Map(identities.map((identity) => [String(identity.id), identity]));
+  const sourceIds = [...new Set(identities.map((identity) => String(identity.source_id)).filter(Boolean))];
+  const sourceResult = sourceIds.length
+    ? await admin.from('sources').select('id,display_name,authority_tier,source_role').in('id', sourceIds)
+    : { data: [], error: null };
+  if (sourceResult.error) throw sourceResult.error;
+  const sourceMap = new Map((sourceResult.data ?? []).map((source) => [String(source.id), source]));
+  const followed = await followedEntityIds(user?.id ?? null, releases.map((release) => release.entity_id));
+
+  const evidenceByRelease = new Map<string, OttEvidenceRow[]>();
+  for (const evidence of evidenceRows) {
+    const list = evidenceByRelease.get(evidence.ott_release_id) ?? [];
+    list.push(evidence);
+    evidenceByRelease.set(evidence.ott_release_id, list);
+  }
+
+  const items = releases.map((release) => {
+    const entity = entityMap.get(release.entity_id)!;
+    const provider = providerById.get(release.provider_id);
+    const releaseEvidence = evidenceByRelease.get(release.id) ?? [];
+    const refs = releaseEvidence.slice(0, 8).map((evidence) => {
+      const raw = rawMap.get(evidence.raw_item_id);
+      const identity = raw ? identityMap.get(raw.source_identity_id) : undefined;
+      const source = identity ? sourceMap.get(String(identity.source_id)) : undefined;
+      return {
+        rawItemId: evidence.raw_item_id,
+        eventId: evidence.event_id,
+        role: evidence.evidence_role,
+        firstParty: evidence.is_first_party,
+        observedAt: evidence.observed_at,
+        title: raw?.raw_title ?? null,
+        canonicalUrl: raw?.canonical_url ?? null,
+        publishedAt: raw?.published_at ?? null,
+        source: {
+          name: source?.display_name ?? null,
+          authorityTier: source?.authority_tier ?? null,
+          role: source?.source_role ?? null,
+          platform: identity?.platform ?? null,
+          handle: identity?.handle ?? null,
+        },
+      };
+    });
+    return {
+      id: release.id,
+      entity: {
+        id: entity.id,
+        type: entity.entity_type,
+        name: entity.canonical_name,
+        slug: entity.slug,
+        primaryLanguage: entity.primary_language,
+        countryCode: entity.country_code,
+        followed: followed.has(entity.id),
+      },
+      provider: {
+        code: provider?.code ?? null,
+        name: provider?.display_name ?? null,
+        homepageUrl: provider?.homepage_url ?? null,
+      },
+      territory: release.territory,
+      languages: release.languages ?? [],
+      releaseType: release.release_type,
+      releaseDate: release.release_date,
+      datePrecision: release.date_precision,
+      state: release.state,
+      evidenceStatus: release.evidence_status,
+      previousReleaseDate: release.previous_release_date,
+      firstObservedAt: release.first_observed_at,
+      lastVerifiedAt: release.last_verified_at,
+      evidence: {
+        total: releaseEvidence.length,
+        firstParty: releaseEvidence.filter((evidence) => evidence.is_first_party).length,
+        conflicting: releaseEvidence.filter((evidence) => evidence.evidence_role === 'CONFLICTING').length,
+        refs,
+      },
+    };
+  });
+
+  return {
+    generatedAt: new Date().toISOString(),
+    guest: user === null,
+    window,
+    territory,
+    today,
+    windowEnd: window === 'this_week' ? weekEnd : null,
+    filters: {
+      providerCode,
+      language,
+      contentType,
+      state,
+      evidenceStatus,
+    },
+    providers: providers.map((provider) => ({
+      code: provider.code,
+      name: provider.display_name,
+      homepageUrl: provider.homepage_url,
+    })),
+    count: items.length,
+    items,
+  };
+}
+
 async function entityHub(user: AuthenticatedUser | null, body: Record<string, unknown>): Promise<Record<string, unknown>> {
   const entity = await loadEntity(body);
   if (!entity) return { error: 'entity_not_found', statusCode: 404 };
@@ -349,6 +628,8 @@ async function entityHub(user: AuthenticatedUser | null, body: Record<string, un
     })
     .filter((item) => item !== null);
 
+  const ott = await ottReleases(user, { window: 'all', entityId: entity.id, territory: entity.country_code ?? 'IN', limit: 20 });
+
   return {
     generatedAt: new Date().toISOString(),
     guest: user === null,
@@ -378,6 +659,7 @@ async function entityHub(user: AuthenticatedUser | null, body: Record<string, un
       evidence: counts.get(event.id) ?? { total: 0, primary: 0, corroborating: 0, conflicting: 0 },
     })),
     activity,
+    ottReleases: Array.isArray(ott.items) ? ott.items : [],
   };
 }
 
@@ -456,6 +738,7 @@ Deno.serve(async (request) => {
     if (action === 'search') payload = await searchEntities(maybeUser, body);
     else if (action === 'hub') payload = await entityHub(maybeUser, body);
     else if (action === 'clusters') payload = await storyClusters(maybeUser, body);
+    else if (action === 'ott') payload = await ottReleases(maybeUser, body);
     else return json(400, { error: 'unsupported_action' });
 
     const statusCode = typeof payload.statusCode === 'number' ? payload.statusCode : 200;
