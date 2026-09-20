@@ -60,7 +60,7 @@ const MONTHS: Record<string, number> = {
   dec: 12, december: 12,
 };
 
-const BAD_TITLE_MARKERS = /\b(trailer|teaser|promo|glimpse|scene|clip|highlights?|song|interview|review)\b/i;
+const BAD_TITLE_MARKERS = /\b(trailer|teaser|promo|glimpse|scene|clip|highlights?|song|interview|review|episodes?|ep\.?\s*\d+|recap|behind\s+the\s+scenes|sneak\s+peek|match|innings|wickets?|goals?)\b/i;
 const RELEASE_LANGUAGE = /\b(stream(?:ing|s)?(?:\s+from|\s+on|\s+now)?|premier(?:e|es|ing)(?:\s+on)?|releas(?:e|es|ing)(?:\s+on)?|now\s+streaming)\b/i;
 
 function compactWhitespace(value: string): string {
@@ -134,7 +134,17 @@ function extractDate(value: string, publishedAt: Date): string | undefined {
   return validIsoDate(year, month, day);
 }
 
-function extractMovieTitle(title: string, text: string): string | undefined {
+function cleanMovieTitleCandidate(value: string): string | undefined {
+  const candidate = compactWhitespace(value)
+    .replace(/^(?:official\s+)?/i, '')
+    .replace(/[|,:;\-–—]+$/g, '')
+    .trim();
+  if (candidate.length < 2 || candidate.length > 100) return undefined;
+  if (BAD_TITLE_MARKERS.test(candidate)) return undefined;
+  return candidate;
+}
+
+function extractMovieTitle(title: string, text: string, allowDirectOttHeadline: boolean): string | undefined {
   const candidates = [title, text]
     .map(compactWhitespace)
     .filter(Boolean);
@@ -145,15 +155,15 @@ function extractMovieTitle(title: string, text: string): string | undefined {
       /^(.{2,100}?)\s+(?:movie|film)\s+(?:is\s+)?(?:now\s+)?(?:stream(?:ing|s)?|premier(?:e|es|ing)|releas(?:e|es|ing))/i,
       /(?:watch|catch)\s+(?:the\s+)?(?:movie|film)\s+(.{2,100}?)\s+(?:now\s+)?(?:stream(?:ing|s)?|premier(?:e|es|ing)|releas(?:e|es|ing))/i,
     ];
+    if (allowDirectOttHeadline) {
+      patterns.unshift(
+        /^(.{2,100}?)\s*[|,:;\-–—]\s*(?:(?:now\s+)?streaming(?:\s+now)?|watch\s+now|available\s+now|streaming\s+from|premier(?:e|es|ing)\s+on|releas(?:e|es|ing)\s+on)\b/i,
+      );
+    }
     for (const pattern of patterns) {
       const match = value.match(pattern);
-      const candidate = compactWhitespace(match?.[1] ?? '')
-        .replace(/^(?:official\s+)?/i, '')
-        .replace(/[|,:;\-–—]+$/g, '')
-        .trim();
-      if (candidate.length < 2 || candidate.length > 100) continue;
-      if (BAD_TITLE_MARKERS.test(candidate)) continue;
-      return candidate;
+      const candidate = cleanMovieTitleCandidate(match?.[1] ?? '');
+      if (candidate) return candidate;
     }
   }
   return undefined;
@@ -169,14 +179,15 @@ export function extractOttMovieReleaseSignal(input: OttMovieReleaseSignalInput):
   const combined = compactWhitespace(`${title} ${text}`);
   if (!combined || !RELEASE_LANGUAGE.test(combined)) return undefined;
 
-  const movieTitle = extractMovieTitle(title, text);
-  if (!movieTitle) return undefined;
-
   const provider = providerCode(`${input.source.name ?? ''} ${combined}`);
   if (!provider) return undefined;
 
   const firstParty = isFirstParty(input.source);
   if (!firstParty && input.source.authorityTier > 3) return undefined;
+  const allowDirectOttHeadline = firstParty && (input.source.role ?? '').toUpperCase() === 'OTT_PLATFORM';
+
+  const movieTitle = extractMovieTitle(title, text, allowDirectOttHeadline);
+  if (!movieTitle) return undefined;
 
   const publishedAt = parsePublishedDate(input.publishedAt);
   const releaseDate = extractDate(combined, publishedAt);
