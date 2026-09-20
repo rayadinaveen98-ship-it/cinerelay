@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="@android:color/transparent"
+        android:pathData="M78,33 A31,31 0,1 0,78,75"
+        android:strokeColor="@color/cinerelay_gold"
+        android:strokeLineCap="round"
+        android:strokeWidth="9" />
+    <path
+        android:fillColor="@color/cinerelay_gold"
+        android:pathData="M45,38 L45,70 L72,54 Z" />
+</vector>
