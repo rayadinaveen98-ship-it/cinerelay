@@ -20,6 +20,8 @@ declare
   v_evidence record;
   v_raw record;
   v_enqueued integer := 0;
+  v_scoped_sources integer := 0;
+  v_item_overrides integer := 0;
   v_action_id uuid := gen_random_uuid();
   v_created boolean := false;
 begin
@@ -163,34 +165,65 @@ begin
     v_created := true;
   end if;
 
+  -- OTT platform, studio and trade identities are broad multi-title sources. The
+  -- verified release evidence therefore becomes an item-level resolution
+  -- assertion, not a whole-source title scope.
+  insert into public.operator_resolution_overrides (
+    raw_item_id, entity_id, active, reason, created_by
+  )
+  select distinct
+    ede.raw_item_id,
+    v_entity_id,
+    true,
+    'SYSTEM_VERIFIED_OTT_PROMOTION: preserve deterministic release evidence at item scope',
+    null
+  from public.entity_discovery_evidence ede
+  where ede.candidate_id = v_candidate.id
+    and ede.match_method = 'DETERMINISTIC_TITLE'
+    and ede.metadata ->> 'signalType' = 'OTT_RELEASE'
+  on conflict (raw_item_id) do update
+    set entity_id = excluded.entity_id,
+        active = true,
+        reason = excluded.reason,
+        updated_at = now();
+  get diagnostics v_item_overrides = row_count;
+
+  -- Only genuinely title-specific identities may teach durable scope. Broad OTT
+  -- services, production houses and trade feeds are intentionally excluded.
   for v_evidence in
-    select source_identity_id,
-           bool_or(is_first_party) as has_first_party,
-           max(weight) as max_weight
-    from public.entity_discovery_evidence
-    where candidate_id = v_candidate.id
-      and match_method = 'DETERMINISTIC_TITLE'
-      and metadata ->> 'signalType' = 'OTT_RELEASE'
-    group by source_identity_id
+    select ede.source_identity_id,
+           bool_or(ede.is_first_party) as has_first_party,
+           max(ede.weight) as max_weight,
+           s.source_role
+    from public.entity_discovery_evidence ede
+    join public.source_identities si on si.id = ede.source_identity_id
+    join public.sources s on s.id = si.source_id
+    where ede.candidate_id = v_candidate.id
+      and ede.match_method = 'DETERMINISTIC_TITLE'
+      and ede.metadata ->> 'signalType' = 'OTT_RELEASE'
+    group by ede.source_identity_id, s.source_role
   loop
-    insert into public.source_entity_candidates (
-      source_identity_id, entity_id, relationship, confidence, priority, active, valid_from
-    ) values (
-      v_evidence.source_identity_id,
-      v_entity_id,
-      'PROJECT_COVERAGE',
-      greatest(v_candidate.confidence, coalesce(v_evidence.max_weight, 0.5)),
-      case when v_evidence.has_first_party then 10 else 35 end,
-      true,
-      now()
-    )
-    on conflict (source_identity_id, entity_id) do update
-      set relationship = excluded.relationship,
-          confidence = greatest(public.source_entity_candidates.confidence, excluded.confidence),
-          priority = least(public.source_entity_candidates.priority, excluded.priority),
-          active = true,
-          valid_to = null,
-          updated_at = now();
+    if v_evidence.source_role in ('PROJECT_OFFICIAL','FILM_OFFICIAL') then
+      insert into public.source_entity_candidates (
+        source_identity_id, entity_id, relationship, confidence, priority, active, valid_from
+      ) values (
+        v_evidence.source_identity_id,
+        v_entity_id,
+        'PROJECT_COVERAGE',
+        greatest(v_candidate.confidence, coalesce(v_evidence.max_weight, 0.5)),
+        case when v_evidence.has_first_party then 10 else 25 end,
+        true,
+        now()
+      )
+      on conflict (source_identity_id, entity_id) do update
+        set relationship = excluded.relationship,
+            confidence = greatest(public.source_entity_candidates.confidence, excluded.confidence),
+            priority = least(public.source_entity_candidates.priority, excluded.priority),
+            active = true,
+            valid_to = null,
+            updated_at = now();
+      v_scoped_sources := v_scoped_sources + 1;
+    end if;
   end loop;
 
   for v_raw in
@@ -232,6 +265,8 @@ begin
       'signalEvidenceCount', v_signal_evidence_count,
       'signalSourceCount', v_signal_source_count,
       'signalFirstPartySourceCount', v_signal_first_party_count,
+      'itemOverrideCount', v_item_overrides,
+      'scopedSourceCount', v_scoped_sources,
       'reprocessJobsEnqueued', v_enqueued
     ),
     'Verified OTT movie release candidate satisfied deterministic two-source promotion gate'
@@ -244,6 +279,8 @@ begin
     'promoted', true,
     'created', v_created,
     'duplicate', not v_created,
+    'itemOverrideCount', v_item_overrides,
+    'scopedSourceCount', v_scoped_sources,
     'reprocessJobsEnqueued', v_enqueued
   );
 end;
