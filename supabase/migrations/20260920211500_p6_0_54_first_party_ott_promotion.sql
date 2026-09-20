@@ -257,4 +257,44 @@ revoke all on function public.system_promote_first_party_ott_candidate(uuid) fro
 revoke all on function public.system_promote_first_party_ott_candidate(uuid) from authenticated;
 grant execute on function public.system_promote_first_party_ott_candidate(uuid) to service_role;
 
+-- Preserve the already-proven two-source implementation under an internal name,
+-- then keep the public RPC name as a dispatcher so existing workers need no
+-- runtime change. Direct Tier-1 OTT evidence gets the narrow fast path; every
+-- other candidate falls through to the original corroboration gate unchanged.
+alter function public.system_promote_verified_ott_candidate(uuid)
+  rename to system_promote_verified_ott_candidate_two_source;
+
+create or replace function public.system_promote_verified_ott_candidate(
+  p_candidate_id uuid
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = pg_catalog, public, extensions
+as $$
+declare
+  v_first_party jsonb;
+begin
+  v_first_party := public.system_promote_first_party_ott_candidate(p_candidate_id);
+  if coalesce((v_first_party ->> 'promoted')::boolean, false) then
+    return v_first_party || jsonb_build_object('promotionPath', 'FIRST_PARTY_OTT');
+  end if;
+
+  return public.system_promote_verified_ott_candidate_two_source(p_candidate_id)
+    || jsonb_build_object('promotionPath', 'CORROBORATED');
+end;
+$$;
+
+revoke all on function public.system_promote_verified_ott_candidate(uuid) from public;
+revoke all on function public.system_promote_verified_ott_candidate(uuid) from anon;
+revoke all on function public.system_promote_verified_ott_candidate(uuid) from authenticated;
+grant execute on function public.system_promote_verified_ott_candidate(uuid) to service_role;
+
+-- The renamed implementation remains callable only by service role. Keeping its
+-- privilege explicit makes the fallback contract auditable after the rename.
+revoke all on function public.system_promote_verified_ott_candidate_two_source(uuid) from public;
+revoke all on function public.system_promote_verified_ott_candidate_two_source(uuid) from anon;
+revoke all on function public.system_promote_verified_ott_candidate_two_source(uuid) from authenticated;
+grant execute on function public.system_promote_verified_ott_candidate_two_source(uuid) to service_role;
+
 commit;
