@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.cinerelay.app.CineRelayApplication
 import com.cinerelay.app.data.ApiException
 import com.cinerelay.app.data.ConsumerDeepLinkTarget
+import com.cinerelay.app.data.OnThisDayMovie
 import com.cinerelay.app.data.PersonalizationState
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -21,6 +22,10 @@ data class ConsumerUiStateV055(
     val selectedSourceIds: Set<String> = emptySet(),
     val personalizationBusy: Boolean = false,
     val personalizationError: String? = null,
+    val onThisDayLoading: Boolean = false,
+    val onThisDayDate: String? = null,
+    val onThisDayMovies: List<OnThisDayMovie> = emptyList(),
+    val onThisDayError: String? = null,
     val deepLinkLoading: Boolean = false,
     val deepLinkTarget: ConsumerDeepLinkTarget? = null,
     val deepLinkError: String? = null,
@@ -30,6 +35,7 @@ data class ConsumerUiStateV055(
 class ConsumerViewModelV055(application: Application) : AndroidViewModel(application) {
     private val app = application as CineRelayApplication
     private val consumer = app.consumerClient
+    private val onThisDay = app.onThisDayClient
 
     private val _state = MutableStateFlow(ConsumerUiStateV055())
     val state: StateFlow<ConsumerUiStateV055> = _state.asStateFlow()
@@ -58,6 +64,31 @@ class ConsumerViewModelV055(application: Application) : AndroidViewModel(applica
                     _state.value = _state.value.copy(
                         personalizationLoading = false,
                         personalizationError = friendlyError(error),
+                    )
+                }
+        }
+    }
+
+    fun loadOnThisDay(force: Boolean = false, date: String? = null) {
+        val current = _state.value
+        if (current.onThisDayLoading) return
+        if (!force && date == null && current.onThisDayDate != null && current.onThisDayMovies.isNotEmpty()) return
+
+        viewModelScope.launch {
+            _state.value = _state.value.copy(onThisDayLoading = true, onThisDayError = null)
+            runCatching { withContext(Dispatchers.IO) { onThisDay.load(date = date) } }
+                .onSuccess { snapshot ->
+                    _state.value = _state.value.copy(
+                        onThisDayLoading = false,
+                        onThisDayDate = snapshot.selectedDate,
+                        onThisDayMovies = snapshot.movies,
+                        onThisDayError = null,
+                    )
+                }
+                .onFailure {
+                    _state.value = _state.value.copy(
+                        onThisDayLoading = false,
+                        onThisDayError = "Cinema history is temporarily unavailable.",
                     )
                 }
         }
