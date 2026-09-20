@@ -78,6 +78,24 @@ function optionalIdentityId(value: unknown): string | null {
   return normalized.length > 0 ? normalized : null;
 }
 
+function recordValue(value: unknown): Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value) ? value as Record<string, unknown> : {};
+}
+
+function stringValue(value: unknown): string | null {
+  return typeof value === 'string' && value.trim().length > 0 ? value : null;
+}
+
+function thumbnailUrlOf(metadata: unknown): string | null {
+  const root = recordValue(metadata);
+  const youtube = recordValue(root.youtube);
+  return stringValue(youtube.thumbnailUrl) ?? stringValue(root.thumbnailUrl);
+}
+
+function artworkUrlOf(connectorConfig: unknown): string | null {
+  return stringValue(recordValue(connectorConfig).artworkUrl);
+}
+
 function newsroomState(verificationState: string | null, authorityTier: number | null, conflictCount: number): string {
   if (conflictCount > 0) return 'CONFLICT_RUMOR';
   switch (verificationState) {
@@ -107,7 +125,7 @@ async function newsroom(
   sourceIdentityId: string | null,
 ) {
   let identityQuery = admin.from('source_identities')
-    .select('id,source_id,platform,handle,canonical_url,connector_type,poll_class,active')
+    .select('id,source_id,platform,handle,canonical_url,connector_type,poll_class,connector_config,active')
     .eq('active', true)
     .eq('platform', platform);
   if (sourceIdentityId) identityQuery = identityQuery.eq('id', sourceIdentityId);
@@ -135,7 +153,7 @@ async function newsroom(
     ? Math.min(500, Math.max(100, limit * 5))
     : Math.min(300, Math.max(80, limit * 5));
   const { data: rawRows, error: rawError } = await admin.from('raw_items')
-    .select('id,source_identity_id,canonical_url,published_at,first_seen_at,item_type,raw_title,raw_text,language_code,media_type,created_at')
+    .select('id,source_identity_id,canonical_url,published_at,first_seen_at,item_type,raw_title,raw_text,language_code,media_type,metadata,created_at')
     .in('source_identity_id', identityIds)
     .is('deleted_or_unavailable_at', null)
     .order('first_seen_at', { ascending: false })
@@ -281,6 +299,8 @@ async function newsroom(
     const entity = event ? entityMap.get(event.primary_entity_id) : undefined;
     const observedAt = raw.published_at ?? raw.first_seen_at ?? raw.created_at;
     const ingestedAt = raw.first_seen_at ?? raw.created_at;
+    const sourceArtworkUrl = artworkUrlOf(identity.connector_config);
+    const thumbnailUrl = thumbnailUrlOf(raw.metadata);
     const canonicalEvent = event ? {
       id: event.id,
       entityId: event.primary_entity_id,
@@ -320,12 +340,14 @@ async function newsroom(
         role: source.source_role ?? null,
         platform: identity.platform ?? null,
         handle: identity.handle ?? null,
+        artworkUrl: sourceArtworkUrl,
       },
       itemType: raw.item_type ?? null,
       mediaType: raw.media_type ?? null,
       languageCode: raw.language_code ?? null,
       title: raw.raw_title ?? 'Untitled source update',
       text: raw.raw_text ?? null,
+      thumbnailUrl,
       canonicalUrl: raw.canonical_url ?? null,
       sourceObservedAt: raw.published_at ?? null,
       observedAt,
