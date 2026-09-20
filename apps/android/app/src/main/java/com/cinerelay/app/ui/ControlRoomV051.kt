@@ -163,6 +163,11 @@ private fun ControlNewsroomCard(
                 selected = state.newsroomPlatform == NewsroomPlatform.YOUTUBE,
                 onClick = { onSelectPlatform(NewsroomPlatform.YOUTUBE) },
             )
+            ControlChip(
+                label = "Web",
+                selected = state.newsroomPlatform == NewsroomPlatform.WEB,
+                onClick = { onSelectPlatform(NewsroomPlatform.WEB) },
+            )
             FilterChip(
                 selected = state.newsroomPlatform == NewsroomPlatform.X,
                 onClick = {},
@@ -172,16 +177,18 @@ private fun ControlNewsroomCard(
             )
         }
 
-        Spacer(Modifier.height(16.dp))
-        ControlLabel("YouTube source type")
-        Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-            ControlChip("All", state.newsroomSourceRole == NewsroomSourceRole.ALL) { onSelectSourceRole(NewsroomSourceRole.ALL) }
-            ControlChip("Production", state.newsroomSourceRole == NewsroomSourceRole.PRODUCTION) { onSelectSourceRole(NewsroomSourceRole.PRODUCTION) }
-        }
-        Spacer(Modifier.height(7.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-            ControlChip("OTT channels", state.newsroomSourceRole == NewsroomSourceRole.OTT) { onSelectSourceRole(NewsroomSourceRole.OTT) }
-            ControlChip("Music", state.newsroomSourceRole == NewsroomSourceRole.MUSIC) { onSelectSourceRole(NewsroomSourceRole.MUSIC) }
+        if (state.newsroomPlatform == NewsroomPlatform.YOUTUBE) {
+            Spacer(Modifier.height(16.dp))
+            ControlLabel("YouTube source type")
+            Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                ControlChip("All", state.newsroomSourceRole == NewsroomSourceRole.ALL) { onSelectSourceRole(NewsroomSourceRole.ALL) }
+                ControlChip("Production", state.newsroomSourceRole == NewsroomSourceRole.PRODUCTION) { onSelectSourceRole(NewsroomSourceRole.PRODUCTION) }
+            }
+            Spacer(Modifier.height(7.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                ControlChip("OTT channels", state.newsroomSourceRole == NewsroomSourceRole.OTT) { onSelectSourceRole(NewsroomSourceRole.OTT) }
+                ControlChip("Music", state.newsroomSourceRole == NewsroomSourceRole.MUSIC) { onSelectSourceRole(NewsroomSourceRole.MUSIC) }
+            }
         }
 
         Spacer(Modifier.height(16.dp))
@@ -206,7 +213,7 @@ private fun ControlNotificationsCard(
 ) {
     ControlCard(
         title = "Source notifications",
-        subtitle = "Your selected official channels remain intact when alerts are paused.",
+        subtitle = "Your selected official YouTube channels remain intact when alerts are paused.",
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -220,7 +227,7 @@ private fun ControlNotificationsCard(
                     fontWeight = FontWeight.SemiBold,
                 )
                 Text(
-                    "${state.selectedSourceIds.size} selected sources",
+                    "${state.selectedSourceIds.size} selected YouTube sources",
                     color = ControlMuted,
                     fontSize = 11.sp,
                 )
