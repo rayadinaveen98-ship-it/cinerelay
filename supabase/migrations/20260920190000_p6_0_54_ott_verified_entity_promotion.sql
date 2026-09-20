@@ -176,7 +176,7 @@ begin
     v_entity_id,
     true,
     'SYSTEM_VERIFIED_OTT_PROMOTION: preserve deterministic release evidence at item scope',
-    null
+    null::uuid
   from public.entity_discovery_evidence ede
   where ede.candidate_id = v_candidate.id
     and ede.match_method = 'DETERMINISTIC_TITLE'
