@@ -155,6 +155,29 @@ class BackendClient(
         if (!result.optBoolean("ok", false)) throw ApiException(result.optString("error", "Device registration failed"), 400)
     }
 
+    fun hasActiveDeviceRegistration(installationId: String): Boolean {
+        val result = invokeAuthenticated(
+            "cinerelay-device-registration-api",
+            JSONObject().put("action", "list"),
+        )
+        if (!result.optBoolean("ok", false)) throw ApiException(result.optString("error", "Could not read device registration"), 400)
+        val registrations = result.optJSONArray("registrations") ?: JSONArray()
+        for (index in 0 until registrations.length()) {
+            val row = registrations.optJSONObject(index) ?: continue
+            if (
+                row.optBoolean("active", false) &&
+                row.optString("provider").equals("FCM", ignoreCase = true) &&
+                row.optString("targetKind").equals("TOKEN", ignoreCase = true) &&
+                row.optString("platform").equals("ANDROID", ignoreCase = true) &&
+                row.optString("appId") == "com.cinerelay.app" &&
+                row.optString("installationId") == installationId
+            ) {
+                return true
+            }
+        }
+        return false
+    }
+
     private fun invokeGuestAware(function: String, body: JSONObject): JSONObject {
         val session = sessionStore.read()
         if (session == null) {
