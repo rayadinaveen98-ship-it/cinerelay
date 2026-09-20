@@ -1,4 +1,10 @@
 {
   "compilerOptions": {"strict": true},
-  "imports": {"@supabase/supabase-js": "npm:@supabase/supabase-js@2"}
+  "imports": {
+    "@supabase/supabase-js": "npm:@supabase/supabase-js@2",
+    "../../../packages/domain/dist/index.js": "../../../packages/domain/src/index.ts",
+    "../../../packages/domain/dist/index.d.ts": "../../../packages/domain/src/index.ts",
+    "../../../packages/domain/dist/ott-release-signal.js": "../../../packages/domain/src/ott-release-signal.ts",
+    "../../../packages/domain/dist/ott-release-signal.d.ts": "../../../packages/domain/src/ott-release-signal.ts"
+  }
 }
