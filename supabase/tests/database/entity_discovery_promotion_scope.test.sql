@@ -20,7 +20,7 @@ insert into public.source_identities (
   (
     '33000000-0000-4000-8000-000000000002', '23000000-0000-4000-8000-000000000002', 'RSS',
     'scope-trade-feed', 'https://scope.example/trade.xml',
-    'RSS_ATOM', 'WARM_15M', 'PUBLIC', true
+    'RSS_ATOM', 'WARM_15M', 'FEED', true
   ),
   (
     '33000000-0000-4000-8000-000000000003', '23000000-0000-4000-8000-000000000003', 'YOUTUBE',
