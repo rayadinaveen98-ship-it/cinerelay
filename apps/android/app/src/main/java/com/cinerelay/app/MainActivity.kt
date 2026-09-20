@@ -23,6 +23,7 @@ import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.cinerelay.app.data.SourceDirectoryItem
 import com.cinerelay.app.push.CineRelayMessagingService
 import com.cinerelay.app.ui.AppTab
 import com.cinerelay.app.ui.CineRelayHomeV055
@@ -31,8 +32,7 @@ import com.cinerelay.app.ui.CineRelaySetupLoadingV050
 import com.cinerelay.app.ui.CineRelayViewModel
 import com.cinerelay.app.ui.ConsumerViewModelV055
 import com.cinerelay.app.ui.FirstRunAuthV050
-import com.cinerelay.app.ui.IntelligenceSearchV053
-import com.cinerelay.app.ui.IntelligenceViewModel
+import com.cinerelay.app.ui.NewsroomPlatform
 import com.cinerelay.app.ui.NotificationDetailV055
 import com.cinerelay.app.ui.NotificationOnboardingV044
 import com.cinerelay.app.ui.NotificationOnboardingViewModel
@@ -43,6 +43,8 @@ import com.cinerelay.app.ui.PersonalizationOnboardingV055
 import com.cinerelay.app.ui.SettingsV055
 import com.cinerelay.app.ui.SourcesDirectoryV039
 import com.cinerelay.app.ui.SourcesViewModel
+import com.cinerelay.app.ui.UniversalSearchV056
+import com.cinerelay.app.ui.UniversalSearchViewModelV056
 import kotlinx.coroutines.flow.MutableStateFlow
 
 private data class NotificationRouteV055(
@@ -62,13 +64,13 @@ class MainActivity : ComponentActivity() {
             val viewModel: CineRelayViewModel = viewModel()
             val sourcesViewModel: SourcesViewModel = viewModel()
             val onboardingViewModel: NotificationOnboardingViewModel = viewModel()
-            val intelligenceViewModel: IntelligenceViewModel = viewModel()
+            val searchViewModel: UniversalSearchViewModelV056 = viewModel()
             val ottViewModel: OttViewModelV054 = viewModel()
             val consumerViewModel: ConsumerViewModelV055 = viewModel()
             val state by viewModel.state.collectAsStateWithLifecycle()
             val sourcesState by sourcesViewModel.state.collectAsStateWithLifecycle()
             val onboardingState by onboardingViewModel.state.collectAsStateWithLifecycle()
-            val intelligenceState by intelligenceViewModel.state.collectAsStateWithLifecycle()
+            val searchState by searchViewModel.state.collectAsStateWithLifecycle()
             val ottState by ottViewModel.state.collectAsStateWithLifecycle()
             val consumerState by consumerViewModel.state.collectAsStateWithLifecycle()
             val pendingNotificationRoute by notificationRoute.collectAsStateWithLifecycle()
@@ -95,7 +97,7 @@ class MainActivity : ComponentActivity() {
                     settingsVisible = false
                     personalizationEditorVisible = false
                     ottVisible = false
-                    intelligenceViewModel.close()
+                    searchViewModel.close()
                     consumerViewModel.closeNotification()
                 }
                 onboardingViewModel.sync(state.authenticated)
@@ -108,7 +110,7 @@ class MainActivity : ComponentActivity() {
                 settingsVisible = false
                 personalizationEditorVisible = false
                 ottVisible = false
-                intelligenceViewModel.close()
+                searchViewModel.close()
                 consumerViewModel.openNotification(
                     eventId = route.eventId,
                     rawItemId = route.rawItemId,
@@ -221,7 +223,7 @@ class MainActivity : ComponentActivity() {
                                 state = state,
                                 personalization = personalization,
                                 onRefresh = viewModel::refresh,
-                                onSearch = intelligenceViewModel::open,
+                                onSearch = searchViewModel::open,
                                 onOpenUpdate = { signal ->
                                     consumerViewModel.openNotification(
                                         eventId = signal.canonicalEvent?.id,
@@ -237,7 +239,7 @@ class MainActivity : ComponentActivity() {
 
                         if (
                             !settingsVisible &&
-                            !intelligenceState.visible &&
+                            !searchState.visible &&
                             !ottVisible &&
                             state.tab == AppTab.FOLLOWING &&
                             state.authMode == null
@@ -256,7 +258,7 @@ class MainActivity : ComponentActivity() {
 
                         if (
                             !settingsVisible &&
-                            !intelligenceState.visible &&
+                            !searchState.visible &&
                             ottVisible &&
                             state.authMode == null
                         ) {
@@ -272,7 +274,7 @@ class MainActivity : ComponentActivity() {
                             )
                         }
 
-                        if (!settingsVisible && !intelligenceState.visible && state.authMode == null) {
+                        if (!settingsVisible && !searchState.visible && state.authMode == null) {
                             P6039BottomNavOverlay(
                                 selected = state.tab,
                                 ottSelected = ottVisible,
@@ -328,20 +330,52 @@ class MainActivity : ComponentActivity() {
                                     personalizationEditorVisible = false
                                     ottVisible = false
                                     consumerViewModel.closeNotification()
+                                    searchViewModel.close()
                                     viewModel.signOut()
                                 },
                                 modifier = Modifier.fillMaxSize(),
                             )
                         }
 
-                        if (intelligenceState.visible && !settingsVisible && state.authMode == null) {
-                            IntelligenceSearchV053(
-                                state = intelligenceState,
-                                onBack = intelligenceViewModel::back,
-                                onQueryChange = intelligenceViewModel::updateQuery,
-                                onSearch = intelligenceViewModel::search,
-                                onOpenHub = intelligenceViewModel::openHub,
-                                onToggleFollow = intelligenceViewModel::toggleFollow,
+                        if (searchState.visible && !settingsVisible && state.authMode == null) {
+                            UniversalSearchV056(
+                                state = searchState,
+                                onBack = searchViewModel::back,
+                                onQueryChange = searchViewModel::updateQuery,
+                                onSearch = searchViewModel::submitSearch,
+                                onOpenHub = searchViewModel::openHub,
+                                onToggleFollow = searchViewModel::toggleFollow,
+                                onOpenUpdate = { update ->
+                                    consumerViewModel.openNotification(
+                                        eventId = null,
+                                        rawItemId = update.id,
+                                        canonicalUrl = update.canonicalUrl,
+                                    )
+                                },
+                                onOpenChannel = { channel ->
+                                    searchViewModel.close()
+                                    settingsVisible = false
+                                    ottVisible = false
+                                    if (state.newsroomPlatform != NewsroomPlatform.YOUTUBE) {
+                                        viewModel.setNewsroomPlatform(NewsroomPlatform.YOUTUBE)
+                                    }
+                                    viewModel.selectTab(AppTab.FOLLOWING)
+                                    sourcesViewModel.openSource(
+                                        SourceDirectoryItem(
+                                            identityId = channel.identityId,
+                                            sourceId = channel.sourceId,
+                                            name = channel.name,
+                                            handle = channel.handle,
+                                            platform = channel.platform,
+                                            role = channel.role,
+                                            authorityTier = channel.authorityTier,
+                                            canonicalUrl = channel.canonicalUrl,
+                                            artworkUrl = channel.artworkUrl,
+                                            newCount24h = 0,
+                                            latestObservedAt = null,
+                                        ),
+                                    )
+                                },
                                 modifier = Modifier.fillMaxSize(),
                             )
                         }
