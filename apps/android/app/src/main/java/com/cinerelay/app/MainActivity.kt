@@ -23,7 +23,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.cinerelay.app.ui.AppTab
 import com.cinerelay.app.ui.CineRelayRootV049
+import com.cinerelay.app.ui.CineRelaySetupLoadingV050
 import com.cinerelay.app.ui.CineRelayViewModel
+import com.cinerelay.app.ui.FirstRunAuthV050
 import com.cinerelay.app.ui.NewsroomFilterOverlay
 import com.cinerelay.app.ui.NewsroomPlatform
 import com.cinerelay.app.ui.NewsroomPlatformOverlay
@@ -72,117 +74,138 @@ class MainActivity : ComponentActivity() {
             }
 
             LaunchedEffect(state.tab, state.newsroomPlatform, state.authMode, state.authenticated) {
-                if (state.tab == AppTab.FOLLOWING && state.authMode == null) {
-                    sourcesViewModel.load(state.newsroomPlatform, authenticated = state.authenticated)
+                if (state.authenticated && state.tab == AppTab.FOLLOWING && state.authMode == null) {
+                    sourcesViewModel.load(state.newsroomPlatform, authenticated = true)
                 }
             }
 
-            val onboardingVisible = onboardingState.shouldShow && state.authMode == null
+            val setupResolving = state.authenticated &&
+                (!onboardingState.authenticated || !onboardingState.setupKnown)
+            val onboardingVisible = state.authenticated &&
+                onboardingState.authenticated &&
+                onboardingState.setupKnown &&
+                onboardingState.shouldShow &&
+                state.authMode == null
 
             Box(Modifier.fillMaxSize()) {
-                CineRelayRootV049(viewModel)
-
-                if (!onboardingVisible && state.tab == AppTab.FOLLOWING && state.authMode == null) {
-                    SourcesDirectoryV039(
-                        state = sourcesState,
-                        onRefresh = sourcesViewModel::refresh,
-                        onOpenSource = sourcesViewModel::openSource,
-                        onCloseSource = sourcesViewModel::closeSource,
-                        onToggleNotification = { source, enabled ->
-                            if (state.authenticated) {
-                                sourcesViewModel.toggleNotification(source, enabled)
-                            } else {
-                                viewModel.openAuth(com.cinerelay.app.ui.AuthMode.CREATE_ACCOUNT)
-                            }
-                        },
-                        modifier = Modifier.fillMaxSize(),
-                    )
-                }
-
-                if (!onboardingVisible && state.authMode == null) {
-                    if (state.tab == AppTab.LIVE && state.newsroomPlatform == NewsroomPlatform.YOUTUBE) {
-                        NewsroomSourceRoleOverlay(
-                            selected = state.newsroomSourceRole,
-                            counts = state.newsroomSourceRoleCounts,
-                            onSelect = viewModel::setNewsroomSourceRole,
-                            modifier = Modifier
-                                .align(Alignment.BottomCenter)
-                                .padding(bottom = 148.dp),
+                when {
+                    !state.authenticated -> {
+                        FirstRunAuthV050(
+                            state = state,
+                            onChooseMode = viewModel::openAuth,
+                            onBack = viewModel::closeAuth,
+                            onSignIn = viewModel::signIn,
+                            onCreateAccount = viewModel::createAccount,
+                            modifier = Modifier.fillMaxSize(),
                         )
                     }
 
-                    if (state.tab == AppTab.LIVE || state.tab == AppTab.FOLLOWING) {
-                        NewsroomPlatformOverlay(
-                            selected = state.newsroomPlatform,
-                            onSelect = viewModel::setNewsroomPlatform,
-                            modifier = Modifier
-                                .align(Alignment.BottomStart)
-                                .padding(start = 16.dp, bottom = 92.dp),
-                        )
+                    setupResolving -> {
+                        CineRelaySetupLoadingV050(Modifier.fillMaxSize())
                     }
 
-                    if (state.tab == AppTab.LIVE) {
-                        NewsroomFilterOverlay(
-                            selected = state.newsroomFilter,
-                            counts = state.newsroomFilterCounts,
-                            onSelect = viewModel::setNewsroomFilter,
-                            modifier = Modifier
-                                .align(Alignment.BottomEnd)
-                                .padding(end = 16.dp, bottom = 92.dp),
-                        )
-                    }
-
-                    if (state.tab == AppTab.ALERTS && state.authenticated) {
-                        NotificationMasterOverlay(
+                    onboardingVisible -> {
+                        NotificationOnboardingV044(
                             state = onboardingState,
-                            onToggle = { enabled ->
-                                if (!enabled) {
-                                    onboardingViewModel.setMasterEnabled(false)
+                            onRetry = onboardingViewModel::retry,
+                            onToggleSource = onboardingViewModel::toggleSource,
+                            onSetVideos = onboardingViewModel::setIncludeVideos,
+                            onSetShorts = onboardingViewModel::setIncludeShorts,
+                            onValidateSelection = onboardingViewModel::validateSelection,
+                            onEnableNotifications = {
+                                val needsRuntimePermission = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                                    ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+                                if (needsRuntimePermission) {
+                                    notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
                                 } else {
-                                    val needsRuntimePermission = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-                                        ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
-                                    if (needsRuntimePermission) {
-                                        masterNotificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-                                    } else {
-                                        onboardingViewModel.setMasterEnabled(true)
-                                    }
+                                    onboardingViewModel.completeSetup(enableNotifications = true)
                                 }
                             },
-                            modifier = Modifier
-                                .align(Alignment.TopCenter)
-                                .padding(start = 16.dp, end = 16.dp, top = 88.dp),
+                            onFinishWithoutNotifications = {
+                                onboardingViewModel.completeSetup(enableNotifications = false)
+                            },
+                            modifier = Modifier.fillMaxSize(),
                         )
                     }
 
-                    P6039BottomNavOverlay(
-                        selected = state.tab,
-                        onSelect = viewModel::selectTab,
-                        modifier = Modifier.align(Alignment.BottomCenter),
-                    )
-                }
+                    else -> {
+                        CineRelayRootV049(viewModel)
 
-                if (onboardingVisible) {
-                    NotificationOnboardingV044(
-                        state = onboardingState,
-                        onRetry = onboardingViewModel::retry,
-                        onToggleSource = onboardingViewModel::toggleSource,
-                        onSetVideos = onboardingViewModel::setIncludeVideos,
-                        onSetShorts = onboardingViewModel::setIncludeShorts,
-                        onValidateSelection = onboardingViewModel::validateSelection,
-                        onEnableNotifications = {
-                            val needsRuntimePermission = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-                                ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
-                            if (needsRuntimePermission) {
-                                notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-                            } else {
-                                onboardingViewModel.completeSetup(enableNotifications = true)
+                        if (state.tab == AppTab.FOLLOWING && state.authMode == null) {
+                            SourcesDirectoryV039(
+                                state = sourcesState,
+                                onRefresh = sourcesViewModel::refresh,
+                                onOpenSource = sourcesViewModel::openSource,
+                                onCloseSource = sourcesViewModel::closeSource,
+                                onToggleNotification = { source, enabled ->
+                                    sourcesViewModel.toggleNotification(source, enabled)
+                                },
+                                modifier = Modifier.fillMaxSize(),
+                            )
+                        }
+
+                        if (state.authMode == null) {
+                            if (state.tab == AppTab.LIVE && state.newsroomPlatform == NewsroomPlatform.YOUTUBE) {
+                                NewsroomSourceRoleOverlay(
+                                    selected = state.newsroomSourceRole,
+                                    counts = state.newsroomSourceRoleCounts,
+                                    onSelect = viewModel::setNewsroomSourceRole,
+                                    modifier = Modifier
+                                        .align(Alignment.BottomCenter)
+                                        .padding(bottom = 148.dp),
+                                )
                             }
-                        },
-                        onFinishWithoutNotifications = {
-                            onboardingViewModel.completeSetup(enableNotifications = false)
-                        },
-                        modifier = Modifier.fillMaxSize(),
-                    )
+
+                            if (state.tab == AppTab.LIVE || state.tab == AppTab.FOLLOWING) {
+                                NewsroomPlatformOverlay(
+                                    selected = state.newsroomPlatform,
+                                    onSelect = viewModel::setNewsroomPlatform,
+                                    modifier = Modifier
+                                        .align(Alignment.BottomStart)
+                                        .padding(start = 16.dp, bottom = 92.dp),
+                                )
+                            }
+
+                            if (state.tab == AppTab.LIVE) {
+                                NewsroomFilterOverlay(
+                                    selected = state.newsroomFilter,
+                                    counts = state.newsroomFilterCounts,
+                                    onSelect = viewModel::setNewsroomFilter,
+                                    modifier = Modifier
+                                        .align(Alignment.BottomEnd)
+                                        .padding(end = 16.dp, bottom = 92.dp),
+                                )
+                            }
+
+                            if (state.tab == AppTab.ALERTS) {
+                                NotificationMasterOverlay(
+                                    state = onboardingState,
+                                    onToggle = { enabled ->
+                                        if (!enabled) {
+                                            onboardingViewModel.setMasterEnabled(false)
+                                        } else {
+                                            val needsRuntimePermission = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                                                ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+                                            if (needsRuntimePermission) {
+                                                masterNotificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                                            } else {
+                                                onboardingViewModel.setMasterEnabled(true)
+                                            }
+                                        }
+                                    },
+                                    modifier = Modifier
+                                        .align(Alignment.TopCenter)
+                                        .padding(start = 16.dp, end = 16.dp, top = 88.dp),
+                                )
+                            }
+
+                            P6039BottomNavOverlay(
+                                selected = state.tab,
+                                onSelect = viewModel::selectTab,
+                                modifier = Modifier.align(Alignment.BottomCenter),
+                            )
+                        }
+                    }
                 }
             }
         }
