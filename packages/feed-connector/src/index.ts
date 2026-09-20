@@ -1,6 +1,6 @@
 import { XMLParser } from 'fast-xml-parser';
 
-export const FEED_PARSER_VERSION = 'feed-parser-v1';
+export const FEED_PARSER_VERSION = 'feed-parser-v2';
 
 export type FeedFormat = 'RSS' | 'ATOM';
 export type FeedPollClass = 'HOT_5M' | 'ACTIVE_15M' | 'NORMAL_60M' | 'COLD_6H' | 'DAILY';
@@ -32,6 +32,7 @@ const parser = new XMLParser({
   parseTagValue: false,
   parseAttributeValue: false,
   allowBooleanAttributes: true,
+  updateTag: (tagName: string) => tagName,
 });
 
 const FEED_SCHEDULER_GRID_MS = 5 * 60_000;
