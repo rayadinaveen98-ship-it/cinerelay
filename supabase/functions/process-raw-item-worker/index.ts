@@ -1,6 +1,8 @@
 import { createClient } from '@supabase/supabase-js';
 // @deno-types="../../../packages/domain/dist/index.d.ts"
 import { normalizeItem, processSingle, resolveEntity } from '../../../packages/domain/dist/index.js';
+// @deno-types="../../../packages/domain/dist/ott-release-signal.d.ts"
+import { extractOttMovieReleaseSignal, type OttMovieReleaseSignal } from '../../../packages/domain/dist/ott-release-signal.js';
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL');
 const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
@@ -187,6 +189,59 @@ async function persistEvent(rawItemId: string, event: Record<string, unknown>): 
   return String(data);
 }
 
+async function submitOttDiscovery(rawItemId: string, signal: OttMovieReleaseSignal): Promise<void> {
+  const metadata = {
+    signalType: signal.signalType,
+    providerCode: signal.providerCode,
+    releaseDate: signal.releaseDate ?? null,
+    datePrecision: signal.datePrecision,
+    state: signal.state,
+    evidenceStatus: signal.evidenceStatus,
+    releaseType: signal.releaseType,
+  };
+  const { data: candidateId, error } = await supabase.rpc('submit_entity_discovery_candidate', {
+    p_proposed_name: signal.title,
+    p_proposed_entity_type: 'MOVIE',
+    p_raw_item_id: rawItemId,
+    p_confidence: signal.confidence,
+    p_primary_language: signal.primaryLanguage ?? null,
+    p_country_code: 'IN',
+    p_match_method: 'DETERMINISTIC_TITLE',
+    p_weight: signal.weight,
+    p_metadata: metadata,
+  });
+  if (error) throw error;
+  if (!candidateId) throw new Error('ott_candidate_submission_returned_no_id');
+
+  const { error: promotionError } = await supabase.rpc('system_promote_verified_ott_candidate', {
+    p_candidate_id: String(candidateId),
+  });
+  if (promotionError) throw promotionError;
+}
+
+async function persistOttRelease(entityId: string, rawItemId: string, signal: OttMovieReleaseSignal): Promise<void> {
+  // A "now streaming" item proves availability but not the historical release day.
+  // Until the canonical schema supports RELEASED-with-unknown-date, only precise
+  // dated signals write a release row. The raw evidence remains available for
+  // future reconciliation.
+  if (!signal.releaseDate) return;
+
+  const { error } = await supabase.rpc('upsert_ott_release_with_evidence', {
+    p_entity_id: entityId,
+    p_provider_code: signal.providerCode,
+    p_raw_item_id: rawItemId,
+    p_territory: 'IN',
+    p_languages: signal.primaryLanguage ? [signal.primaryLanguage] : [],
+    p_release_type: signal.releaseType,
+    p_release_date: signal.releaseDate,
+    p_date_precision: signal.datePrecision,
+    p_state: signal.state,
+    p_evidence_status: signal.evidenceStatus,
+    p_reason: 'Deterministic OTT movie release signal from retained source evidence',
+  });
+  if (error) throw error;
+}
+
 async function processJob(job: Record<string, unknown>, workerId: string): Promise<{ resolution: string; eventId?: string }> {
   const payload = job.payload as Record<string, unknown> | undefined;
   const rawItemId = typeof payload?.rawItemId === 'string' ? payload.rawItemId : '';
@@ -206,6 +261,12 @@ async function processJob(job: Record<string, unknown>, workerId: string): Promi
     text: typeof raw.raw_text === 'string' ? raw.raw_text : '',
     url: String(raw.canonical_url),
   };
+  const ottSignal = extractOttMovieReleaseSignal({
+    title: fixtureItem.title,
+    text: fixtureItem.text,
+    publishedAt: typeof raw.published_at === 'string' ? raw.published_at : undefined,
+    source,
+  });
   const normalized = normalizeItem(fixtureItem, source);
 
   const operatorOverride = await loadOperatorOverride(rawItemId);
@@ -261,9 +322,12 @@ async function processJob(job: Record<string, unknown>, workerId: string): Promi
   }
 
   if (resolution.state !== 'RESOLVED' || !resolution.entity?.id) {
+    if (ottSignal) await submitOttDiscovery(rawItemId, ottSignal);
     await completeJob(job, workerId);
     return { resolution: resolution.state };
   }
+
+  if (ottSignal) await persistOttRelease(resolution.entity.id, rawItemId, ottSignal);
 
   const previousDate = await currentTheatricalDate(resolution.entity.id);
   const pipeline = processSingle(fixtureItem, source, {
