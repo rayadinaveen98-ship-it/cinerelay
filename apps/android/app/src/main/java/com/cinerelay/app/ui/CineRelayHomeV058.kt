@@ -57,6 +57,8 @@ import com.cinerelay.app.data.PersonalizationState
 import kotlinx.coroutines.delay
 import java.time.Duration
 import java.time.Instant
+import java.util.Locale
+import kotlin.math.abs
 
 private val Home58Ink = Color(0xFF0C0E12)
 private val Home58Panel = Color(0xFF171A20)
@@ -66,7 +68,15 @@ private val Home58Muted = Color(0xFFA8ADB7)
 private val Home58Gold = Color(0xFFE8C56D)
 private val Home58Green = Color(0xFF73D6A5)
 
-private data class HomeRailV058(val title: String, val items: List<NewsroomSignal>)
+private data class HomeStoryV059(
+    val key: String,
+    val representative: NewsroomSignal,
+    val updates: List<NewsroomSignal>,
+    val sourceCount: Int,
+    val officialSourceCount: Int,
+)
+
+private data class HomeRailV058(val title: String, val items: List<HomeStoryV059>)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -80,17 +90,22 @@ fun CineRelayHomeV058(
     modifier: Modifier = Modifier,
 ) {
     val freshSignals = remember(state.homeSignals) { state.homeSignals.filter(::isFreshHomeSignalV058) }
+    val freshStories = remember(freshSignals) { clusterHomeStoriesV059(freshSignals) }
     val favoriteSources = remember(personalization) {
         personalization.availableSources.filter { it.identityId in personalization.favoriteSourceIdentityIds }
     }
     val favoriteSignals = remember(freshSignals, favoriteSources) {
         freshSignals.filter { signal -> favoriteSources.any { it.matchesV058(signal) } }
     }
-    val heroItems = remember(favoriteSignals) {
-        favoriteSignals.filter { !it.thumbnailUrl.isNullOrBlank() }.take(8).ifEmpty { favoriteSignals.take(8) }
+    val favoriteStories = remember(favoriteSignals) { clusterHomeStoriesV059(favoriteSignals) }
+    val heroItems = remember(favoriteStories) {
+        favoriteStories.map { it.representative }
+            .filter { !it.thumbnailUrl.isNullOrBlank() }
+            .take(8)
+            .ifEmpty { favoriteStories.map { it.representative }.take(8) }
     }
-    val rails = remember(freshSignals, favoriteSignals, favoriteSources, personalization.favoriteLanguages) {
-        buildHomeRailsV058(freshSignals, favoriteSignals, favoriteSources, personalization.favoriteLanguages)
+    val rails = remember(freshStories, favoriteStories, favoriteSources, personalization.favoriteLanguages) {
+        buildHomeRailsV059(freshStories, favoriteStories, favoriteSources, personalization.favoriteLanguages)
     }
 
     MaterialTheme(
@@ -261,13 +276,14 @@ private fun HomeRailV058(rail: HomeRailV058, onOpenUpdate: (NewsroomSignal) -> U
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Text(rail.title, color = Home58Text, fontSize = 19.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 20.dp))
         LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            items(rail.items, key = { "${rail.title}:${it.id}" }) { item -> HomeCardV058(item) { onOpenUpdate(item) } }
+            items(rail.items, key = { "${rail.title}:${it.key}" }) { story -> HomeCardV059(story) { onOpenUpdate(story.representative) } }
         }
     }
 }
 
 @Composable
-private fun HomeCardV058(item: NewsroomSignal, onClick: () -> Unit) {
+private fun HomeCardV059(story: HomeStoryV059, onClick: () -> Unit) {
+    val item = story.representative
     Column(modifier = Modifier.width(220.dp).clickable(onClick = onClick), verticalArrangement = Arrangement.spacedBy(7.dp)) {
         Box(Modifier.fillMaxWidth().aspectRatio(16f / 9f).clip(RoundedCornerShape(17.dp)).background(Home58Raised)) {
             if (!item.thumbnailUrl.isNullOrBlank()) {
@@ -275,6 +291,11 @@ private fun HomeCardV058(item: NewsroomSignal, onClick: () -> Unit) {
             }
             Surface(color = Home58Ink.copy(alpha = 0.84f), shape = RoundedCornerShape(50), modifier = Modifier.align(Alignment.BottomStart).padding(8.dp)) {
                 Text(home58StateLabel(item.state), color = if (item.state == "VERIFIED") Home58Green else Home58Gold, fontSize = 9.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp))
+            }
+            if (story.sourceCount > 1) {
+                Surface(color = Home58Ink.copy(alpha = 0.88f), shape = RoundedCornerShape(50), modifier = Modifier.align(Alignment.TopEnd).padding(8.dp)) {
+                    Text("${story.sourceCount} sources", color = Home58Text, fontSize = 9.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp))
+                }
             }
         }
         Text(item.title, color = Home58Text, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, lineHeight = 17.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
@@ -286,20 +307,27 @@ private fun HomeCardV058(item: NewsroomSignal, onClick: () -> Unit) {
     }
 }
 
-private fun buildHomeRailsV058(
-    signals: List<NewsroomSignal>,
-    favorites: List<NewsroomSignal>,
+private fun buildHomeRailsV059(
+    stories: List<HomeStoryV059>,
+    favorites: List<HomeStoryV059>,
     favoriteSources: List<PersonalizationSource>,
     favoriteLanguages: Set<String>,
 ): List<HomeRailV058> {
-    if (signals.isEmpty()) return emptyList()
+    if (stories.isEmpty()) return emptyList()
     val rails = mutableListOf<HomeRailV058>()
-    fun add(title: String, items: List<NewsroomSignal>, minimum: Int = 1, limit: Int = 24) {
-        val unique = items.distinctBy { it.id }.take(limit)
+    fun add(title: String, items: List<HomeStoryV059>, minimum: Int = 1, limit: Int = 24) {
+        val unique = items.distinctBy { it.key }.take(limit)
         if (unique.size >= minimum) rails += HomeRailV058(title, unique)
     }
+
     add("From Your Favorites", favorites)
-    add("Just In", signals.take(24))
+    add(
+        "Trending Across Sources",
+        stories.filter { it.sourceCount >= 2 }
+            .sortedWith(compareByDescending<HomeStoryV059> { it.sourceCount }.thenByDescending { homeSignalInstantV059(it.representative) }),
+    )
+    add("Just In", stories.take(24))
+
     val labels = linkedMapOf(
         "te" to "Latest Telugu Updates",
         "hi" to "Latest Hindi Updates",
@@ -309,17 +337,131 @@ private fun buildHomeRailsV058(
         "en" to "English & International",
     )
     val languageOrder = (favoriteLanguages.filter { it in labels.keys } + labels.keys).distinct()
-    for (code in languageOrder) add(labels.getValue(code), signals.filter { it.languageCode?.lowercase() == code })
-    add("Trailers & Teasers", signals.filter { it.title.hasAnyV058("trailer", "teaser", "glimpse") })
-    add("First Looks & Announcements", signals.filter { it.title.hasAnyV058("first look", "poster", "announcement", "launch") })
-    add("OTT & Streaming Updates", signals.filter { it.source.role == "OTT_PLATFORM" || it.title.hasAnyV058("ott", "streaming", "digital premiere", "premiere") })
-    add("Official Movie Updates", signals.filter { it.source.role in setOf("PRODUCTION_HOUSE", "FILM_OFFICIAL", "CAST_CREW_OFFICIAL") })
-    add("Music & Songs", signals.filter { it.source.role == "MUSIC_LABEL" || it.title.hasAnyV058("song", "lyrical", "single", "music video", "jukebox") })
-    add("Interviews & Events", signals.filter { it.title.hasAnyV058("interview", "press meet", "event", "pre release", "success meet") })
-    add("From the Web", signals.filter { it.source.platform == "WEB" || it.source.platform == "RSS" })
-    for (source in favoriteSources) add("Latest from ${source.name}", signals.filter { source.matchesV058(it) }, minimum = 2, limit = 16)
+    for (code in languageOrder) add(labels.getValue(code), stories.filter { story -> story.updates.any { it.languageCode?.lowercase() == code } })
+
+    add("Trailers & Teasers", stories.filter { it.hasAnyTitleV059("trailer", "teaser", "glimpse") })
+    add("First Looks & Announcements", stories.filter { it.hasAnyTitleV059("first look", "poster", "announcement", "launch") })
+    add("OTT & Streaming Updates", stories.filter { story -> story.updates.any { it.source.role == "OTT_PLATFORM" } || story.hasAnyTitleV059("ott", "streaming", "digital premiere", "premiere") })
+    add("Official Movie Updates", stories.filter { story -> story.updates.any { it.source.role in setOf("PRODUCTION_HOUSE", "FILM_OFFICIAL", "CAST_CREW_OFFICIAL") } })
+    add("Music & Songs", stories.filter { story -> story.updates.any { it.source.role == "MUSIC_LABEL" } || story.hasAnyTitleV059("song", "lyrical", "single", "music video", "jukebox") })
+    add("Interviews & Events", stories.filter { it.hasAnyTitleV059("interview", "press meet", "event", "pre release", "success meet") })
+    add("From the Web", stories.filter { story -> story.updates.any { it.source.platform == "WEB" || it.source.platform == "RSS" } })
+
+    for (source in favoriteSources) {
+        val sourceStories = stories.mapNotNull { story ->
+            val matching = story.updates.filter { source.matchesV058(it) }
+            if (matching.isEmpty()) null else story.copy(representative = bestHomeRepresentativeV059(matching))
+        }
+        add("Latest from ${source.name}", sourceStories, minimum = 2, limit = 16)
+    }
     return rails.distinctBy { it.title }
 }
+
+private fun clusterHomeStoriesV059(signals: List<NewsroomSignal>): List<HomeStoryV059> {
+    if (signals.isEmpty()) return emptyList()
+    val ordered = signals.distinctBy { it.id }.sortedByDescending(::homeSignalInstantV059)
+    val clusters = mutableListOf<MutableList<NewsroomSignal>>()
+
+    for (signal in ordered) {
+        val index = clusters.indexOfFirst { existing ->
+            existing.isNotEmpty() && shouldShareHomeStoryV059(signal, bestHomeRepresentativeV059(existing))
+        }
+        if (index >= 0) clusters[index].add(signal) else clusters += mutableListOf(signal)
+    }
+
+    return clusters.map { cluster ->
+        val representative = bestHomeRepresentativeV059(cluster)
+        val sourceKeys = cluster.map(::homeSourceKeyV059).filter { it.isNotBlank() }.toSet()
+        val officialKeys = cluster.filter { (it.source.authorityTier ?: 99) <= 1 }.map(::homeSourceKeyV059).filter { it.isNotBlank() }.toSet()
+        val eventId = cluster.mapNotNull { it.canonicalEvent?.id?.takeIf(String::isNotBlank) }.firstOrNull()
+        HomeStoryV059(
+            key = eventId?.let { "event:$it" } ?: "story:${cluster.map { it.id }.sorted().first()}",
+            representative = representative,
+            updates = cluster.sortedByDescending(::homeSignalInstantV059),
+            sourceCount = sourceKeys.size.coerceAtLeast(1),
+            officialSourceCount = officialKeys.size,
+        )
+    }.sortedByDescending { homeSignalInstantV059(it.representative) }
+}
+
+private fun shouldShareHomeStoryV059(left: NewsroomSignal, right: NewsroomSignal): Boolean {
+    val leftEvent = left.canonicalEvent?.id?.takeIf(String::isNotBlank)
+    val rightEvent = right.canonicalEvent?.id?.takeIf(String::isNotBlank)
+    if (leftEvent != null && rightEvent != null) return leftEvent == rightEvent
+
+    val leftInstant = homeSignalInstantV059(left)
+    val rightInstant = homeSignalInstantV059(right)
+    if (leftInstant != Instant.EPOCH && rightInstant != Instant.EPOCH) {
+        if (abs(Duration.between(leftInstant, rightInstant).toMinutes()) > 18L * 60L) return false
+    }
+
+    val leftLanguages = explicitHomeLanguagesV059(left.title)
+    val rightLanguages = explicitHomeLanguagesV059(right.title)
+    if (leftLanguages.isNotEmpty() && rightLanguages.isNotEmpty() && leftLanguages.intersect(rightLanguages).isEmpty()) return false
+
+    val normalizedLeft = normalizedHomeStoryTitleV059(left.title)
+    val normalizedRight = normalizedHomeStoryTitleV059(right.title)
+    if (normalizedLeft.length >= 12 && normalizedLeft == normalizedRight) return true
+
+    val leftKind = homeStoryKindV059(left.title)
+    val rightKind = homeStoryKindV059(right.title)
+    if (leftKind != rightKind && leftKind != "GENERAL" && rightKind != "GENERAL") return false
+
+    val leftTokens = homeStoryTokensV059(left.title)
+    val rightTokens = homeStoryTokensV059(right.title)
+    if (leftTokens.size < 2 || rightTokens.size < 2) return false
+    val shared = leftTokens.intersect(rightTokens)
+    val union = leftTokens.union(rightTokens)
+    if (union.isEmpty()) return false
+    val similarity = shared.size.toDouble() / union.size.toDouble()
+    val strongAnchor = shared.any { it.length >= 5 && it !in HOME59_GENERIC_TOKENS }
+    if (!strongAnchor) return false
+
+    return if (leftKind == rightKind) {
+        shared.size >= 3 && similarity >= 0.34
+    } else {
+        shared.size >= 4 && similarity >= 0.46
+    }
+}
+
+private fun bestHomeRepresentativeV059(items: List<NewsroomSignal>): NewsroomSignal =
+    items.maxWithOrNull(
+        compareBy<NewsroomSignal> { homeRepresentativeScoreV059(it) }
+            .thenBy { homeSignalInstantV059(it) },
+    ) ?: items.first()
+
+private fun homeRepresentativeScoreV059(signal: NewsroomSignal): Int {
+    var score = 0
+    if (!signal.thumbnailUrl.isNullOrBlank()) score += 15
+    if (signal.state == "VERIFIED") score += 35
+    if (signal.canonicalEvent != null) score += 20
+    when (signal.canonicalEvent?.verificationState) {
+        "OFFICIAL", "CONFIRMED" -> score += 35
+        "RELIABLE_REPORT", "DEVELOPING" -> score += 12
+    }
+    score += when (signal.source.authorityTier) {
+        1 -> 80
+        2 -> 50
+        3 -> 25
+        4 -> 8
+        else -> 0
+    }
+    if (signal.source.role in HOME59_FIRST_PARTY_ROLES) score += 20
+    return score
+}
+
+private fun homeSignalInstantV059(signal: NewsroomSignal): Instant {
+    val value = signal.observedAt ?: signal.ingestedAt ?: signal.sourceObservedAt ?: return Instant.EPOCH
+    return runCatching { Instant.parse(value) }.getOrDefault(Instant.EPOCH)
+}
+
+private fun homeSourceKeyV059(signal: NewsroomSignal): String = listOfNotNull(
+    signal.source.platform,
+    signal.source.handle,
+    signal.source.name,
+).joinToString("|").trim().lowercase(Locale.ROOT)
+
+private fun HomeStoryV059.hasAnyTitleV059(vararg needles: String): Boolean = updates.any { it.title.hasAnyV058(*needles) }
 
 private fun PersonalizationSource.matchesV058(signal: NewsroomSignal): Boolean {
     val signalHandle = signal.source.handle?.trim()?.lowercase()
@@ -332,6 +474,61 @@ private fun String.hasAnyV058(vararg needles: String): Boolean {
     val value = lowercase()
     return needles.any(value::contains)
 }
+
+private fun normalizedHomeStoryTitleV059(title: String): String = title
+    .lowercase(Locale.ROOT)
+    .replace(Regex("[^\\p{L}\\p{N}]+"), " ")
+    .trim()
+    .replace(Regex("\\s+"), " ")
+
+private fun homeStoryTokensV059(title: String): Set<String> = normalizedHomeStoryTitleV059(title)
+    .split(' ')
+    .asSequence()
+    .map(String::trim)
+    .filter { it.length >= 3 }
+    .filterNot { it in HOME59_STOP_TOKENS }
+    .toSet()
+
+private fun explicitHomeLanguagesV059(title: String): Set<String> {
+    val normalized = normalizedHomeStoryTitleV059(title)
+    return HOME59_LANGUAGE_MARKERS.filterValues { markers -> markers.any { marker -> Regex("(^| )${Regex.escape(marker)}( |$)").containsMatchIn(normalized) } }.keys
+}
+
+private fun homeStoryKindV059(title: String): String {
+    val value = title.lowercase(Locale.ROOT)
+    return when {
+        value.contains("trailer") -> "TRAILER"
+        value.contains("teaser") -> "TEASER"
+        value.contains("glimpse") || value.contains("sneak peek") -> "GLIMPSE"
+        value.contains("first look") || value.contains("poster") -> "VISUAL"
+        value.contains("song") || value.contains("lyrical") || value.contains("single") || value.contains("jukebox") -> "MUSIC"
+        value.contains("ott") || value.contains("streaming") || value.contains("premiere") -> "STREAMING"
+        value.contains("interview") || value.contains("press meet") || value.contains("event") -> "EVENT"
+        else -> "GENERAL"
+    }
+}
+
+private val HOME59_FIRST_PARTY_ROLES = setOf("PRODUCTION_HOUSE", "FILM_OFFICIAL", "CAST_CREW_OFFICIAL", "OTT_PLATFORM", "MUSIC_LABEL")
+
+private val HOME59_LANGUAGE_MARKERS = mapOf(
+    "te" to setOf("telugu"),
+    "hi" to setOf("hindi"),
+    "ta" to setOf("tamil"),
+    "ml" to setOf("malayalam"),
+    "kn" to setOf("kannada"),
+    "en" to setOf("english"),
+)
+
+private val HOME59_GENERIC_TOKENS = setOf(
+    "official", "video", "watch", "streaming", "premiere", "release", "released", "update", "latest",
+    "movie", "film", "cinema", "trailer", "teaser", "glimpse", "song", "poster", "first", "look",
+    "hotstar", "jiohotstar", "netflix", "prime", "sony", "sunnxt", "zee5", "specials",
+)
+
+private val HOME59_STOP_TOKENS = HOME59_GENERIC_TOKENS + setOf(
+    "the", "and", "for", "from", "with", "this", "that", "into", "over", "now", "full", "new",
+    "today", "tomorrow", "here", "out", "only", "your", "their", "our", "its", "you", "all", "2026",
+)
 
 private fun isFreshHomeSignalV058(signal: NewsroomSignal): Boolean {
     val timestamp = signal.observedAt ?: signal.ingestedAt ?: return true
