@@ -188,6 +188,7 @@ class CineRelayViewModel(application: Application) : AndroidViewModel(applicatio
             _state.value = _state.value.copy(newsroomSignals = emptyList(), events = emptyList(), alerts = emptyList())
             return
         }
+        if (tab == AppTab.ALERTS) refreshPushState()
         refresh()
     }
 
@@ -302,9 +303,18 @@ class CineRelayViewModel(application: Application) : AndroidViewModel(applicatio
                         bootstrap = bootstrap,
                         error = null,
                     )
+                    refreshPushState()
                     refresh()
                 }
                 .onFailure(::handleFailure)
+        }
+    }
+
+    private fun refreshPushState() {
+        if (!_state.value.authenticated) return
+        viewModelScope.launch {
+            runCatching { withContext(Dispatchers.IO) { pushManager.currentDeviceState() } }
+                .onSuccess { push -> _state.value = _state.value.copy(pushState = push) }
         }
     }
 
