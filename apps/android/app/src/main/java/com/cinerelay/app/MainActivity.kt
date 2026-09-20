@@ -79,11 +79,9 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
-            val setupResolving = state.authenticated &&
-                (!onboardingState.authenticated || !onboardingState.setupKnown)
+            val setupResolving = state.authenticated && !onboardingState.authenticated
             val onboardingVisible = state.authenticated &&
                 onboardingState.authenticated &&
-                onboardingState.setupKnown &&
                 onboardingState.shouldShow &&
                 state.authMode == null
 
