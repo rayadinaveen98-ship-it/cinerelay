@@ -1,6 +1,6 @@
 # P6.0.39 — Home + Sources Professional Navigation
 
-Status: **IMPLEMENTED / HOSTED BACKEND ACTIVE / ANDROID CI GREEN / PHYSICAL UI REVIEW NEXT**
+Status: **IMPLEMENTED / HOSTED BACKEND ACTIVE / ANDROID CI GREEN / UPDATE SAFETY PROVEN / PHYSICAL UI REVIEW NEXT**
 
 Date: 2026-09-20
 
@@ -176,7 +176,7 @@ This proves source drill-down is isolated before feed pagination and cannot be c
 
 ## CI / Android proof
 
-Exact implementation head before this documentation-only commit:
+Exact implementation head before documentation-only commits:
 
 `0c7bff9c6dce98ad9d565c8fdd2e13ceb303f04d`
 
@@ -216,13 +216,19 @@ The final APK has also been persisted in ChatGPT Library as:
 
 `/CineRelay/CineRelay-v0.2.1-canary.169-P6.0.39.apk`
 
-## Android update safety
+## Android update safety — CLOSED
 
-The signing-transition gate was already closed before P6.0.39.
+The signing-transition gate was closed before P6.0.39.
 
-The user physically verified that permanent-signed build #155 installed over permanent-signed #154 **without uninstalling**.
+Physical-device proof supplied by the user:
 
-Therefore #169 is an ordinary in-place update candidate over the user's current permanent-signed CineRelay installation because it preserves the permanent signer and increases versionCode.
+1. permanent-signed #154 was installed as baseline;
+2. permanent-signed #155 was installed directly over #154 **without uninstalling**;
+3. Android accepted the in-place update successfully.
+
+The earlier `App not installed` problem caused by ephemeral signing is therefore resolved. Future builds remain update-compatible when they preserve package ID + permanent signer and increase `versionCode`.
+
+#169 satisfies that contract and is intended to install directly over the user's current #155 installation.
 
 ## Known visual limitation
 
