@@ -136,7 +136,10 @@ async function loadTitleCandidates(title: string): Promise<EntityCandidate[]> {
     p_limit: 12,
   });
   if (error) throw error;
-  const ids = [...new Set((data ?? []).map((row: Record<string, unknown>) => String(row.entity_id)).filter(Boolean))];
+  const rows: Record<string, unknown>[] = Array.isArray(data)
+    ? data.filter((row): row is Record<string, unknown> => typeof row === 'object' && row !== null)
+    : [];
+  const ids: string[] = [...new Set(rows.map((row) => String(row.entity_id ?? '')).filter(Boolean))];
   return loadEntities(ids);
 }
 
