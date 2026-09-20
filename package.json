@@ -30,7 +30,7 @@
     "ci": "npm run lint && npm run test:contracts && npm run test:benchmark && npm run test:newsroom && npm run test:newsroom-state && npm run test:push-presentation && npm run test:youtube && npm run test:feed && npm run test:web-page && npm run test:threads && npm run test:instagram && npm run test:x"
   },
   "dependencies": {
-    "fast-xml-parser": "5.2.5",
+    "fast-xml-parser": "5.10.1",
     "node-html-parser": "7.0.1"
   },
   "devDependencies": {
