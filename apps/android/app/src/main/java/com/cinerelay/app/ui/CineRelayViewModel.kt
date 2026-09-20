@@ -62,7 +62,7 @@ class CineRelayViewModel(application: Application) : AndroidViewModel(applicatio
     val state: StateFlow<CineRelayUiState> = _state.asStateFlow()
 
     init {
-        if (_state.value.authenticated) refreshAll() else refresh()
+        if (_state.value.authenticated) refreshAll()
     }
 
     fun openAuth(mode: AuthMode = AuthMode.SIGN_IN) {
@@ -133,7 +133,7 @@ class CineRelayViewModel(application: Application) : AndroidViewModel(applicatio
                         email = session.email,
                         authBusy = false,
                         authMode = null,
-                        notice = "Signed in. Following and alerts are now unlocked.",
+                        notice = "Signed in. Loading your CineRelay setup.",
                     )
                     refreshAll()
                 }
@@ -154,7 +154,7 @@ class CineRelayViewModel(application: Application) : AndroidViewModel(applicatio
                             email = session.email,
                             authBusy = false,
                             authMode = null,
-                            notice = "Account created. Welcome to CineRelay.",
+                            notice = "Account created. Loading first-time setup.",
                         )
                         refreshAll()
                     } else {
@@ -175,26 +175,20 @@ class CineRelayViewModel(application: Application) : AndroidViewModel(applicatio
         latestNewsroomSignals = emptyList()
         _state.value = CineRelayUiState(
             tab = AppTab.LIVE,
-            notice = "Signed out. You can keep exploring as a guest.",
+            notice = "Signed out.",
             pushState = PushState(BuildConfig.FIREBASE_CONFIGURED),
         )
-        refresh()
     }
 
     fun selectTab(tab: AppTab) {
-        if (_state.value.tab == tab) return
+        if (!_state.value.authenticated || _state.value.tab == tab) return
         _state.value = _state.value.copy(tab = tab, error = null, notice = null)
-        if (!_state.value.authenticated && tab.requiresAccount()) {
-            _state.value = _state.value.copy(newsroomSignals = emptyList(), events = emptyList(), alerts = emptyList())
-            return
-        }
         if (tab == AppTab.ALERTS) refreshPushState()
         refresh()
     }
 
     fun refresh() {
-        if (_state.value.loading) return
-        if (!_state.value.authenticated && _state.value.tab.requiresAccount()) return
+        if (!_state.value.authenticated || _state.value.loading) return
 
         viewModelScope.launch {
             _state.value = _state.value.copy(loading = true, error = null)
@@ -337,10 +331,9 @@ class CineRelayViewModel(application: Application) : AndroidViewModel(applicatio
             _state.value = CineRelayUiState(
                 authenticated = false,
                 tab = AppTab.LIVE,
-                error = "Your session expired. You can keep exploring as a guest or sign in again.",
+                error = "Your session expired. Sign in again to continue.",
                 pushState = PushState(BuildConfig.FIREBASE_CONFIGURED),
             )
-            refresh()
             return
         }
         _state.value = _state.value.copy(
