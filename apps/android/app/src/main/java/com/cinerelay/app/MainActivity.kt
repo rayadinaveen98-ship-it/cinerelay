@@ -36,6 +36,7 @@ import com.cinerelay.app.ui.NewsroomPlatform
 import com.cinerelay.app.ui.NotificationDetailV055
 import com.cinerelay.app.ui.NotificationOnboardingV044
 import com.cinerelay.app.ui.NotificationOnboardingViewModel
+import com.cinerelay.app.ui.OnThisDayV057
 import com.cinerelay.app.ui.OttReleasesV054
 import com.cinerelay.app.ui.OttViewModelV054
 import com.cinerelay.app.ui.P6039BottomNavOverlay
@@ -79,6 +80,7 @@ class MainActivity : ComponentActivity() {
             var settingsVisible by remember { mutableStateOf(false) }
             var personalizationEditorVisible by remember { mutableStateOf(false) }
             var ottVisible by remember { mutableStateOf(false) }
+            var historyVisible by remember { mutableStateOf(false) }
 
             val notificationPermissionLauncher = rememberLauncherForActivityResult(
                 contract = ActivityResultContracts.RequestPermission(),
@@ -98,11 +100,21 @@ class MainActivity : ComponentActivity() {
                     settingsVisible = false
                     personalizationEditorVisible = false
                     ottVisible = false
+                    historyVisible = false
                     searchViewModel.close()
                     consumerViewModel.closeNotification()
                 }
                 onboardingViewModel.sync(state.authenticated)
                 consumerViewModel.syncPersonalization(state.authenticated)
+            }
+
+            LaunchedEffect(state.tab, state.authenticated) {
+                if (state.authenticated && state.tab == AppTab.LIVE) {
+                    consumerViewModel.loadOnThisDay()
+                }
+                if (state.tab == AppTab.ALERTS && state.authenticated) {
+                    onboardingViewModel.sync(authenticated = true, force = true)
+                }
             }
 
             LaunchedEffect(pendingNotificationRoute, state.authenticated) {
@@ -111,6 +123,7 @@ class MainActivity : ComponentActivity() {
                 settingsVisible = false
                 personalizationEditorVisible = false
                 ottVisible = false
+                historyVisible = false
                 searchViewModel.close()
                 consumerViewModel.openNotification(
                     eventId = route.eventId,
@@ -118,12 +131,6 @@ class MainActivity : ComponentActivity() {
                     canonicalUrl = route.canonicalUrl,
                 )
                 notificationRoute.value = null
-            }
-
-            LaunchedEffect(state.tab, state.authenticated) {
-                if (state.tab == AppTab.ALERTS && state.authenticated) {
-                    onboardingViewModel.sync(authenticated = true, force = true)
-                }
             }
 
             LaunchedEffect(state.tab, state.newsroomPlatform, state.authMode, state.authenticated) {
@@ -217,13 +224,28 @@ class MainActivity : ComponentActivity() {
                         )
                     }
 
+                    historyVisible -> {
+                        OnThisDayV057(
+                            state = consumerState,
+                            onBack = { historyVisible = false },
+                            onLoadDate = { date -> consumerViewModel.loadOnThisDay(force = true, date = date) },
+                            onToday = { consumerViewModel.loadOnThisDay(force = true, date = null) },
+                            modifier = Modifier.fillMaxSize(),
+                        )
+                    }
+
                     else -> {
                         val personalization = consumerState.personalization!!
                         if (state.tab == AppTab.LIVE && state.authMode == null) {
                             CineRelayHomeV055(
                                 state = state,
                                 personalization = personalization,
-                                onRefresh = viewModel::refresh,
+                                onThisDayMovies = consumerState.onThisDayMovies,
+                                onThisDayLoading = consumerState.onThisDayLoading,
+                                onRefresh = {
+                                    viewModel.refresh()
+                                    consumerViewModel.loadOnThisDay(force = true)
+                                },
                                 onSearch = searchViewModel::open,
                                 onOpenUpdate = { signal ->
                                     consumerViewModel.openNotification(
@@ -231,6 +253,9 @@ class MainActivity : ComponentActivity() {
                                         rawItemId = signal.id,
                                         canonicalUrl = signal.canonicalUrl,
                                     )
+                                },
+                                onOpenOnThisDay = {
+                                    historyVisible = true
                                 },
                                 modifier = Modifier.fillMaxSize(),
                             )
@@ -302,15 +327,18 @@ class MainActivity : ComponentActivity() {
                                 ottSelected = ottVisible,
                                 onSelect = { tab ->
                                     ottVisible = false
+                                    historyVisible = false
                                     viewModel.selectTab(tab)
                                 },
                                 onOpenOtt = {
                                     settingsVisible = false
+                                    historyVisible = false
                                     ottVisible = true
                                     ottViewModel.load()
                                 },
                                 onOpenControlRoom = {
                                     ottVisible = false
+                                    historyVisible = false
                                     onboardingViewModel.sync(authenticated = true, force = true)
                                     consumerViewModel.syncPersonalization(authenticated = true, force = true)
                                     settingsVisible = true
@@ -351,6 +379,7 @@ class MainActivity : ComponentActivity() {
                                     settingsVisible = false
                                     personalizationEditorVisible = false
                                     ottVisible = false
+                                    historyVisible = false
                                     consumerViewModel.closeNotification()
                                     searchViewModel.close()
                                     viewModel.signOut()
@@ -378,6 +407,7 @@ class MainActivity : ComponentActivity() {
                                     searchViewModel.close()
                                     settingsVisible = false
                                     ottVisible = false
+                                    historyVisible = false
                                     if (state.newsroomPlatform != NewsroomPlatform.YOUTUBE) {
                                         viewModel.setNewsroomPlatform(NewsroomPlatform.YOUTUBE)
                                     }
