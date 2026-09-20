@@ -23,7 +23,7 @@ const corsHeaders = {
 };
 
 const ACTIVE_EVENT_STATUSES = ['ACTIVE', 'NEEDS_REVIEW'];
-type NewsroomPlatform = 'YOUTUBE' | 'X';
+type NewsroomPlatform = 'YOUTUBE' | 'WEB' | 'X';
 
 type AuthenticatedUser = { id: string; email: string | null };
 type EventRow = {
@@ -68,8 +68,12 @@ function limitOf(value: unknown): number {
 function platformOf(value: unknown): NewsroomPlatform | null {
   if (value === undefined || value === null || value === '') return 'YOUTUBE';
   const normalized = String(value).trim().toUpperCase();
-  if (normalized === 'YOUTUBE' || normalized === 'X') return normalized;
+  if (normalized === 'YOUTUBE' || normalized === 'WEB' || normalized === 'X') return normalized;
   return null;
+}
+
+function storagePlatforms(platform: NewsroomPlatform): string[] {
+  return platform === 'WEB' ? ['WEB', 'RSS'] : [platform];
 }
 
 function optionalIdentityId(value: unknown): string | null {
@@ -89,7 +93,16 @@ function stringValue(value: unknown): string | null {
 function thumbnailUrlOf(metadata: unknown): string | null {
   const root = recordValue(metadata);
   const youtube = recordValue(root.youtube);
-  return stringValue(youtube.thumbnailUrl) ?? stringValue(root.thumbnailUrl);
+  const page = recordValue(root.page);
+  const article = recordValue(root.article);
+  const openGraph = recordValue(root.openGraph);
+  return stringValue(youtube.thumbnailUrl) ??
+    stringValue(root.thumbnailUrl) ??
+    stringValue(root.imageUrl) ??
+    stringValue(page.imageUrl) ??
+    stringValue(article.imageUrl) ??
+    stringValue(openGraph.imageUrl) ??
+    stringValue(openGraph.image);
 }
 
 function artworkUrlOf(connectorConfig: unknown): string | null {
@@ -127,7 +140,7 @@ async function newsroom(
   let identityQuery = admin.from('source_identities')
     .select('id,source_id,platform,handle,canonical_url,connector_type,poll_class,connector_config,active')
     .eq('active', true)
-    .eq('platform', platform);
+    .in('platform', storagePlatforms(platform));
   if (sourceIdentityId) identityQuery = identityQuery.eq('id', sourceIdentityId);
 
   const identityResult = await identityQuery;
