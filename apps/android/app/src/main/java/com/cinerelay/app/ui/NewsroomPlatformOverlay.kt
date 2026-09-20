@@ -55,6 +55,14 @@ fun NewsroomPlatformOverlay(
                     },
                 )
                 PlatformIconButton(
+                    platform = NewsroomPlatform.WEB,
+                    selected = selected == NewsroomPlatform.WEB,
+                    onClick = {
+                        onSelect(NewsroomPlatform.WEB)
+                        expanded = false
+                    },
+                )
+                PlatformIconButton(
                     platform = NewsroomPlatform.X,
                     selected = selected == NewsroomPlatform.X,
                     onClick = {
@@ -97,6 +105,15 @@ private fun PlatformIconButton(
                         modifier = Modifier.padding(2.dp),
                     )
                 }
+            }
+            NewsroomPlatform.WEB -> {
+                Text(
+                    "WEB",
+                    color = if (selected) LaneGold else LaneMuted,
+                    fontSize = 9.sp,
+                    fontWeight = FontWeight.Black,
+                    letterSpacing = 0.5.sp,
+                )
             }
             NewsroomPlatform.X -> {
                 Text(
