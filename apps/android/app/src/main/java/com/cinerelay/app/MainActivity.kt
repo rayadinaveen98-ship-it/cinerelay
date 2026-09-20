@@ -1,8 +1,13 @@
 package com.cinerelay.app
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -10,7 +15,9 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -21,6 +28,8 @@ import com.cinerelay.app.ui.NewsroomFilterOverlay
 import com.cinerelay.app.ui.NewsroomPlatform
 import com.cinerelay.app.ui.NewsroomPlatformOverlay
 import com.cinerelay.app.ui.NewsroomSourceRoleOverlay
+import com.cinerelay.app.ui.NotificationOnboardingV044
+import com.cinerelay.app.ui.NotificationOnboardingViewModel
 import com.cinerelay.app.ui.P6039BottomNavOverlay
 import com.cinerelay.app.ui.SourcesDirectoryV039
 import com.cinerelay.app.ui.SourcesViewModel
@@ -32,29 +41,51 @@ class MainActivity : ComponentActivity() {
         setContent {
             val viewModel: CineRelayViewModel = viewModel()
             val sourcesViewModel: SourcesViewModel = viewModel()
+            val onboardingViewModel: NotificationOnboardingViewModel = viewModel()
             val state by viewModel.state.collectAsStateWithLifecycle()
             val sourcesState by sourcesViewModel.state.collectAsStateWithLifecycle()
+            val onboardingState by onboardingViewModel.state.collectAsStateWithLifecycle()
+            val context = LocalContext.current
 
-            LaunchedEffect(state.tab, state.newsroomPlatform, state.authMode) {
+            val notificationPermissionLauncher = rememberLauncherForActivityResult(
+                contract = ActivityResultContracts.RequestPermission(),
+            ) { granted ->
+                onboardingViewModel.completeSetup(enableNotifications = granted)
+            }
+
+            LaunchedEffect(state.authenticated) {
+                onboardingViewModel.sync(state.authenticated)
+            }
+
+            LaunchedEffect(state.tab, state.newsroomPlatform, state.authMode, state.authenticated) {
                 if (state.tab == AppTab.FOLLOWING && state.authMode == null) {
-                    sourcesViewModel.load(state.newsroomPlatform)
+                    sourcesViewModel.load(state.newsroomPlatform, authenticated = state.authenticated)
                 }
             }
+
+            val onboardingVisible = onboardingState.shouldShow && state.authMode == null
 
             Box(Modifier.fillMaxSize()) {
                 CineRelayV02App(viewModel)
 
-                if (state.tab == AppTab.FOLLOWING && state.authMode == null) {
+                if (!onboardingVisible && state.tab == AppTab.FOLLOWING && state.authMode == null) {
                     SourcesDirectoryV039(
                         state = sourcesState,
                         onRefresh = sourcesViewModel::refresh,
                         onOpenSource = sourcesViewModel::openSource,
                         onCloseSource = sourcesViewModel::closeSource,
+                        onToggleNotification = { source, enabled ->
+                            if (state.authenticated) {
+                                sourcesViewModel.toggleNotification(source, enabled)
+                            } else {
+                                viewModel.openAuth(com.cinerelay.app.ui.AuthMode.CREATE_ACCOUNT)
+                            }
+                        },
                         modifier = Modifier.fillMaxSize(),
                     )
                 }
 
-                if (state.authMode == null) {
+                if (!onboardingVisible && state.authMode == null) {
                     if (state.tab == AppTab.LIVE && state.newsroomPlatform == NewsroomPlatform.YOUTUBE) {
                         NewsroomSourceRoleOverlay(
                             selected = state.newsroomSourceRole,
@@ -91,6 +122,30 @@ class MainActivity : ComponentActivity() {
                         selected = state.tab,
                         onSelect = viewModel::selectTab,
                         modifier = Modifier.align(Alignment.BottomCenter),
+                    )
+                }
+
+                if (onboardingVisible) {
+                    NotificationOnboardingV044(
+                        state = onboardingState,
+                        onRetry = onboardingViewModel::retry,
+                        onToggleSource = onboardingViewModel::toggleSource,
+                        onSetVideos = onboardingViewModel::setIncludeVideos,
+                        onSetShorts = onboardingViewModel::setIncludeShorts,
+                        onValidateSelection = onboardingViewModel::validateSelection,
+                        onEnableNotifications = {
+                            val needsRuntimePermission = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                                ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+                            if (needsRuntimePermission) {
+                                notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                            } else {
+                                onboardingViewModel.completeSetup(enableNotifications = true)
+                            }
+                        },
+                        onFinishWithoutNotifications = {
+                            onboardingViewModel.completeSetup(enableNotifications = false)
+                        },
+                        modifier = Modifier.fillMaxSize(),
                     )
                 }
             }
