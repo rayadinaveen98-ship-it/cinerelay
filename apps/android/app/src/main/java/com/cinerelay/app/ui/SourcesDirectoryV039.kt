@@ -42,11 +42,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil3.compose.AsyncImage
+import com.cinerelay.app.R
 import com.cinerelay.app.data.NewsroomSignal
 import com.cinerelay.app.data.SourceDirectoryItem
 import java.time.Duration
@@ -194,11 +199,16 @@ private fun SourcesTopBar(
 private fun SourceBrandMark() {
     Surface(
         shape = RoundedCornerShape(13.dp),
-        color = SourcesGold.copy(alpha = 0.12f),
+        color = SourcesGold.copy(alpha = 0.08f),
         modifier = Modifier.size(40.dp),
     ) {
         Box(contentAlignment = Alignment.Center) {
-            Text("CR", color = SourcesGold, fontSize = 12.sp, fontWeight = FontWeight.Black)
+            Icon(
+                painter = painterResource(R.drawable.ic_cinerelay_mark),
+                contentDescription = null,
+                tint = Color.Unspecified,
+                modifier = Modifier.size(36.dp),
+            )
         }
     }
 }
@@ -344,7 +354,7 @@ private fun SourceRow(
             modifier = Modifier.padding(horizontal = 13.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            SourceAvatar(source.name)
+            SourceAvatar(source)
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
                 Text(
@@ -412,8 +422,8 @@ private fun SourceRow(
 }
 
 @Composable
-private fun SourceAvatar(name: String) {
-    val initials = name
+private fun SourceAvatar(source: SourceDirectoryItem, size: Dp = 42.dp) {
+    val initials = source.name
         .split(' ')
         .filter { it.isNotBlank() }
         .take(2)
@@ -423,10 +433,20 @@ private fun SourceAvatar(name: String) {
     Surface(
         shape = CircleShape,
         color = SourcesGold.copy(alpha = 0.11f),
-        modifier = Modifier.size(42.dp),
+        modifier = Modifier.size(size),
     ) {
         Box(contentAlignment = Alignment.Center) {
-            Text(initials, color = SourcesGold, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+            Text(initials, color = SourcesGold, fontSize = if (size > 48.dp) 13.sp else 11.sp, fontWeight = FontWeight.Bold)
+            source.artworkUrl?.let { url ->
+                AsyncImage(
+                    model = url,
+                    contentDescription = "${source.name} channel artwork",
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .clip(CircleShape),
+                )
+            }
         }
     }
 }
@@ -500,7 +520,7 @@ private fun SourceDetailHeader(
             modifier = Modifier.padding(16.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            SourceAvatar(source.name)
+            SourceAvatar(source, size = 56.dp)
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
                 Text(source.name, color = SourcesText, fontSize = 15.sp, fontWeight = FontWeight.Bold)
