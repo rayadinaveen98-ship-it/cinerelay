@@ -30,9 +30,17 @@ function platformOf(value: unknown): SourcePlatform | null {
   return normalized === 'YOUTUBE' || normalized === 'X' ? normalized : null;
 }
 
+function recordValue(value: unknown): Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value) ? value as Record<string, unknown> : {};
+}
+
+function stringValue(value: unknown): string | null {
+  return typeof value === 'string' && value.trim().length > 0 ? value : null;
+}
+
 async function sourceDirectory(platform: SourcePlatform) {
   const identityResult = await admin.from('source_identities')
-    .select('id,source_id,platform,handle,canonical_url,active')
+    .select('id,source_id,platform,handle,canonical_url,connector_config,active')
     .eq('active', true)
     .eq('platform', platform);
   if (identityResult.error) throw identityResult.error;
@@ -89,6 +97,7 @@ async function sourceDirectory(platform: SourcePlatform) {
       const source = sourceMap.get(identity.source_id);
       if (!source) return null;
       const sourceActivity = activity.get(identity.id) ?? { newCount24h: 0, latestObservedAt: null };
+      const connectorConfig = recordValue(identity.connector_config);
       return {
         identityId: identity.id,
         sourceId: identity.source_id,
@@ -98,6 +107,7 @@ async function sourceDirectory(platform: SourcePlatform) {
         role: source.source_role ?? null,
         authorityTier: source.authority_tier ?? null,
         canonicalUrl: identity.canonical_url ?? null,
+        artworkUrl: stringValue(connectorConfig.artworkUrl),
         newCount24h: sourceActivity.newCount24h,
         latestObservedAt: sourceActivity.latestObservedAt,
       };
