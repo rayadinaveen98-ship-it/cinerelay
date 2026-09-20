@@ -35,19 +35,30 @@ class CineRelayMessagingService : FirebaseMessagingService() {
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) return
 
         val eventId = message.data["eventId"]
+        val rawItemId = message.data["rawItemId"]
+        val canonicalUrl = message.data["canonicalUrl"]
+        val sourceIdentityId = message.data["sourceIdentityId"]
+        val notificationClass = message.data["notificationClass"]
+        val stableTarget = eventId ?: rawItemId ?: canonicalUrl ?: message.messageId ?: "cinerelay"
+
         val intent = Intent(this, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
-            if (!eventId.isNullOrBlank()) putExtra("eventId", eventId)
+            putExtra(EXTRA_FROM_NOTIFICATION, true)
+            eventId?.takeIf { it.isNotBlank() }?.let { putExtra(EXTRA_EVENT_ID, it) }
+            rawItemId?.takeIf { it.isNotBlank() }?.let { putExtra(EXTRA_RAW_ITEM_ID, it) }
+            canonicalUrl?.takeIf { it.isNotBlank() }?.let { putExtra(EXTRA_CANONICAL_URL, it) }
+            sourceIdentityId?.takeIf { it.isNotBlank() }?.let { putExtra(EXTRA_SOURCE_IDENTITY_ID, it) }
+            notificationClass?.takeIf { it.isNotBlank() }?.let { putExtra(EXTRA_NOTIFICATION_CLASS, it) }
         }
         val pendingIntent = PendingIntent.getActivity(
             this,
-            eventId?.hashCode() ?: 0,
+            stableTarget.hashCode(),
             intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
 
         val title = message.notification?.title ?: "CineRelay"
-        val body = message.notification?.body ?: message.data["headline"] ?: "New cinema intelligence update"
+        val body = message.notification?.body ?: message.data["headline"] ?: "New movie or streaming update"
         val notification = NotificationCompat.Builder(this, CineRelayApplication.NOTIFICATION_CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_cinerelay_notification)
             .setColor(ContextCompat.getColor(this, R.color.cinerelay_gold))
@@ -59,6 +70,15 @@ class CineRelayMessagingService : FirebaseMessagingService() {
             .setContentIntent(pendingIntent)
             .build()
 
-        NotificationManagerCompat.from(this).notify(message.messageId?.hashCode() ?: body.hashCode(), notification)
+        NotificationManagerCompat.from(this).notify(message.messageId?.hashCode() ?: stableTarget.hashCode(), notification)
+    }
+
+    companion object {
+        const val EXTRA_FROM_NOTIFICATION = "cinerelay.fromNotification"
+        const val EXTRA_EVENT_ID = "cinerelay.eventId"
+        const val EXTRA_RAW_ITEM_ID = "cinerelay.rawItemId"
+        const val EXTRA_CANONICAL_URL = "cinerelay.canonicalUrl"
+        const val EXTRA_SOURCE_IDENTITY_ID = "cinerelay.sourceIdentityId"
+        const val EXTRA_NOTIFICATION_CLASS = "cinerelay.notificationClass"
     }
 }
