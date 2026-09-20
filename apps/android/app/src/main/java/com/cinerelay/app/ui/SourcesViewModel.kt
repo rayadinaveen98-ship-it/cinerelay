@@ -3,7 +3,6 @@ package com.cinerelay.app.ui
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.cinerelay.app.CineRelayApplication
 import com.cinerelay.app.data.NewsroomSignal
 import com.cinerelay.app.data.SourceDirectoryItem
 import com.cinerelay.app.data.SourcesClient
@@ -27,17 +26,18 @@ data class SourcesUiState(
 )
 
 class SourcesViewModel(application: Application) : AndroidViewModel(application) {
-    private val app = application as CineRelayApplication
     private val sourcesClient = SourcesClient()
-    private var latestSignals: List<NewsroomSignal> = emptyList()
+    private var directoryRequest = 0
+    private var feedRequest = 0
 
     private val _state = MutableStateFlow(SourcesUiState())
     val state: StateFlow<SourcesUiState> = _state.asStateFlow()
 
     fun load(platform: NewsroomPlatform, force: Boolean = false) {
         val current = _state.value
-        if (current.loading) return
         if (!force && current.platform == platform && current.sources.isNotEmpty()) return
+        val requestId = ++directoryRequest
+        ++feedRequest
 
         viewModelScope.launch {
             _state.value = current.copy(
@@ -48,24 +48,19 @@ class SourcesViewModel(application: Application) : AndroidViewModel(application)
                 error = null,
             )
             runCatching {
-                withContext(Dispatchers.IO) {
-                    val directory = sourcesClient.sources(platform.name)
-                    val signals = app.backendClient.newsroom(platform.name, 100)
-                    directory to signals
-                }
-            }.onSuccess { (directory, signals) ->
-                latestSignals = signals
-                val selected = _state.value.selectedSource
+                withContext(Dispatchers.IO) { sourcesClient.sources(platform.name) }
+            }.onSuccess { directory ->
+                if (requestId != directoryRequest) return@onSuccess
                 _state.value = _state.value.copy(
                     loading = false,
                     sourceCount = directory.sourceCount,
                     activeInLast24h = directory.activeInLast24h,
                     newItems24h = directory.newItems24h,
                     sources = directory.items,
-                    selectedSignals = selected?.let { signalsFor(it, signals) } ?: emptyList(),
                     error = null,
                 )
             }.onFailure { error ->
+                if (requestId != directoryRequest) return@onFailure
                 _state.value = _state.value.copy(
                     loading = false,
                     error = error.message ?: "Could not load sources",
@@ -74,27 +69,51 @@ class SourcesViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
-    fun refresh() = load(_state.value.platform, force = true)
+    fun refresh() {
+        val selected = _state.value.selectedSource
+        if (selected != null) openSource(selected) else load(_state.value.platform, force = true)
+    }
 
     fun openSource(source: SourceDirectoryItem) {
+        val platform = _state.value.platform
+        val requestId = ++feedRequest
         _state.value = _state.value.copy(
             selectedSource = source,
-            selectedSignals = signalsFor(source, latestSignals),
+            selectedSignals = emptyList(),
+            loading = true,
             error = null,
         )
+
+        viewModelScope.launch {
+            runCatching {
+                withContext(Dispatchers.IO) {
+                    sourcesClient.sourceFeed(platform.name, source.identityId, 100)
+                }
+            }.onSuccess { signals ->
+                if (requestId != feedRequest || _state.value.selectedSource?.identityId != source.identityId) return@onSuccess
+                _state.value = _state.value.copy(
+                    loading = false,
+                    selectedSignals = signals,
+                    error = null,
+                )
+            }.onFailure { error ->
+                if (requestId != feedRequest || _state.value.selectedSource?.identityId != source.identityId) return@onFailure
+                _state.value = _state.value.copy(
+                    loading = false,
+                    selectedSignals = emptyList(),
+                    error = error.message ?: "Could not load this source feed",
+                )
+            }
+        }
     }
 
     fun closeSource() {
-        _state.value = _state.value.copy(selectedSource = null, selectedSignals = emptyList())
-    }
-
-    private fun signalsFor(source: SourceDirectoryItem, signals: List<NewsroomSignal>): List<NewsroomSignal> {
-        val handle = source.handle?.trim()?.lowercase()
-        val name = source.name.trim().lowercase()
-        return signals.filter { signal ->
-            val signalHandle = signal.source.handle?.trim()?.lowercase()
-            val signalName = signal.source.name?.trim()?.lowercase()
-            if (!handle.isNullOrBlank()) signalHandle == handle else signalName == name
-        }
+        ++feedRequest
+        _state.value = _state.value.copy(
+            selectedSource = null,
+            selectedSignals = emptyList(),
+            loading = false,
+            error = null,
+        )
     }
 }
