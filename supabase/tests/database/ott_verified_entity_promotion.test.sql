@@ -106,12 +106,17 @@ select results_eq(
 );
 
 select results_eq(
-  $$select count(*) from public.source_entity_candidates sec
-    join public.entities e on e.id=sec.entity_id
-    where public.normalize_entity_discovery_name(e.canonical_name)='verified ott film'
-      and sec.active=true$$,
-  array[2::bigint],
-  'promotion scopes both independent evidence sources to the canonical movie'
+  $$select
+      (select count(*) from public.operator_resolution_overrides oro
+        join public.entities e on e.id=oro.entity_id
+        where public.normalize_entity_discovery_name(e.canonical_name)='verified ott film'
+          and oro.active=true)::text || ':' ||
+      (select count(*) from public.source_entity_candidates sec
+        join public.entities e on e.id=sec.entity_id
+        where public.normalize_entity_discovery_name(e.canonical_name)='verified ott film'
+          and sec.active=true)::text$$,
+  array['2:0'::text],
+  'promotion preserves both evidence items without teaching broad OTT/trade source scope'
 );
 
 select results_eq(
