@@ -41,6 +41,7 @@ fun P6039BottomNavOverlay(
         NavItem(AppTab.FOLLOWING, selected, Icons.Default.List, "Sources", onSelect)
         NavItem(AppTab.RADAR, selected, Icons.Default.Movie, "Radar", onSelect)
         NavItem(AppTab.ALERTS, selected, Icons.Default.Notifications, "Alerts", onSelect)
+        // Account/settings is intentionally not modeled as a content AppTab.
         ControlNavItem(onOpenControlRoom)
     }
 }
