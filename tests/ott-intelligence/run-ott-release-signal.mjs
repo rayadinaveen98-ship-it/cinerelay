@@ -55,7 +55,7 @@ assert.equal(reported.confidence, 0.92);
 
 const poojaMeriJaan = extractOttMovieReleaseSignal({
   title: "OTT: Mrunal Thakur-Huma Qureshi's Thriller &#8216;Pooja Meri Jaan&#8217; Gets Streaming Date",
-  text: 'The film will premiere directly on ZEE5 on October 2, 2026. The makers have now confirmed its OTT release and direct digital debut.',
+  text: 'The Bollywood thriller will premiere directly on ZEE5 on October 2, 2026. The makers have now confirmed its OTT release and direct digital debut.',
   publishedAt: '2026-09-20T05:30:25Z',
   source: { authorityTier: 3, role: 'TRADE_MEDIA', name: '123Telugu — Movie News' },
 });
@@ -66,10 +66,11 @@ assert.equal(poojaMeriJaan.releaseDate, '2026-10-02');
 assert.equal(poojaMeriJaan.state, 'UPCOMING');
 assert.equal(poojaMeriJaan.evidenceStatus, 'REPORTED');
 assert.equal(poojaMeriJaan.releaseType, 'ORIGINAL');
+assert.equal(poojaMeriJaan.primaryLanguage, 'hi');
 
 const agadha = extractOttMovieReleaseSignal({
   title: "MS Raju's Agadha Locked for ZEE5 Premiere &#8211; Can It Find Redemption on OTT?",
-  text: 'ZEE5 has locked September 25, 2026, as its digital premiere date for the movie.',
+  text: 'The Telugu horror thriller is heading to ZEE5, which has locked September 25, 2026, as its digital premiere date for the movie.',
   publishedAt: '2026-09-20T02:30:18Z',
   source: { authorityTier: 3, role: 'TRADE_MEDIA', name: '123Telugu — Movie News' },
 });
@@ -80,6 +81,7 @@ assert.equal(agadha.releaseDate, '2026-09-25');
 assert.equal(agadha.state, 'UPCOMING');
 assert.equal(agadha.evidenceStatus, 'REPORTED');
 assert.equal(agadha.releaseType, 'POST_THEATRICAL');
+assert.equal(agadha.primaryLanguage, 'te');
 
 const nowStreaming = extractOttMovieReleaseSignal({
   title: 'Example Movie - Now Streaming on Netflix',
