@@ -255,7 +255,7 @@ begin
     raise exception 'ott_evidence_source_not_credible_enough';
   end if;
 
-  select coalesce(array_agg(distinct lower(btrim(language))) order by lower(btrim(language))), '{}'::text[])
+  select coalesce(array_agg(distinct lower(btrim(language)) order by lower(btrim(language))), '{}'::text[])
   into v_languages
   from unnest(coalesce(p_languages, '{}'::text[])) as language
   where btrim(language) <> '';
