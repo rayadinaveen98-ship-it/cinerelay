@@ -69,10 +69,62 @@ data class IntelligenceActivity(
     val source: IntelligenceActivitySource,
 )
 
+data class OttProvider(
+    val code: String,
+    val name: String,
+    val homepageUrl: String?,
+)
+
+data class OttEvidenceRef(
+    val rawItemId: String,
+    val eventId: String?,
+    val role: String,
+    val firstParty: Boolean,
+    val observedAt: String?,
+    val title: String?,
+    val canonicalUrl: String?,
+    val publishedAt: String?,
+    val source: IntelligenceActivitySource,
+)
+
+data class OttEvidenceSummary(
+    val total: Int,
+    val firstParty: Int,
+    val conflicting: Int,
+    val refs: List<OttEvidenceRef>,
+)
+
+data class OttRelease(
+    val id: String,
+    val entity: IntelligenceEntity,
+    val provider: OttProvider,
+    val territory: String,
+    val languages: List<String>,
+    val releaseType: String,
+    val releaseDate: String?,
+    val datePrecision: String,
+    val state: String,
+    val evidenceStatus: String,
+    val previousReleaseDate: String?,
+    val firstObservedAt: String?,
+    val lastVerifiedAt: String?,
+    val evidence: OttEvidenceSummary,
+)
+
+data class OttReleaseFeed(
+    val window: String,
+    val territory: String,
+    val today: String?,
+    val windowEnd: String?,
+    val providers: List<OttProvider>,
+    val items: List<OttRelease>,
+)
+
 data class IntelligenceHub(
     val entity: IntelligenceEntity,
     val events: List<IntelligenceEvent>,
     val activity: List<IntelligenceActivity>,
+    val ottReleases: List<OttRelease> = emptyList(),
 )
 
 data class StoryCluster(
@@ -117,6 +169,7 @@ class IntelligenceClient(
             entity = entity,
             events = json.optJSONArray("events").toIntelligenceEvents(),
             activity = json.optJSONArray("activity").toIntelligenceActivity(),
+            ottReleases = json.optJSONArray("ottReleases").toOttReleases(),
         )
     }
 
@@ -134,6 +187,35 @@ class IntelligenceClient(
                 add(StoryCluster(event = event, entity = row.optJSONObject("entity")?.toEntity()))
             }
         }
+    }
+
+    fun ott(
+        window: String = "this_week",
+        providerCode: String? = null,
+        language: String? = null,
+        contentType: String? = null,
+        evidenceStatus: String? = null,
+        limit: Int = 50,
+    ): OttReleaseFeed {
+        val body = JSONObject()
+            .put("action", "ott")
+            .put("window", window)
+            .put("territory", "IN")
+            .put("limit", limit.coerceIn(1, 75))
+        providerCode?.takeIf { it.isNotBlank() }?.let { body.put("providerCode", it) }
+        language?.takeIf { it.isNotBlank() }?.let { body.put("language", it) }
+        contentType?.takeIf { it.isNotBlank() }?.let { body.put("contentType", it) }
+        evidenceStatus?.takeIf { it.isNotBlank() }?.let { body.put("evidenceStatus", it) }
+
+        val json = invoke(body)
+        return OttReleaseFeed(
+            window = json.optString("window", window),
+            territory = json.optString("territory", "IN"),
+            today = json.optionalString("today"),
+            windowEnd = json.optionalString("windowEnd"),
+            providers = json.optJSONArray("providers").toOttProviders(),
+            items = json.optJSONArray("items").toOttReleases(),
+        )
     }
 
     private fun invoke(body: JSONObject): JSONObject {
@@ -228,7 +310,7 @@ private fun JSONObject.toIntelligenceEvent(): IntelligenceEvent {
     val evidenceJson = optJSONObject("evidence") ?: JSONObject()
     return IntelligenceEvent(
         id = optString("id"),
-        eventType = optString("eventType"),
+        eventType = optionalString("eventType") ?: optString("type"),
         verificationState = optString("verificationState"),
         verificationConfidence = optionalDouble("verificationConfidence"),
         priorityBand = optionalString("priorityBand"),
@@ -263,16 +345,98 @@ private fun JSONArray?.toIntelligenceActivity(): List<IntelligenceActivity> {
                     publishedAt = row.optionalString("publishedAt"),
                     observedAt = row.optionalString("observedAt"),
                     resolutionScore = row.optionalDouble("resolutionScore"),
-                    source = IntelligenceActivitySource(
-                        name = source.optionalString("name"),
-                        authorityTier = if (source.has("authorityTier") && !source.isNull("authorityTier")) source.optInt("authorityTier") else null,
-                        role = source.optionalString("role"),
-                        platform = source.optionalString("platform"),
-                        handle = source.optionalString("handle"),
-                    ),
+                    source = source.toActivitySource(),
                 ),
             )
         }
+    }
+}
+
+private fun JSONArray?.toOttProviders(): List<OttProvider> {
+    val array = this ?: JSONArray()
+    return buildList {
+        for (index in 0 until array.length()) {
+            val row = array.optJSONObject(index) ?: continue
+            add(
+                OttProvider(
+                    code = row.optString("code"),
+                    name = row.optString("name"),
+                    homepageUrl = row.optionalString("homepageUrl"),
+                ),
+            )
+        }
+    }
+}
+
+private fun JSONArray?.toOttReleases(): List<OttRelease> {
+    val array = this ?: JSONArray()
+    return buildList {
+        for (index in 0 until array.length()) array.optJSONObject(index)?.let { add(it.toOttRelease()) }
+    }
+}
+
+private fun JSONObject.toOttRelease(): OttRelease {
+    val entityJson = optJSONObject("entity") ?: JSONObject()
+    val providerJson = optJSONObject("provider") ?: JSONObject()
+    val evidenceJson = optJSONObject("evidence") ?: JSONObject()
+    val refsJson = evidenceJson.optJSONArray("refs") ?: JSONArray()
+    val refs = buildList {
+        for (index in 0 until refsJson.length()) {
+            val row = refsJson.optJSONObject(index) ?: continue
+            add(
+                OttEvidenceRef(
+                    rawItemId = row.optString("rawItemId"),
+                    eventId = row.optionalString("eventId"),
+                    role = row.optString("role"),
+                    firstParty = row.optBoolean("firstParty", false),
+                    observedAt = row.optionalString("observedAt"),
+                    title = row.optionalString("title"),
+                    canonicalUrl = row.optionalString("canonicalUrl"),
+                    publishedAt = row.optionalString("publishedAt"),
+                    source = (row.optJSONObject("source") ?: JSONObject()).toActivitySource(),
+                ),
+            )
+        }
+    }
+    return OttRelease(
+        id = optString("id"),
+        entity = entityJson.toEntity(),
+        provider = OttProvider(
+            code = providerJson.optString("code"),
+            name = providerJson.optString("name"),
+            homepageUrl = providerJson.optionalString("homepageUrl"),
+        ),
+        territory = optString("territory", "IN"),
+        languages = optJSONArray("languages").toStringList(),
+        releaseType = optString("releaseType"),
+        releaseDate = optionalString("releaseDate"),
+        datePrecision = optString("datePrecision", "TBA"),
+        state = optString("state", "TBA"),
+        evidenceStatus = optString("evidenceStatus", "TBA"),
+        previousReleaseDate = optionalString("previousReleaseDate"),
+        firstObservedAt = optionalString("firstObservedAt"),
+        lastVerifiedAt = optionalString("lastVerifiedAt"),
+        evidence = OttEvidenceSummary(
+            total = evidenceJson.optInt("total", 0),
+            firstParty = evidenceJson.optInt("firstParty", 0),
+            conflicting = evidenceJson.optInt("conflicting", 0),
+            refs = refs,
+        ),
+    )
+}
+
+private fun JSONObject.toActivitySource(): IntelligenceActivitySource = IntelligenceActivitySource(
+    name = optionalString("name"),
+    authorityTier = if (has("authorityTier") && !isNull("authorityTier")) optInt("authorityTier") else null,
+    role = optionalString("role"),
+    platform = optionalString("platform"),
+    handle = optionalString("handle"),
+)
+
+private fun JSONArray?.toStringList(): List<String> {
+    val array = this ?: JSONArray()
+    return buildList {
+        for (index in 0 until array.length()) array.optString(index).takeIf { it.isNotBlank() }?.let(::add)
     }
 }
 
