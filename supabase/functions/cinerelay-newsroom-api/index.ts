@@ -72,6 +72,12 @@ function platformOf(value: unknown): NewsroomPlatform | null {
   return null;
 }
 
+function optionalIdentityId(value: unknown): string | null {
+  if (value === undefined || value === null) return null;
+  const normalized = String(value).trim();
+  return normalized.length > 0 ? normalized : null;
+}
+
 function newsroomState(verificationState: string | null, authorityTier: number | null, conflictCount: number): string {
   if (conflictCount > 0) return 'CONFLICT_RUMOR';
   switch (verificationState) {
@@ -94,11 +100,19 @@ function evidenceRank(role: unknown): number {
   return role === 'PRIMARY' ? 0 : role === 'CORROBORATING' ? 1 : role === 'REPEAT' ? 2 : role === 'CONFLICTING' ? 3 : 4;
 }
 
-async function newsroom(userId: string | null, limit: number, platform: NewsroomPlatform) {
-  const identityResult = await admin.from('source_identities')
+async function newsroom(
+  userId: string | null,
+  limit: number,
+  platform: NewsroomPlatform,
+  sourceIdentityId: string | null,
+) {
+  let identityQuery = admin.from('source_identities')
     .select('id,source_id,platform,handle,canonical_url,connector_type,poll_class,active')
     .eq('active', true)
     .eq('platform', platform);
+  if (sourceIdentityId) identityQuery = identityQuery.eq('id', sourceIdentityId);
+
+  const identityResult = await identityQuery;
   if (identityResult.error) throw identityResult.error;
 
   const identities = identityResult.data ?? [];
@@ -109,6 +123,7 @@ async function newsroom(userId: string | null, limit: number, platform: Newsroom
       generatedAt: new Date().toISOString(),
       guest: userId === null,
       platform,
+      sourceIdentityId,
       scanCount: 0,
       filteredOut: 0,
       filterCounts: { empty_content: 0, archive_or_library_clip: 0, celebrity_lifestyle: 0, duplicate_title: 0 },
@@ -116,7 +131,9 @@ async function newsroom(userId: string | null, limit: number, platform: Newsroom
     };
   }
 
-  const scanLimit = Math.min(300, Math.max(80, limit * 5));
+  const scanLimit = sourceIdentityId
+    ? Math.min(500, Math.max(100, limit * 5))
+    : Math.min(300, Math.max(80, limit * 5));
   const { data: rawRows, error: rawError } = await admin.from('raw_items')
     .select('id,source_identity_id,canonical_url,published_at,first_seen_at,item_type,raw_title,raw_text,language_code,media_type,created_at')
     .in('source_identity_id', identityIds)
@@ -322,6 +339,7 @@ async function newsroom(userId: string | null, limit: number, platform: Newsroom
     generatedAt: new Date().toISOString(),
     guest: userId === null,
     platform,
+    sourceIdentityId,
     scanCount: raws.length,
     filteredOut: Object.values(filterCounts).reduce((sum, count) => sum + count, 0),
     filterCounts,
@@ -334,14 +352,20 @@ Deno.serve(async (request) => {
     if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: corsHeaders });
     if (request.method !== 'POST') return new Response(null, { status: 405, headers: { ...corsHeaders, allow: 'POST, OPTIONS' } });
 
-    const body = await request.json().catch(() => ({})) as { action?: unknown; limit?: unknown; platform?: unknown };
+    const body = await request.json().catch(() => ({})) as {
+      action?: unknown;
+      limit?: unknown;
+      platform?: unknown;
+      sourceIdentityId?: unknown;
+    };
     if (body.action !== undefined && body.action !== 'newsroom') return json(400, { error: 'unsupported_action' });
     const platform = platformOf(body.platform);
     if (!platform) return json(400, { error: 'unsupported_platform' });
+    const sourceIdentityId = optionalIdentityId(body.sourceIdentityId);
 
     const maybeUser = await optionalUser(request);
     if (maybeUser instanceof Response) return maybeUser;
-    return json(200, await newsroom(maybeUser?.id ?? null, limitOf(body.limit), platform));
+    return json(200, await newsroom(maybeUser?.id ?? null, limitOf(body.limit), platform, sourceIdentityId));
   } catch (error) {
     console.error('cinerelay-newsroom-api failure', error);
     return json(500, { error: 'internal_error' });
