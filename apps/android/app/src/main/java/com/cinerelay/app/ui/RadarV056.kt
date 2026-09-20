@@ -57,6 +57,11 @@ fun RadarV056(
     onOpen: (EventCard) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val actionableEvents = state.events.filter { event ->
+        val label = event.radar?.label
+        label != null && label != "NO_ACTION"
+    }
+
     MaterialTheme(
         colorScheme = darkColorScheme(
             primary = RadarGold56,
@@ -98,7 +103,7 @@ fun RadarV056(
                             CircularProgressIndicator(color = RadarGold56, strokeWidth = 2.dp)
                         }
                     }
-                    state.events.isEmpty() -> {
+                    actionableEvents.isEmpty() -> {
                         Column(
                             modifier = Modifier.fillMaxSize().padding(horizontal = 28.dp, vertical = 70.dp),
                             horizontalAlignment = Alignment.CenterHorizontally,
@@ -127,7 +132,7 @@ fun RadarV056(
                             item {
                                 Text("Worth a look", color = RadarText56, fontSize = 18.sp, fontWeight = FontWeight.Bold)
                             }
-                            items(state.events, key = { it.id }) { event ->
+                            items(actionableEvents, key = { it.id }) { event ->
                                 RadarOpportunityCardV056(event = event, onClick = { onOpen(event) })
                             }
                         }
@@ -179,11 +184,7 @@ private fun friendlyRadarOpportunityV056(event: EventCard): String = when (event
     "BREAKING_EXPLAINER" -> "Worth covering now"
     "SHORT_OPPORTUNITY" -> "Quick Short idea"
     "FOLLOW_UP_NEEDED" -> "Keep watching"
-    else -> when (event.eventType) {
-        "TRAILER_RELEASED" -> "Trailer analysis"
-        "TEASER_RELEASED", "GLIMPSE_RELEASED", "FIRST_LOOK_RELEASED", "POSTER_RELEASED" -> "Quick Short idea"
-        else -> "Worth a look"
-    }
+    else -> "Worth a look"
 }
 
 private fun friendlyRadarHintV056(event: EventCard): String = when (event.radar?.label) {
