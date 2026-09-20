@@ -27,6 +27,7 @@ import androidx.compose.material.icons.filled.OpenInNew
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -60,6 +61,7 @@ private val DetailGold = Color(0xFFE8C56D)
 private val DetailGreen = Color(0xFF73D6A5)
 private val DetailRed = Color(0xFFF08079)
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NotificationDetailV055(
     state: ConsumerUiStateV055,
