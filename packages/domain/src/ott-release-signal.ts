@@ -97,7 +97,8 @@ function validIsoDate(year: number, month: number, day: number): string | undefi
   return `${String(year).padStart(4, '0')}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 }
 
-function inferYear(month: number, day: number, publishedAt: Date): number {
+function inferYear(input: { month: number; day: number; publishedAt: Date }): number {
+  const { month, day, publishedAt } = input;
   const baseYear = publishedAt.getUTCFullYear();
   const candidate = new Date(Date.UTC(baseYear, month - 1, day));
   const publishedDay = new Date(Date.UTC(baseYear, publishedAt.getUTCMonth(), publishedAt.getUTCDate()));
@@ -129,7 +130,7 @@ function extractDate(value: string, publishedAt: Date): string | undefined {
   if (!monthName || !day) return undefined;
   const month = MONTHS[monthName];
   if (!month) return undefined;
-  const year = explicitYear ?? inferYear(month, day, publishedAt);
+  const year = explicitYear ?? inferYear({ month, day, publishedAt });
   return validIsoDate(year, month, day);
 }
 
