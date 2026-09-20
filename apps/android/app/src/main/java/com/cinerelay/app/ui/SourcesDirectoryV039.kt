@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -224,9 +225,7 @@ private fun SourcesDirectoryList(
         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 6.dp, bottom = 160.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        item {
-            SourcesSummaryCard(state)
-        }
+        item { SourcesSummaryCard(state) }
         item {
             Row(
                 modifier = Modifier
@@ -380,9 +379,7 @@ private fun SourceDetailFeed(
         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 6.dp, bottom = 160.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        item {
-            SourceDetailHeader(source)
-        }
+        item { SourceDetailHeader(source) }
 
         if (!loading && signals.isEmpty()) {
             item {
@@ -404,9 +401,7 @@ private fun SourceDetailFeed(
                 }
             }
         } else {
-            items(signals, key = { it.id }) { signal ->
-                SourceNewsroomCard(signal)
-            }
+            items(signals, key = { it.id }) { signal -> SourceNewsroomCard(signal) }
         }
     }
 }
@@ -506,9 +501,7 @@ private fun SourceNewsroomCard(signal: NewsroomSignal) {
                 signal.canonicalUrl?.let { url ->
                     TextButton(
                         onClick = {
-                            runCatching {
-                                context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
-                            }
+                            runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) }
                         },
                     ) {
                         Icon(Icons.Default.OpenInNew, contentDescription = null, modifier = Modifier.size(14.dp), tint = SourcesGold)
