@@ -104,6 +104,12 @@ verify_jwt = false
 [functions.cinerelay-device-registration-api]
 verify_jwt = false
 
+# Source notification preferences use the same authenticated-user boundary as
+# device registration. The function validates the bearer session itself and binds
+# every read/write to that verified user id.
+[functions.cinerelay-notification-preferences-api]
+verify_jwt = false
+
 # Mobile reads/follow mutations use the same user-auth boundary. The function
 # validates the bearer token itself and exposes shaped data only; service-owned
 # internal tables remain unavailable directly to Android clients.
