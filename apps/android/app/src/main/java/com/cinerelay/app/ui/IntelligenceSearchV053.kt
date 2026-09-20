@@ -54,6 +54,7 @@ import androidx.compose.ui.unit.sp
 import com.cinerelay.app.data.IntelligenceActivity
 import com.cinerelay.app.data.IntelligenceEntity
 import com.cinerelay.app.data.IntelligenceEvent
+import com.cinerelay.app.data.OttRelease
 import java.time.Duration
 import java.time.Instant
 
@@ -312,6 +313,13 @@ private fun HubBody(state: IntelligenceUiState, onToggleFollow: () -> Unit) {
             items(hub.events, key = { it.id }) { event -> IntelligenceEventCard(event) }
         }
 
+        item { IntelligenceSectionLabel("STREAMING", "${hub.ottReleases.size} release${if (hub.ottReleases.size == 1) "" else "s"}") }
+        if (hub.ottReleases.isEmpty()) {
+            item { HubEmptyCard("No streaming release yet", "Confirmed and reported OTT windows will appear here only when CineRelay has retained release evidence for this title.") }
+        } else {
+            items(hub.ottReleases, key = { it.id }) { release -> IntelligenceOttReleaseCard(release) }
+        }
+
         item { IntelligenceSectionLabel("RESOLVED SOURCE ACTIVITY", "${hub.activity.size} item${if (hub.activity.size == 1) "" else "s"}") }
         if (hub.activity.isEmpty()) {
             item { HubEmptyCard("No resolved source activity yet", "Evidence will appear here after the deterministic resolver links tracked source items to this title.") }
@@ -370,6 +378,78 @@ private fun IntelligenceEventCard(event: IntelligenceEvent) {
                 if (event.evidence.conflicting > 0) {
                     Spacer(Modifier.width(8.dp))
                     Text("${event.evidence.conflicting} conflict", color = IntelligenceRed, fontSize = 9.sp)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun IntelligenceOttReleaseCard(release: OttRelease) {
+    val statusColor = when (release.evidenceStatus) {
+        "CONFIRMED" -> IntelligenceGreen
+        "REPORTED" -> IntelligenceAmber
+        else -> IntelligenceBlue
+    }
+    val dateLabel = release.releaseDate ?: "Date TBA"
+    val secondary = buildList {
+        add(prettyIntelligenceValue(release.releaseType))
+        if (release.languages.isNotEmpty()) add(release.languages.joinToString(" / ") { it.uppercase() })
+        add(release.territory)
+    }.joinToString(" • ")
+
+    Card(
+        colors = CardDefaults.cardColors(containerColor = IntelligencePanel),
+        shape = RoundedCornerShape(20.dp),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Column(Modifier.padding(15.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Surface(color = statusColor.copy(alpha = 0.10f), shape = RoundedCornerShape(50)) {
+                    Text(
+                        prettyIntelligenceValue(release.evidenceStatus),
+                        color = statusColor,
+                        fontSize = 8.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp),
+                    )
+                }
+                Spacer(Modifier.width(7.dp))
+                Text(
+                    prettyIntelligenceValue(release.state),
+                    color = IntelligenceMuted,
+                    fontSize = 9.sp,
+                    modifier = Modifier.weight(1f),
+                )
+                release.lastVerifiedAt?.let { verifiedAt ->
+                    Text("checked ${intelligenceTimeAgo(verifiedAt)}", color = IntelligenceMuted, fontSize = 9.sp)
+                }
+            }
+            Spacer(Modifier.height(10.dp))
+            Text(release.provider.name, color = IntelligenceGold, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.height(3.dp))
+            Text(dateLabel, color = IntelligenceText, fontSize = 19.sp, fontWeight = FontWeight.Bold)
+            Text(secondary, color = IntelligenceMuted, fontSize = 9.sp)
+
+            release.previousReleaseDate?.takeIf { it.isNotBlank() && it != release.releaseDate }?.let { previous ->
+                Spacer(Modifier.height(7.dp))
+                Text("Changed from $previous", color = IntelligenceAmber, fontSize = 9.sp)
+            }
+
+            Spacer(Modifier.height(10.dp))
+            HorizontalDivider(color = IntelligenceLine)
+            Spacer(Modifier.height(8.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Default.CheckCircle, contentDescription = null, tint = statusColor, modifier = Modifier.size(13.dp))
+                Spacer(Modifier.width(5.dp))
+                Text("${release.evidence.total} release evidence", color = IntelligenceMuted, fontSize = 9.sp)
+                if (release.evidence.firstParty > 0) {
+                    Spacer(Modifier.width(8.dp))
+                    Text("${release.evidence.firstParty} first-party", color = IntelligenceGreen, fontSize = 9.sp)
+                }
+                if (release.evidence.conflicting > 0) {
+                    Spacer(Modifier.width(8.dp))
+                    Text("${release.evidence.conflicting} conflict", color = IntelligenceRed, fontSize = 9.sp)
                 }
             }
         }
