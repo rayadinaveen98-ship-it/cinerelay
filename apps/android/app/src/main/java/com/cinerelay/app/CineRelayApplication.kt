@@ -10,6 +10,7 @@ import com.cinerelay.app.data.EvidenceClient
 import com.cinerelay.app.data.IntelligenceClient
 import com.cinerelay.app.data.OttCalendarClient
 import com.cinerelay.app.data.SessionStore
+import com.cinerelay.app.data.UniversalSearchClient
 import com.google.firebase.FirebaseApp
 
 class CineRelayApplication : Application() {
@@ -25,6 +26,8 @@ class CineRelayApplication : Application() {
         private set
     lateinit var consumerClient: ConsumerClient
         private set
+    lateinit var universalSearchClient: UniversalSearchClient
+        private set
 
     override fun onCreate() {
         super.onCreate()
@@ -34,6 +37,7 @@ class CineRelayApplication : Application() {
         intelligenceClient = IntelligenceClient(sessionStore, backendClient)
         ottCalendarClient = OttCalendarClient(sessionStore, backendClient)
         consumerClient = ConsumerClient(sessionStore, backendClient)
+        universalSearchClient = UniversalSearchClient(sessionStore, backendClient)
 
         if (BuildConfig.FIREBASE_CONFIGURED && FirebaseApp.getApps(this).isEmpty()) {
             FirebaseApp.initializeApp(this)
