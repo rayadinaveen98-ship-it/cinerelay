@@ -1,12 +1,22 @@
 import { createClient } from '@supabase/supabase-js';
+// @deno-types="../../../packages/youtube-connector/dist/index.d.ts"
+import {
+  YOUTUBE_QUOTA_POLICY_V1,
+  buildChannelsListUrl,
+  decideQuota,
+  normalizeChannelsListResponse,
+} from '../../../packages/youtube-connector/dist/index.js';
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL');
 const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 const internalSecret = Deno.env.get('CINERELAY_INTERNAL_ADMIN_SECRET');
-if (!supabaseUrl || !serviceRoleKey || !internalSecret) throw new Error('Missing YouTube maintenance-worker environment');
+const youtubeApiKey = Deno.env.get('YOUTUBE_API_KEY');
+if (!supabaseUrl || !serviceRoleKey || !internalSecret || !youtubeApiKey) throw new Error('Missing YouTube maintenance-worker environment');
 
 const supabase = createClient(supabaseUrl, serviceRoleKey, { auth: { persistSession: false, autoRefreshToken: false } });
 const VERIFICATION_TIMEOUT_MS = 15 * 60 * 1000;
+const ARTWORK_REFRESH_MS = 7 * 24 * 60 * 60 * 1000;
+const ARTWORK_BATCH_SIZE = 50;
 
 function authorized(request: Request): boolean {
   const supplied = request.headers.get('x-cinerelay-internal-key') ?? '';
@@ -18,6 +28,14 @@ function authorized(request: Request): boolean {
 
 function json(status: number, body: Record<string, unknown>): Response {
   return new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } });
+}
+
+function recordValue(value: unknown): Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value) ? value as Record<string, unknown> : {};
+}
+
+function stringValue(value: unknown): string | null {
+  return typeof value === 'string' && value.trim().length > 0 ? value : null;
 }
 
 async function callSubscriptionAdmin(sourceIdentityId: string, action: 'renew'): Promise<{ ok: boolean; status: number }> {
@@ -54,12 +72,123 @@ async function markHealth(sourceIdentityId: string, healthState: string, code: s
   }
 }
 
+async function refreshSourceArtwork(limit: number): Promise<{
+  due: number;
+  refreshed: number;
+  apiRequests: number;
+  failures: number;
+  quotaSkipped: boolean;
+}> {
+  const { data: identityRows, error: identityError } = await supabase
+    .from('source_identities')
+    .select('id,platform_identity_id,connector_config')
+    .eq('platform', 'YOUTUBE')
+    .eq('active', true)
+    .limit(250);
+  if (identityError) throw identityError;
+
+  const staleBefore = Date.now() - ARTWORK_REFRESH_MS;
+  const dueRows = (identityRows ?? []).filter((row: Record<string, unknown>) => {
+    const config = recordValue(row.connector_config);
+    const artworkUrl = stringValue(config.artworkUrl);
+    const refreshedAt = stringValue(config.artworkRefreshedAt);
+    const refreshedMs = refreshedAt ? Date.parse(refreshedAt) : Number.NaN;
+    return !artworkUrl || !Number.isFinite(refreshedMs) || refreshedMs < staleBefore;
+  }).slice(0, limit);
+
+  if (dueRows.length === 0) return { due: 0, refreshed: 0, apiRequests: 0, failures: 0, quotaSkipped: false };
+
+  const channelIds = [...new Set(dueRows
+    .map((row: Record<string, unknown>) => stringValue(row.platform_identity_id))
+    .filter((value): value is string => value !== null))];
+  if (channelIds.length === 0) return { due: dueRows.length, refreshed: 0, apiRequests: 0, failures: dueRows.length, quotaSkipped: false };
+
+  const batches: string[][] = [];
+  for (let index = 0; index < channelIds.length; index += ARTWORK_BATCH_SIZE) batches.push(channelIds.slice(index, index + ARTWORK_BATCH_SIZE));
+
+  const { data: usedUnits, error: quotaError } = await supabase.rpc('connector_quota_used_today', {
+    p_provider: 'YOUTUBE_DATA_API',
+    p_quota_bucket: 'GENERAL_READ',
+  });
+  if (quotaError) throw quotaError;
+
+  const quota = decideQuota({
+    usedUnits: Number(usedUnits ?? 0),
+    requestedUnits: batches.length * YOUTUBE_QUOTA_POLICY_V1.channelsList.unitsPerRequest,
+    hardLimit: YOUTUBE_QUOTA_POLICY_V1.generalReadDefaultDailyUnits,
+    reserveUnits: 500,
+  });
+  if (!quota.allowed) return { due: dueRows.length, refreshed: 0, apiRequests: 0, failures: 0, quotaSkipped: true };
+
+  const snapshotMap = new Map<string, ReturnType<typeof normalizeChannelsListResponse>[number]>();
+  let apiRequests = 0;
+  let failures = 0;
+
+  for (const batch of batches) {
+    const response = await fetch(buildChannelsListUrl(batch, youtubeApiKey!));
+    apiRequests += 1;
+    const { error: usageError } = await supabase.from('connector_quota_usage').insert({
+      provider: 'YOUTUBE_DATA_API',
+      quota_bucket: 'GENERAL_READ',
+      method: 'channels.list',
+      units: YOUTUBE_QUOTA_POLICY_V1.channelsList.unitsPerRequest,
+      request_count: 1,
+      response_status: response.status,
+      metadata: { purpose: 'SOURCE_ARTWORK_REFRESH', channelCount: batch.length },
+    });
+    if (usageError) throw usageError;
+
+    if (!response.ok) {
+      failures += batch.length;
+      continue;
+    }
+    for (const snapshot of normalizeChannelsListResponse(await response.json())) snapshotMap.set(snapshot.channelId, snapshot);
+  }
+
+  const refreshedAt = new Date().toISOString();
+  let refreshed = 0;
+  for (const row of dueRows as Record<string, unknown>[]) {
+    const identityId = stringValue(row.id);
+    const channelId = stringValue(row.platform_identity_id);
+    if (!identityId || !channelId) {
+      failures += 1;
+      continue;
+    }
+    const snapshot = snapshotMap.get(channelId);
+    if (!snapshot) {
+      failures += 1;
+      continue;
+    }
+
+    const existingConfig = recordValue(row.connector_config);
+    const nextConfig: Record<string, unknown> = {
+      ...existingConfig,
+      artworkRefreshedAt: refreshedAt,
+      providerTitle: snapshot.title,
+    };
+    if (snapshot.thumbnailUrl) nextConfig.artworkUrl = snapshot.thumbnailUrl;
+    if (snapshot.customUrl) nextConfig.providerCustomUrl = snapshot.customUrl;
+
+    const { error: updateError } = await supabase.from('source_identities')
+      .update({ connector_config: nextConfig, updated_at: refreshedAt })
+      .eq('id', identityId);
+    if (updateError) {
+      failures += 1;
+      continue;
+    }
+    refreshed += 1;
+  }
+
+  return { due: dueRows.length, refreshed, apiRequests, failures, quotaSkipped: false };
+}
+
 Deno.serve(async (request) => {
   try {
     if (request.method !== 'POST') return new Response(null, { status: 405, headers: { allow: 'POST' } });
     if (!authorized(request)) return json(401, { error: 'unauthorized' });
-    const body = await request.json().catch(() => ({})) as { limit?: number };
+    const body = await request.json().catch(() => ({})) as { limit?: number; artworkLimit?: number };
     const limit = Math.max(1, Math.min(100, Number(body.limit ?? 50)));
+    const artworkLimit = Math.max(1, Math.min(100, Number(body.artworkLimit ?? 100)));
     const now = new Date();
     const nowIso = now.toISOString();
     const timeoutCutoff = new Date(now.getTime() - VERIFICATION_TIMEOUT_MS).toISOString();
@@ -132,6 +261,8 @@ Deno.serve(async (request) => {
       }
     }
 
+    const artwork = await refreshSourceArtwork(artworkLimit);
+
     return json(200, {
       expired: expiredRows?.length ?? 0,
       verificationTimeouts: timedOutRows?.length ?? 0,
@@ -139,6 +270,7 @@ Deno.serve(async (request) => {
       renewed,
       renewalFailures,
       skippedInFlight,
+      artwork,
     });
   } catch (error) {
     console.error('youtube-maintenance-worker failure', error);
