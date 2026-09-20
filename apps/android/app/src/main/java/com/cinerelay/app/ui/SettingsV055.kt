@@ -25,6 +25,7 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.VideoLibrary
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -51,6 +52,7 @@ private val SettingsGold55 = Color(0xFFE8C56D)
 private val SettingsGreen55 = Color(0xFF73D6A5)
 private val SettingsRed55 = Color(0xFFF08079)
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsV055(
     state: CineRelayUiState,
