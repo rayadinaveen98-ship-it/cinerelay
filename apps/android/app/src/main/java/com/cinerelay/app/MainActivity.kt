@@ -35,6 +35,8 @@ import com.cinerelay.app.ui.IntelligenceSearchV053
 import com.cinerelay.app.ui.IntelligenceViewModel
 import com.cinerelay.app.ui.NotificationOnboardingV044
 import com.cinerelay.app.ui.NotificationOnboardingViewModel
+import com.cinerelay.app.ui.OttReleasesV054
+import com.cinerelay.app.ui.OttViewModelV054
 import com.cinerelay.app.ui.P6039BottomNavOverlay
 import com.cinerelay.app.ui.SourcesDirectoryV039
 import com.cinerelay.app.ui.SourcesViewModel
@@ -48,12 +50,15 @@ class MainActivity : ComponentActivity() {
             val sourcesViewModel: SourcesViewModel = viewModel()
             val onboardingViewModel: NotificationOnboardingViewModel = viewModel()
             val intelligenceViewModel: IntelligenceViewModel = viewModel()
+            val ottViewModel: OttViewModelV054 = viewModel()
             val state by viewModel.state.collectAsStateWithLifecycle()
             val sourcesState by sourcesViewModel.state.collectAsStateWithLifecycle()
             val onboardingState by onboardingViewModel.state.collectAsStateWithLifecycle()
             val intelligenceState by intelligenceViewModel.state.collectAsStateWithLifecycle()
+            val ottState by ottViewModel.state.collectAsStateWithLifecycle()
             val context = LocalContext.current
             var controlRoomVisible by remember { mutableStateOf(false) }
+            var ottVisible by remember { mutableStateOf(false) }
 
             val notificationPermissionLauncher = rememberLauncherForActivityResult(
                 contract = ActivityResultContracts.RequestPermission(),
@@ -71,6 +76,7 @@ class MainActivity : ComponentActivity() {
             LaunchedEffect(state.authenticated) {
                 if (!state.authenticated) {
                     controlRoomVisible = false
+                    ottVisible = false
                     intelligenceViewModel.close()
                 }
                 onboardingViewModel.sync(state.authenticated)
@@ -86,6 +92,10 @@ class MainActivity : ComponentActivity() {
                 if (state.authenticated && state.tab == AppTab.FOLLOWING && state.authMode == null) {
                     sourcesViewModel.load(state.newsroomPlatform, authenticated = true)
                 }
+            }
+
+            LaunchedEffect(ottVisible, state.authenticated) {
+                if (ottVisible && state.authenticated) ottViewModel.load()
             }
 
             val setupResolving = state.authenticated && !onboardingState.authenticated
@@ -138,7 +148,13 @@ class MainActivity : ComponentActivity() {
                     else -> {
                         CineRelayRootV049(viewModel)
 
-                        if (!controlRoomVisible && !intelligenceState.visible && state.tab == AppTab.FOLLOWING && state.authMode == null) {
+                        if (
+                            !controlRoomVisible &&
+                            !intelligenceState.visible &&
+                            !ottVisible &&
+                            state.tab == AppTab.FOLLOWING &&
+                            state.authMode == null
+                        ) {
                             SourcesDirectoryV039(
                                 state = sourcesState,
                                 onRefresh = sourcesViewModel::refresh,
@@ -151,11 +167,39 @@ class MainActivity : ComponentActivity() {
                             )
                         }
 
+                        if (
+                            !controlRoomVisible &&
+                            !intelligenceState.visible &&
+                            ottVisible &&
+                            state.authMode == null
+                        ) {
+                            OttReleasesV054(
+                                state = ottState,
+                                onRefresh = ottViewModel::refresh,
+                                onSelectWindow = ottViewModel::selectWindow,
+                                onSelectProvider = ottViewModel::selectProvider,
+                                onSelectLanguage = ottViewModel::selectLanguage,
+                                onSelectContentType = ottViewModel::selectContentType,
+                                onSelectEvidence = ottViewModel::selectEvidence,
+                                modifier = Modifier.fillMaxSize(),
+                            )
+                        }
+
                         if (!controlRoomVisible && !intelligenceState.visible && state.authMode == null) {
                             P6039BottomNavOverlay(
                                 selected = state.tab,
-                                onSelect = viewModel::selectTab,
+                                ottSelected = ottVisible,
+                                onSelect = { tab ->
+                                    ottVisible = false
+                                    viewModel.selectTab(tab)
+                                },
+                                onOpenOtt = {
+                                    controlRoomVisible = false
+                                    ottVisible = true
+                                    ottViewModel.load()
+                                },
                                 onOpenControlRoom = {
+                                    ottVisible = false
                                     onboardingViewModel.sync(authenticated = true, force = true)
                                     controlRoomVisible = true
                                 },
@@ -166,6 +210,7 @@ class MainActivity : ComponentActivity() {
                         if (
                             !controlRoomVisible &&
                             !intelligenceState.visible &&
+                            !ottVisible &&
                             state.tab == AppTab.LIVE &&
                             state.authMode == null
                         ) {
@@ -200,6 +245,7 @@ class MainActivity : ComponentActivity() {
                                 },
                                 onSignOut = {
                                     controlRoomVisible = false
+                                    ottVisible = false
                                     viewModel.signOut()
                                 },
                                 modifier = Modifier.fillMaxSize(),
