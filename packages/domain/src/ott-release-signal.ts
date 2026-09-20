@@ -244,7 +244,11 @@ export function extractOttMovieReleaseSignal(input: OttMovieReleaseSignalInput):
   }
 
   const originalLanguage = /\b(original\s+(?:movie|film)|(?:movie|film)\s+original|direct\s+digital\s+debut)\b/i.test(combined);
-  const sourceLanguage = languageCode(`${input.source.name ?? ''} ${combined}`);
+  // A trade outlet's brand can contain a language name (for example 123Telugu),
+  // but that describes the publication, not the movie. Only first-party title-
+  // specific channels may contribute source-name language context.
+  const languageContext = firstParty ? `${input.source.name ?? ''} ${combined}` : combined;
+  const sourceLanguage = languageCode(languageContext);
 
   return {
     title: movieTitle,
