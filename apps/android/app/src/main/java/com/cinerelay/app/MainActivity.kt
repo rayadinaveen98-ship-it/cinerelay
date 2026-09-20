@@ -11,7 +11,6 @@ import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -20,20 +19,19 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.cinerelay.app.push.CineRelayMessagingService
 import com.cinerelay.app.ui.AppTab
+import com.cinerelay.app.ui.CineRelayHomeV055
 import com.cinerelay.app.ui.CineRelayRootV049
 import com.cinerelay.app.ui.CineRelaySetupLoadingV050
 import com.cinerelay.app.ui.CineRelayViewModel
 import com.cinerelay.app.ui.ConsumerViewModelV055
 import com.cinerelay.app.ui.ControlRoomV051
 import com.cinerelay.app.ui.FirstRunAuthV050
-import com.cinerelay.app.ui.IntelligenceSearchLauncherV053
 import com.cinerelay.app.ui.IntelligenceSearchV053
 import com.cinerelay.app.ui.IntelligenceViewModel
 import com.cinerelay.app.ui.NotificationDetailV055
@@ -132,7 +130,7 @@ class MainActivity : ComponentActivity() {
                 if (ottVisible && state.authenticated) ottViewModel.load()
             }
 
-            val personalizationResolved = consumerState.personalization != null || consumerState.personalizationError != null
+            val personalizationResolved = consumerState.personalization != null
             val setupResolving = state.authenticated && (!onboardingState.authenticated || !personalizationResolved)
             val personalizationVisible = state.authenticated &&
                 consumerState.personalization?.completed == false &&
@@ -210,7 +208,25 @@ class MainActivity : ComponentActivity() {
                     }
 
                     else -> {
-                        CineRelayRootV049(viewModel)
+                        val personalization = consumerState.personalization!!
+                        if (state.tab == AppTab.LIVE && state.authMode == null) {
+                            CineRelayHomeV055(
+                                state = state,
+                                personalization = personalization,
+                                onRefresh = viewModel::refresh,
+                                onSearch = intelligenceViewModel::open,
+                                onOpenUpdate = { signal ->
+                                    consumerViewModel.openNotification(
+                                        eventId = null,
+                                        rawItemId = signal.id,
+                                        canonicalUrl = signal.canonicalUrl,
+                                    )
+                                },
+                                modifier = Modifier.fillMaxSize(),
+                            )
+                        } else {
+                            CineRelayRootV049(viewModel)
+                        }
 
                         if (
                             !controlRoomVisible &&
@@ -272,21 +288,6 @@ class MainActivity : ComponentActivity() {
                             )
                         }
 
-                        if (
-                            !controlRoomVisible &&
-                            !intelligenceState.visible &&
-                            !ottVisible &&
-                            state.tab == AppTab.LIVE &&
-                            state.authMode == null
-                        ) {
-                            IntelligenceSearchLauncherV053(
-                                onClick = intelligenceViewModel::open,
-                                modifier = Modifier
-                                    .align(Alignment.BottomEnd)
-                                    .padding(end = 16.dp, bottom = 92.dp),
-                            )
-                        }
-
                         if (controlRoomVisible && state.authMode == null) {
                             ControlRoomV051(
                                 state = state,
@@ -342,12 +343,27 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun captureNotificationIntent(intent: Intent?) {
-        if (intent?.getBooleanExtra(CineRelayMessagingService.EXTRA_FROM_NOTIFICATION, false) != true) return
+        intent ?: return
+        val eventId = intent.getStringExtra(CineRelayMessagingService.EXTRA_EVENT_ID)
+            ?: intent.getStringExtra("eventId")
+        val rawItemId = intent.getStringExtra(CineRelayMessagingService.EXTRA_RAW_ITEM_ID)
+            ?: intent.getStringExtra("rawItemId")
+        val canonicalUrl = intent.getStringExtra(CineRelayMessagingService.EXTRA_CANONICAL_URL)
+            ?: intent.getStringExtra("canonicalUrl")
+        val markedNotification = intent.getBooleanExtra(CineRelayMessagingService.EXTRA_FROM_NOTIFICATION, false)
+        if (!markedNotification && eventId.isNullOrBlank() && rawItemId.isNullOrBlank()) return
+
         notificationRoute.value = NotificationRouteV055(
-            eventId = intent.getStringExtra(CineRelayMessagingService.EXTRA_EVENT_ID),
-            rawItemId = intent.getStringExtra(CineRelayMessagingService.EXTRA_RAW_ITEM_ID),
-            canonicalUrl = intent.getStringExtra(CineRelayMessagingService.EXTRA_CANONICAL_URL),
+            eventId = eventId?.takeIf { it.isNotBlank() },
+            rawItemId = rawItemId?.takeIf { it.isNotBlank() },
+            canonicalUrl = canonicalUrl?.takeIf { it.isNotBlank() },
         )
         intent.removeExtra(CineRelayMessagingService.EXTRA_FROM_NOTIFICATION)
+        intent.removeExtra(CineRelayMessagingService.EXTRA_EVENT_ID)
+        intent.removeExtra(CineRelayMessagingService.EXTRA_RAW_ITEM_ID)
+        intent.removeExtra(CineRelayMessagingService.EXTRA_CANONICAL_URL)
+        intent.removeExtra("eventId")
+        intent.removeExtra("rawItemId")
+        intent.removeExtra("canonicalUrl")
     }
 }
