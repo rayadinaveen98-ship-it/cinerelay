@@ -45,6 +45,8 @@ const PROVIDERS: Array<{ code: string; patterns: RegExp[] }> = [
   { code: 'ETV_WIN', patterns: [/\betv\s*win\b/i, /\betvwin\b/i] },
 ];
 
+const PROVIDER_NAME_PATTERN = '(?:netflix|prime\\s*video|amazon\\s*prime|jio\\s*hotstar|jiohotstar|hotstar|zee\\s*5|zee5|sony\\s*liv|sonyliv|aha(?:\\s*video)?|sun\\s*nxt|sunnxt|etv\\s*win|etvwin)';
+
 const MONTHS: Record<string, number> = {
   jan: 1, january: 1,
   feb: 2, february: 2,
@@ -61,10 +63,22 @@ const MONTHS: Record<string, number> = {
 };
 
 const BAD_TITLE_MARKERS = /\b(trailer|teaser|promo|glimpse|scene|clip|highlights?|song|interview|review|episodes?|ep\.?\s*\d+|recap|behind\s+the\s+scenes|sneak\s+peek|match|innings|wickets?|goals?)\b/i;
-const RELEASE_LANGUAGE = /\b(stream(?:ing|s)?(?:\s+from|\s+on|\s+now)?|premier(?:e|es|ing)(?:\s+on)?|releas(?:e|es|ing)(?:\s+on)?|now\s+streaming)\b/i;
+const RELEASE_LANGUAGE = /\b(stream(?:ing|s)?(?:\s+from|\s+on|\s+now)?|premier(?:e|es|ing)(?:\s+on)?|releas(?:e|es|ing)(?:\s+on)?|now\s+streaming|digital\s+(?:debut|premiere|release))\b/i;
 
 function compactWhitespace(value: string): string {
   return value.normalize('NFKC').replace(/\s+/g, ' ').trim();
+}
+
+function decodeHeadlineEntities(value: string): string {
+  return value
+    .replace(/&#8216;|&lsquo;/gi, '‘')
+    .replace(/&#8217;|&rsquo;/gi, '’')
+    .replace(/&#8220;|&ldquo;/gi, '“')
+    .replace(/&#8221;|&rdquo;/gi, '”')
+    .replace(/&#8211;|&ndash;/gi, '–')
+    .replace(/&#8212;|&mdash;/gi, '—')
+    .replace(/&quot;/gi, '"')
+    .replace(/&amp;/gi, '&');
 }
 
 function providerCode(value: string): string | undefined {
@@ -135,7 +149,7 @@ function extractDate(value: string, publishedAt: Date): string | undefined {
 }
 
 function cleanMovieTitleCandidate(value: string): string | undefined {
-  const candidate = compactWhitespace(value)
+  const candidate = compactWhitespace(decodeHeadlineEntities(value))
     .replace(/^(?:official\s+)?/i, '')
     .replace(/[|,:;\-–—]+$/g, '')
     .trim();
@@ -144,9 +158,33 @@ function cleanMovieTitleCandidate(value: string): string | undefined {
   return candidate;
 }
 
-function extractMovieTitle(title: string, text: string, allowDirectOttHeadline: boolean): string | undefined {
+function extractTradeHeadlineMovieTitle(title: string): string | undefined {
+  const value = compactWhitespace(decodeHeadlineEntities(title));
+  if (!value) return undefined;
+
+  const quoted = value.match(/[‘“'\"]([^‘’“”'\"]{2,100})[’”'\"]\s+(?:gets?|bags?|lands?|scores?|locks?|set|slated|heading|arrives?|premieres?)/i);
+  const quotedCandidate = cleanMovieTitleCandidate(quoted?.[1] ?? '');
+  if (quotedCandidate) return quotedCandidate;
+
+  const providerPremiere = value.match(new RegExp(
+    `^(?:OTT\\s*:\\s*)?(?:.{2,45}[’']s\\s+)?(.{2,80}?)\\s+(?:locked|set|slated|confirmed)\\s+(?:for|to)\\s+(?:${PROVIDER_NAME_PATTERN}\\s+)?(?:digital\\s+)?(?:premiere|streaming|OTT|release)\\b`,
+    'i',
+  ));
+  const providerCandidate = cleanMovieTitleCandidate(providerPremiere?.[1] ?? '');
+  if (providerCandidate) return providerCandidate;
+
+  const ottDate = value.match(/^OTT\s*:\s*(.{2,100}?)\s+(?:gets?|bags?|lands?|scores?)\s+(?:an?\s+|its\s+)?(?:OTT|streaming|digital)\s+(?:date|release|premiere)\b/i);
+  return cleanMovieTitleCandidate(ottDate?.[1] ?? '');
+}
+
+function extractMovieTitle(
+  title: string,
+  text: string,
+  allowDirectOttHeadline: boolean,
+  allowTradeHeadline: boolean,
+): string | undefined {
   const candidates = [title, text]
-    .map(compactWhitespace)
+    .map((value) => compactWhitespace(decodeHeadlineEntities(value)))
     .filter(Boolean);
 
   for (const value of candidates) {
@@ -166,6 +204,8 @@ function extractMovieTitle(title: string, text: string, allowDirectOttHeadline: 
       if (candidate) return candidate;
     }
   }
+
+  if (allowTradeHeadline) return extractTradeHeadlineMovieTitle(title);
   return undefined;
 }
 
@@ -174,8 +214,8 @@ function isFirstParty(source: OttSignalSource): boolean {
 }
 
 export function extractOttMovieReleaseSignal(input: OttMovieReleaseSignalInput): OttMovieReleaseSignal | undefined {
-  const title = compactWhitespace(input.title ?? '');
-  const text = compactWhitespace(input.text ?? '');
+  const title = compactWhitespace(decodeHeadlineEntities(input.title ?? ''));
+  const text = compactWhitespace(decodeHeadlineEntities(input.text ?? ''));
   const combined = compactWhitespace(`${title} ${text}`);
   if (!combined || !RELEASE_LANGUAGE.test(combined)) return undefined;
 
@@ -184,9 +224,11 @@ export function extractOttMovieReleaseSignal(input: OttMovieReleaseSignalInput):
 
   const firstParty = isFirstParty(input.source);
   if (!firstParty && input.source.authorityTier > 3) return undefined;
-  const allowDirectOttHeadline = firstParty && (input.source.role ?? '').toUpperCase() === 'OTT_PLATFORM';
+  const sourceRole = (input.source.role ?? '').toUpperCase();
+  const allowDirectOttHeadline = firstParty && sourceRole === 'OTT_PLATFORM';
+  const allowTradeHeadline = !firstParty && sourceRole === 'TRADE_MEDIA' && input.source.authorityTier <= 3;
 
-  const movieTitle = extractMovieTitle(title, text, allowDirectOttHeadline);
+  const movieTitle = extractMovieTitle(title, text, allowDirectOttHeadline, allowTradeHeadline);
   if (!movieTitle) return undefined;
 
   const publishedAt = parsePublishedDate(input.publishedAt);
@@ -201,7 +243,7 @@ export function extractOttMovieReleaseSignal(input: OttMovieReleaseSignalInput):
     state = releaseDate >= publishedDay ? 'UPCOMING' : 'RELEASED';
   }
 
-  const originalLanguage = /\b(original\s+(?:movie|film)|(?:movie|film)\s+original)\b/i.test(combined);
+  const originalLanguage = /\b(original\s+(?:movie|film)|(?:movie|film)\s+original|direct\s+digital\s+debut)\b/i.test(combined);
   const sourceLanguage = languageCode(`${input.source.name ?? ''} ${combined}`);
 
   return {
