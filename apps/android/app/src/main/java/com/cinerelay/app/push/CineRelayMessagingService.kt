@@ -9,6 +9,7 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import com.cinerelay.app.CineRelayApplication
 import com.cinerelay.app.MainActivity
+import com.cinerelay.app.R
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
 import kotlinx.coroutines.CoroutineScope
@@ -48,7 +49,8 @@ class CineRelayMessagingService : FirebaseMessagingService() {
         val title = message.notification?.title ?: "CineRelay"
         val body = message.notification?.body ?: message.data["headline"] ?: "New cinema intelligence update"
         val notification = NotificationCompat.Builder(this, CineRelayApplication.NOTIFICATION_CHANNEL_ID)
-            .setSmallIcon(android.R.drawable.ic_dialog_info)
+            .setSmallIcon(R.drawable.ic_cinerelay_notification)
+            .setColor(ContextCompat.getColor(this, R.color.cinerelay_gold))
             .setContentTitle(title)
             .setContentText(body)
             .setStyle(NotificationCompat.BigTextStyle().bigText(body))
