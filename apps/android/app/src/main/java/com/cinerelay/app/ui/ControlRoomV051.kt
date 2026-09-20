@@ -265,7 +265,7 @@ private fun ControlNotificationsCard(
 private fun ControlCard(
     title: String,
     subtitle: String,
-    content: @Composable Column.() -> Unit,
+    content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit,
 ) {
     Card(
         colors = CardDefaults.cardColors(containerColor = ControlPanel),
