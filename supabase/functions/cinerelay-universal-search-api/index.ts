@@ -198,10 +198,15 @@ async function latestUpdates(query: string, limit: number) {
   if (titleResult.error) throw titleResult.error;
   if (textResult.error) throw textResult.error;
 
+  const titleMatchIds = new Set((titleResult.data ?? []).map((row) => row.id));
   const byId = new Map<string, Record<string, unknown>>();
   for (const row of [...(titleResult.data ?? []), ...(textResult.data ?? [])]) byId.set(row.id, row);
   const raws = [...byId.values()]
-    .sort((left, right) => timestampOf(right as never) - timestampOf(left as never))
+    .sort((left, right) => {
+      const leftRank = titleMatchIds.has(String(left.id)) ? 0 : 1;
+      const rightRank = titleMatchIds.has(String(right.id)) ? 0 : 1;
+      return leftRank - rightRank || timestampOf(right as never) - timestampOf(left as never);
+    })
     .slice(0, limit);
 
   const identityIds = [...new Set(raws.map((row) => String(row.source_identity_id ?? '')).filter(Boolean))];
