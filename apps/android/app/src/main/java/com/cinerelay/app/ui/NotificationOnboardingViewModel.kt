@@ -157,6 +157,54 @@ class NotificationOnboardingViewModel(application: Application) : AndroidViewMod
         }
     }
 
+    fun setMasterEnabled(enabled: Boolean) {
+        val snapshot = _state.value
+        if (snapshot.saving || !snapshot.setupCompleted) return
+        if (enabled && snapshot.selectedSourceIds.isEmpty()) {
+            _state.value = snapshot.copy(error = "Choose at least one source before enabling notifications")
+            return
+        }
+
+        viewModelScope.launch {
+            _state.value = snapshot.copy(saving = true, error = null)
+            runCatching {
+                withContext(Dispatchers.IO) {
+                    if (enabled) {
+                        val push = pushManager.registerCurrentDevice()
+                        if (!push.registered) {
+                            throw IllegalStateException("Could not register this device for notifications")
+                        }
+                    }
+                    preferencesClient.setMaster(enabled)
+                }
+            }.onSuccess { preferences ->
+                _state.value = _state.value.copy(
+                    setupKnown = true,
+                    setupCompleted = preferences.setupCompleted,
+                    saving = false,
+                    selectedSourceIds = preferences.selectedSourceIds,
+                    includeVideos = preferences.includeVideos,
+                    includeShorts = preferences.includeShorts,
+                    masterEnabled = preferences.masterEnabled,
+                    error = null,
+                )
+            }.onFailure { error ->
+                _state.value = _state.value.copy(
+                    saving = false,
+                    error = error.message ?: "Could not update notification preference",
+                )
+            }
+        }
+    }
+
+    fun notificationPermissionDenied() {
+        _state.value = _state.value.copy(
+            saving = false,
+            masterEnabled = false,
+            error = "Android notification permission is off. Your selected channels were kept unchanged.",
+        )
+    }
+
     private fun applyCompleted(preferences: NotificationPreferenceState, effectiveEnable: Boolean) {
         _state.value = _state.value.copy(
             setupKnown = true,
