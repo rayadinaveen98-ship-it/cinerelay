@@ -8,7 +8,7 @@ import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Movie
-import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -28,7 +28,9 @@ private val NavMuted = Color(0xFFA7ADB7)
 @Composable
 fun P6039BottomNavOverlay(
     selected: AppTab,
+    ottSelected: Boolean,
     onSelect: (AppTab) -> Unit,
+    onOpenOtt: () -> Unit,
     onOpenControlRoom: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -37,11 +39,11 @@ fun P6039BottomNavOverlay(
         containerColor = NavInk,
         tonalElevation = 0.dp,
     ) {
-        NavItem(AppTab.LIVE, selected, Icons.Default.Home, "Home", onSelect)
-        NavItem(AppTab.FOLLOWING, selected, Icons.Default.List, "Sources", onSelect)
-        NavItem(AppTab.RADAR, selected, Icons.Default.Movie, "Radar", onSelect)
-        NavItem(AppTab.ALERTS, selected, Icons.Default.Notifications, "Alerts", onSelect)
-        // Account/settings is intentionally not modeled as a content AppTab.
+        NavItem(AppTab.LIVE, !ottSelected && selected == AppTab.LIVE, Icons.Default.Home, "Home", onSelect)
+        OttNavItem(ottSelected, onOpenOtt)
+        NavItem(AppTab.FOLLOWING, !ottSelected && selected == AppTab.FOLLOWING, Icons.Default.List, "Sources", onSelect)
+        NavItem(AppTab.RADAR, !ottSelected && selected == AppTab.RADAR, Icons.Default.Movie, "Radar", onSelect)
+        // Account, notifications and settings live in Control Room instead of crowding the primary content nav.
         ControlNavItem(onOpenControlRoom)
     }
 }
@@ -49,16 +51,27 @@ fun P6039BottomNavOverlay(
 @Composable
 private fun RowScope.NavItem(
     tab: AppTab,
-    selected: AppTab,
+    selected: Boolean,
     icon: ImageVector,
     label: String,
     onSelect: (AppTab) -> Unit,
 ) {
     NavigationBarItem(
-        selected = selected == tab,
+        selected = selected,
         onClick = { onSelect(tab) },
         icon = { Icon(icon, contentDescription = label, modifier = Modifier.size(22.dp)) },
         label = { Text(label, maxLines = 1, fontSize = 10.sp) },
+        colors = navigationItemColors(),
+    )
+}
+
+@Composable
+private fun RowScope.OttNavItem(selected: Boolean, onOpenOtt: () -> Unit) {
+    NavigationBarItem(
+        selected = selected,
+        onClick = onOpenOtt,
+        icon = { Icon(Icons.Default.PlayArrow, contentDescription = "OTT releases", modifier = Modifier.size(22.dp)) },
+        label = { Text("OTT", maxLines = 1, fontSize = 10.sp) },
         colors = navigationItemColors(),
     )
 }
