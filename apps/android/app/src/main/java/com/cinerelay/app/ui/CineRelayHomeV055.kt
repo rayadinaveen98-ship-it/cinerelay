@@ -48,6 +48,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import com.cinerelay.app.data.NewsroomSignal
+import com.cinerelay.app.data.OnThisDayMovie
 import com.cinerelay.app.data.PersonalizationSource
 import com.cinerelay.app.data.PersonalizationState
 import kotlinx.coroutines.delay
@@ -72,9 +73,12 @@ private data class HomeRailV055(
 fun CineRelayHomeV055(
     state: CineRelayUiState,
     personalization: PersonalizationState,
+    onThisDayMovies: List<OnThisDayMovie>,
+    onThisDayLoading: Boolean,
     onRefresh: () -> Unit,
     onSearch: () -> Unit,
     onOpenUpdate: (NewsroomSignal) -> Unit,
+    onOpenOnThisDay: (OnThisDayMovie) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val signals = state.homeSignals
@@ -131,6 +135,16 @@ fun CineRelayHomeV055(
                                 HomeHeroCarouselV055(heroItems = heroItems, onOpenUpdate = onOpenUpdate)
                             } else {
                                 HomeHeroEmptyV055(favoriteSources)
+                            }
+                        }
+
+                        if (onThisDayMovies.isNotEmpty() || onThisDayLoading) {
+                            item {
+                                HomeOnThisDayV057(
+                                    movies = onThisDayMovies,
+                                    loading = onThisDayLoading,
+                                    onOpen = onOpenOnThisDay,
+                                )
                             }
                         }
 
@@ -300,6 +314,104 @@ private fun HomeHeroEmptyV055(favoriteSources: List<PersonalizationSource>) {
                 lineHeight = 19.sp,
             )
         }
+    }
+}
+
+@Composable
+private fun HomeOnThisDayV057(
+    movies: List<OnThisDayMovie>,
+    loading: Boolean,
+    onOpen: (OnThisDayMovie) -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Column(Modifier.padding(horizontal = 20.dp)) {
+            Text("On This Day", color = Home55Text, fontSize = 19.sp, fontWeight = FontWeight.Bold)
+            Text("Movies that opened on this date in earlier years", color = Home55Muted, fontSize = 11.sp)
+        }
+        if (loading && movies.isEmpty()) {
+            Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp), verticalAlignment = Alignment.CenterVertically) {
+                CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp, color = Home55Gold)
+                Spacer(Modifier.width(10.dp))
+                Text("Looking through cinema history…", color = Home55Muted, fontSize = 12.sp)
+            }
+            return
+        }
+        LazyRow(
+            contentPadding = PaddingValues(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            items(movies, key = { "history:${it.id}:${it.releaseDate}" }) { movie ->
+                HomeOnThisDayCardV057(movie = movie, onClick = { onOpen(movie) })
+            }
+        }
+    }
+}
+
+@Composable
+private fun HomeOnThisDayCardV057(movie: OnThisDayMovie, onClick: () -> Unit) {
+    Column(
+        modifier = Modifier.width(150.dp).clickable(onClick = onClick),
+        verticalArrangement = Arrangement.spacedBy(7.dp),
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .aspectRatio(2f / 3f)
+                .clip(RoundedCornerShape(18.dp))
+                .background(Home55Raised),
+        ) {
+            val artwork = movie.posterUrl ?: movie.backdropUrl
+            if (!artwork.isNullOrBlank()) {
+                AsyncImage(
+                    model = artwork,
+                    contentDescription = movie.title,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize(),
+                )
+                Box(
+                    Modifier.fillMaxSize().background(
+                        Brush.verticalGradient(listOf(Color.Transparent, Home55Ink.copy(alpha = 0.9f))),
+                    ),
+                )
+            }
+            Surface(
+                color = Home55Gold.copy(alpha = 0.94f),
+                shape = RoundedCornerShape(50),
+                modifier = Modifier.align(Alignment.TopStart).padding(9.dp),
+            ) {
+                Text(
+                    movie.releaseYear.toString(),
+                    color = Color(0xFF241C09),
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Black,
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                )
+            }
+            if (artwork.isNullOrBlank()) {
+                Column(
+                    modifier = Modifier.align(Alignment.Center).padding(14.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    Text(movie.releaseYear.toString(), color = Home55Gold, fontSize = 30.sp, fontWeight = FontWeight.Black)
+                    movie.language?.let { Text(it, color = Home55Muted, fontSize = 10.sp) }
+                }
+            }
+        }
+        Text(
+            movie.title,
+            color = Home55Text,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.SemiBold,
+            lineHeight = 17.sp,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+        )
+        Text(
+            if (movie.yearsAgo == 1) "1 year ago today" else "${movie.yearsAgo} years ago today",
+            color = Home55Muted,
+            fontSize = 10.sp,
+            maxLines = 1,
+        )
     }
 }
 
