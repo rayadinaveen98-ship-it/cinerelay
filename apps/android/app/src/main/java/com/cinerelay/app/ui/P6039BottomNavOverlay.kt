@@ -5,8 +5,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
+import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Movie
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.Icon
@@ -29,8 +29,10 @@ private val NavMuted = Color(0xFFA7ADB7)
 fun P6039BottomNavOverlay(
     selected: AppTab,
     ottSelected: Boolean,
+    historySelected: Boolean,
     onSelect: (AppTab) -> Unit,
     onOpenOtt: () -> Unit,
+    onOpenHistory: () -> Unit,
     onOpenControlRoom: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -39,11 +41,10 @@ fun P6039BottomNavOverlay(
         containerColor = NavInk,
         tonalElevation = 0.dp,
     ) {
-        NavItem(AppTab.LIVE, !ottSelected && selected == AppTab.LIVE, Icons.Default.Home, "Home", onSelect)
+        NavItem(AppTab.LIVE, !ottSelected && !historySelected && selected == AppTab.LIVE, Icons.Default.Home, "Home", onSelect)
         OttNavItem(ottSelected, onOpenOtt)
-        NavItem(AppTab.FOLLOWING, !ottSelected && selected == AppTab.FOLLOWING, Icons.Default.List, "Sources", onSelect)
-        NavItem(AppTab.RADAR, !ottSelected && selected == AppTab.RADAR, Icons.Default.Movie, "Radar", onSelect)
-        // Account, notifications and settings live in Control Room instead of crowding the primary content nav.
+        NavItem(AppTab.RADAR, !ottSelected && !historySelected && selected == AppTab.RADAR, Icons.Default.Movie, "Radar", onSelect)
+        HistoryNavItem(historySelected, onOpenHistory)
         ControlNavItem(onOpenControlRoom)
     }
 }
@@ -77,6 +78,17 @@ private fun RowScope.OttNavItem(selected: Boolean, onOpenOtt: () -> Unit) {
 }
 
 @Composable
+private fun RowScope.HistoryNavItem(selected: Boolean, onOpenHistory: () -> Unit) {
+    NavigationBarItem(
+        selected = selected,
+        onClick = onOpenHistory,
+        icon = { Icon(Icons.Default.CalendarMonth, contentDescription = "On This Day", modifier = Modifier.size(22.dp)) },
+        label = { Text("Today", maxLines = 1, fontSize = 10.sp) },
+        colors = navigationItemColors(),
+    )
+}
+
+@Composable
 private fun RowScope.ControlNavItem(onOpenControlRoom: () -> Unit) {
     NavigationBarItem(
         selected = false,
@@ -84,7 +96,7 @@ private fun RowScope.ControlNavItem(onOpenControlRoom: () -> Unit) {
         icon = {
             Icon(
                 Icons.Default.AccountCircle,
-                contentDescription = "Open Control Room",
+                contentDescription = "Open settings",
                 modifier = Modifier.size(22.dp),
             )
         },
