@@ -14,14 +14,12 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.layout.weight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.SmartDisplay
@@ -48,7 +46,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -93,18 +90,13 @@ fun NotificationOnboardingV044(
                 OnboardingProgress(step = step, onBack = { if (step > 0 && !state.saving) step -= 1 })
                 state.error?.let { InlineOnboardingError(it) }
                 when (step) {
-                    0 -> WelcomeStep(
-                        sourceCount = state.sources.size,
-                        onContinue = { step = 1 },
-                    )
+                    0 -> WelcomeStep(state.sources.size) { step = 1 }
                     1 -> SourceSelectionStep(
                         sources = state.sources,
                         selectedIds = state.selectedSourceIds,
                         saving = state.saving,
                         onToggle = onToggleSource,
-                        onContinue = {
-                            if (onValidateSelection()) step = 2
-                        },
+                        onContinue = { if (onValidateSelection()) step = 2 },
                     )
                     2 -> ContentTypeStep(
                         includeVideos = state.includeVideos,
@@ -151,9 +143,10 @@ private fun SetupFailure(message: String, onRetry: () -> Unit) {
             Spacer(Modifier.height(8.dp))
             Text(message, color = OnboardingMuted, fontSize = 12.sp)
             Spacer(Modifier.height(20.dp))
-            Button(onClick = onRetry, colors = ButtonDefaults.buttonColors(containerColor = OnboardingGold, contentColor = OnboardingInk)) {
-                Text("Try again", fontWeight = FontWeight.Bold)
-            }
+            Button(
+                onClick = onRetry,
+                colors = ButtonDefaults.buttonColors(containerColor = OnboardingGold, contentColor = OnboardingInk),
+            ) { Text("Try again", fontWeight = FontWeight.Bold) }
         }
     }
 }
@@ -198,7 +191,13 @@ private fun WelcomeStep(sourceCount: Int, onContinue: () -> Unit) {
         Spacer(Modifier.height(22.dp))
         Text("CINERELAY", color = OnboardingGold, fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 2.sp)
         Spacer(Modifier.height(8.dp))
-        Text("Every official update.\nOne cinema feed.", color = OnboardingText, fontSize = 30.sp, lineHeight = 36.sp, fontWeight = FontWeight.Bold)
+        Text(
+            "Every official update.\nOne cinema feed.",
+            color = OnboardingText,
+            fontSize = 30.sp,
+            lineHeight = 36.sp,
+            fontWeight = FontWeight.Bold,
+        )
         Spacer(Modifier.height(16.dp))
         Text(
             "CineRelay monitors official cinema sources continuously. You choose exactly which channels are allowed to interrupt you.",
@@ -244,7 +243,7 @@ private fun SourceSelectionStep(
             Text("Choose who can notify you", color = OnboardingText, fontSize = 24.sp, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(5.dp))
             Text(
-                "CineRelay still monitors every source. Only the channels you check here can send you upload notifications.",
+                "CineRelay still monitors every source. Only the channels you check here can send upload notifications.",
                 color = OnboardingMuted,
                 fontSize = 12.sp,
                 lineHeight = 18.sp,
@@ -269,7 +268,12 @@ private fun SourceSelectionStep(
                 modifier = Modifier.fillMaxWidth(),
             )
             Spacer(Modifier.height(10.dp))
-            Text("${selectedIds.size} selected", color = if (selectedIds.isEmpty()) OnboardingMuted else OnboardingGreen, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+            Text(
+                "${selectedIds.size} selected",
+                color = if (selectedIds.isEmpty()) OnboardingMuted else OnboardingGreen,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold,
+            )
         }
 
         LazyColumn(
@@ -318,7 +322,14 @@ private fun SelectableSourceRow(
             InitialsOrb(source.name)
             Spacer(Modifier.size(10.dp))
             Column(Modifier.weight(1f)) {
-                Text(source.name, color = OnboardingText, fontSize = 13.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(
+                    source.name,
+                    color = OnboardingText,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
                 Text(
                     listOfNotNull(prettyRole(source.role), source.handle).filter { it.isNotBlank() }.joinToString(" • "),
                     color = OnboardingMuted,
@@ -514,7 +525,12 @@ private fun BrandOrb() {
 
 @Composable
 private fun InitialsOrb(name: String) {
-    val initials = name.split(' ').filter { it.isNotBlank() }.take(2).joinToString("") { it.take(1).uppercase() }.ifBlank { "CR" }
+    val initials = name
+        .split(' ')
+        .filter { it.isNotBlank() }
+        .take(2)
+        .joinToString("") { it.take(1).uppercase() }
+        .ifBlank { "CR" }
     Surface(color = OnboardingGold.copy(alpha = 0.10f), shape = CircleShape, modifier = Modifier.size(38.dp)) {
         Box(contentAlignment = Alignment.Center) {
             Text(initials, color = OnboardingGold, fontSize = 10.sp, fontWeight = FontWeight.Bold)
