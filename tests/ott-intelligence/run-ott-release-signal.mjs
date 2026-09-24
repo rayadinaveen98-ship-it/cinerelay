@@ -93,6 +93,18 @@ assert.equal(nowStreaming.state, 'RELEASED');
 assert.equal(nowStreaming.datePrecision, 'TBA');
 assert.equal(nowStreaming.releaseDate, undefined);
 
+const crossPromoDate = extractOttMovieReleaseSignal({
+  title: 'Month Of Madhu Telugu Movie | Watch Now On Aha | Naveen Chandra | Swathi | Srikanth Nagothi',
+  text: 'Month Of Madhu Telugu Movie ft. Naveen Chandra and Swathi Reddy. Stay tuned & Subscribe to Aha YouTube channel for more Latest Movies, Shows & Web Series. Click here to watch: Chiranjeeva Movie Teaser | Raj Tarun | Premieres 7th Nov | Aha',
+  publishedAt: '2026-09-22T02:27:27Z',
+  source: { authorityTier: 1, role: 'OTT_PLATFORM', name: 'aha videoIN' },
+});
+assert.ok(crossPromoDate, 'first-party Watch Now evidence should still become a released OTT signal');
+assert.equal(crossPromoDate.providerCode, 'AHA');
+assert.equal(crossPromoDate.state, 'RELEASED');
+assert.equal(crossPromoDate.releaseDate, undefined, 'dates from unrelated description cross-promos must never attach to the current title');
+assert.equal(crossPromoDate.datePrecision, 'TBA');
+
 assert.equal(
   extractOttMovieReleaseSignal({
     title: 'Peak Action in Road House ft. Jake Gyllenhaal | Prime Video India',
