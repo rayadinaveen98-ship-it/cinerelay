@@ -192,6 +192,7 @@ async function persistEvent(rawItemId: string, event: Record<string, unknown>): 
 async function submitOttDiscovery(rawItemId: string, signal: OttMovieReleaseSignal): Promise<void> {
   const metadata = {
     signalType: signal.signalType,
+    contentType: signal.contentType,
     providerCode: signal.providerCode,
     releaseDate: signal.releaseDate ?? null,
     datePrecision: signal.datePrecision,
