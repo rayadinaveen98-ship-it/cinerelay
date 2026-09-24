@@ -15,6 +15,8 @@ const supabase = createClient(supabaseUrl, serviceRoleKey, {
 
 const PARSER_VERSION = 'ott-series-v1';
 const LOOKBACK_DAYS = 30;
+const RAW_SCAN_PAGE_SIZE = 250;
+const MAX_SCAN_PAGES = 8;
 
 type SourceDescriptor = {
   authorityTier: number;
@@ -79,31 +81,45 @@ async function loadOttSources(): Promise<Map<string, SourceDescriptor>> {
 async function loadDueRawItems(sourceIds: string[], limit: number): Promise<RawRow[]> {
   if (sourceIds.length === 0) return [];
   const since = new Date(Date.now() - LOOKBACK_DAYS * 86_400_000).toISOString();
-  const fetchLimit = Math.min(250, Math.max(limit * 5, limit));
-  const { data, error } = await supabase
-    .from('raw_items')
-    .select('id,source_identity_id,published_at,raw_title,raw_text,canonical_url')
-    .in('source_identity_id', sourceIds)
-    .gte('published_at', since)
-    .is('deleted_or_unavailable_at', null)
-    .order('published_at', { ascending: false })
-    .limit(fetchLimit);
-  if (error) throw error;
-  const rows = (data ?? []) as RawRow[];
-  if (rows.length === 0) return [];
+  const due: RawRow[] = [];
 
-  const ids = rows.map((row) => row.id);
-  const { data: states, error: stateError } = await supabase
-    .from('ott_series_processing_state')
-    .select('raw_item_id,parser_version,outcome')
-    .in('raw_item_id', ids);
-  if (stateError) throw stateError;
-  const completed = new Set(
-    (states ?? [])
-      .filter((row: Record<string, unknown>) => row.parser_version === PARSER_VERSION && ['NO_SIGNAL', 'PROMOTED'].includes(String(row.outcome)))
-      .map((row: Record<string, unknown>) => String(row.raw_item_id)),
-  );
-  return rows.filter((row) => !completed.has(row.id)).slice(0, limit);
+  for (let page = 0; page < MAX_SCAN_PAGES; page += 1) {
+    const from = page * RAW_SCAN_PAGE_SIZE;
+    const to = from + RAW_SCAN_PAGE_SIZE - 1;
+    const { data, error } = await supabase
+      .from('raw_items')
+      .select('id,source_identity_id,published_at,raw_title,raw_text,canonical_url')
+      .in('source_identity_id', sourceIds)
+      .gte('published_at', since)
+      .is('deleted_or_unavailable_at', null)
+      .order('published_at', { ascending: false })
+      .order('id', { ascending: false })
+      .range(from, to);
+    if (error) throw error;
+
+    const rows = (data ?? []) as RawRow[];
+    if (rows.length === 0) break;
+
+    const ids = rows.map((row) => row.id);
+    const { data: states, error: stateError } = await supabase
+      .from('ott_series_processing_state')
+      .select('raw_item_id,parser_version,outcome')
+      .in('raw_item_id', ids);
+    if (stateError) throw stateError;
+
+    const completed = new Set(
+      (states ?? [])
+        .filter((row: Record<string, unknown>) => row.parser_version === PARSER_VERSION && ['NO_SIGNAL', 'PROMOTED'].includes(String(row.outcome)))
+        .map((row: Record<string, unknown>) => String(row.raw_item_id)),
+    );
+    for (const row of rows) {
+      if (!completed.has(row.id)) due.push(row);
+      if (due.length >= limit) return due.slice(0, limit);
+    }
+    if (rows.length < RAW_SCAN_PAGE_SIZE) break;
+  }
+
+  return due.slice(0, limit);
 }
 
 async function recordState(input: {
