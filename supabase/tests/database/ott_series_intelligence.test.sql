@@ -8,21 +8,18 @@ select ok(
   'OTT series processing state table exists'
 );
 
-select like(
-  pg_get_functiondef('public.system_promote_first_party_ott_candidate(uuid)'::regprocedure),
-  '%proposed_entity_type not in (''MOVIE'',''SERIES'')%',
+select ok(
+  position('proposed_entity_type not in (''MOVIE'',''SERIES'')' in pg_get_functiondef('public.system_promote_first_party_ott_candidate(uuid)'::regprocedure)) > 0,
   'first-party OTT promotion accepts MOVIE and SERIES only'
 );
 
-select like(
-  pg_get_functiondef('public.system_promote_first_party_ott_candidate(uuid)'::regprocedure),
-  '%e.entity_type = v_candidate.proposed_entity_type%',
+select ok(
+  position('e.entity_type = v_candidate.proposed_entity_type' in pg_get_functiondef('public.system_promote_first_party_ott_candidate(uuid)'::regprocedure)) > 0,
   'first-party OTT promotion only binds to the same canonical entity type'
 );
 
-select like(
-  pg_get_functiondef('public.system_promote_first_party_ott_candidate(uuid)'::regprocedure),
-  '%v_candidate.proposed_entity_type,%v_candidate.proposed_name%',
+select ok(
+  position(E'v_candidate.proposed_entity_type,\n      v_candidate.proposed_name' in pg_get_functiondef('public.system_promote_first_party_ott_candidate(uuid)'::regprocedure)) > 0,
   'new first-party OTT entities use the candidate entity type instead of hard-coded MOVIE'
 );
 
