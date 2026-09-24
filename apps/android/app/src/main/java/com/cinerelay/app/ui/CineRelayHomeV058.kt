@@ -68,6 +68,7 @@ private val Home58Text = Color(0xFFF5F2EA)
 private val Home58Muted = Color(0xFFA8ADB7)
 private val Home58Gold = Color(0xFFE8C56D)
 private val Home58Green = Color(0xFF73D6A5)
+private val Home58Amber = Color(0xFFF0B862)
 
 private data class HomeStoryV059(
     val key: String,
@@ -99,11 +100,18 @@ fun CineRelayHomeV058(
         freshSignals.filter { signal -> favoriteSources.any { it.matchesV058(signal) } }
     }
     val favoriteStories = remember(favoriteSignals) { clusterHomeStoriesV059(favoriteSignals) }
-    val heroItems = remember(favoriteStories) {
-        favoriteStories.map { it.representative }
-            .filter { !it.thumbnailUrl.isNullOrBlank() }
+    val heroStories = remember(favoriteStories, freshStories) {
+        val favoriteKeys = favoriteStories.map { it.key }.toSet()
+        val ranked = (favoriteStories + freshStories)
+            .distinctBy { it.key }
+            .sortedWith(
+                compareByDescending<HomeStoryV059> {
+                    homeHeroScoreV066(it) + if (it.key in favoriteKeys) 80 else 0
+                }.thenByDescending { homeSignalInstantV059(it.representative) },
+            )
+        ranked.filter { !it.representative.thumbnailUrl.isNullOrBlank() }
             .take(8)
-            .ifEmpty { favoriteStories.map { it.representative }.take(8) }
+            .ifEmpty { ranked.take(8) }
     }
     val rails = remember(freshStories, favoriteStories, favoriteSources, personalization.favoriteLanguages) {
         buildHomeRailsV059(freshStories, favoriteStories, favoriteSources, personalization.favoriteLanguages)
@@ -133,11 +141,11 @@ fun CineRelayHomeV058(
                 ) {
                     item { HomeHeaderV058(state.loading, onRefresh, onSearch) }
                     item {
-                        if (heroItems.isNotEmpty()) HomeHeroPagerV058(heroItems, onOpenUpdate)
+                        if (heroStories.isNotEmpty()) HomeHeroPagerV066(heroStories, onOpenUpdate)
                         else HomeHeroEmptyV058(favoriteSources)
                     }
                     if (state.error != null) {
-                        item { Text(state.error, color = Color(0xFFF0B862), fontSize = 12.sp, modifier = Modifier.padding(horizontal = 20.dp)) }
+                        item { Text(state.error, color = Home58Amber, fontSize = 12.sp, modifier = Modifier.padding(horizontal = 20.dp)) }
                     }
                     if (rails.isEmpty() && !state.loading) {
                         item {
@@ -184,20 +192,31 @@ private fun HomeHeaderV058(loading: Boolean, onRefresh: () -> Unit, onSearch: ()
 }
 
 @Composable
-private fun HomeHeroPagerV058(heroItems: List<NewsroomSignal>, onOpenUpdate: (NewsroomSignal) -> Unit) {
-    val pagerState = rememberPagerState(initialPage = 0, pageCount = { heroItems.size })
+private fun HomeHeroPagerV066(heroStories: List<HomeStoryV059>, onOpenUpdate: (NewsroomSignal) -> Unit) {
+    val pagerState = rememberPagerState(initialPage = 0, pageCount = { heroStories.size })
     val isDragged by pagerState.interactionSource.collectIsDraggedAsState()
 
-    LaunchedEffect(heroItems.size, isDragged) {
-        if (heroItems.size <= 1 || isDragged) return@LaunchedEffect
+    LaunchedEffect(heroStories.size, isDragged) {
+        if (heroStories.size <= 1 || isDragged) return@LaunchedEffect
         while (true) {
             delay(6_500)
             if (pagerState.isScrollInProgress) continue
-            pagerState.animateScrollToPage((pagerState.currentPage + 1) % heroItems.size)
+            pagerState.animateScrollToPage((pagerState.currentPage + 1) % heroStories.size)
         }
     }
 
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(Modifier.weight(1f)) {
+                Text("TOP STORIES", color = Home58Gold, fontSize = 9.sp, fontWeight = FontWeight.Black, letterSpacing = 1.4.sp)
+                Text("What changed now", color = Home58Text, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+            }
+            Text("Evidence-first", color = Home58Muted, fontSize = 9.sp, fontWeight = FontWeight.SemiBold)
+        }
+
         HorizontalPager(
             state = pagerState,
             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
@@ -206,38 +225,104 @@ private fun HomeHeroPagerV058(heroItems: List<NewsroomSignal>, onOpenUpdate: (Ne
             pageSpacing = 0.dp,
             beyondViewportPageCount = 1,
         ) { page ->
-            val item = heroItems[page]
+            val story = heroStories[page]
+            val item = story.representative
+            val event = item.canonicalEvent
+            val evolving = story.updates.size > 1 || story.sourceCount > 1
+            val statusColor = if (story.officialSourceCount > 0 || item.state == "VERIFIED") Home58Green else Home58Amber
             Box(
-                modifier = Modifier.fillMaxWidth().aspectRatio(1.68f).clip(RoundedCornerShape(26.dp)).background(Home58Raised).clickable { onOpenUpdate(item) },
+                modifier = Modifier.fillMaxWidth().aspectRatio(1.62f).clip(RoundedCornerShape(26.dp)).background(Home58Raised).clickable { onOpenUpdate(item) },
             ) {
                 if (!item.thumbnailUrl.isNullOrBlank()) {
                     AsyncImage(model = item.thumbnailUrl, contentDescription = item.title, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
                 }
                 Box(
                     Modifier.fillMaxSize().background(
-                        Brush.verticalGradient(listOf(Color.Transparent, Color.Transparent, Home58Ink.copy(alpha = 0.92f))),
+                        Brush.verticalGradient(
+                            listOf(
+                                Home58Ink.copy(alpha = 0.05f),
+                                Home58Ink.copy(alpha = 0.12f),
+                                Home58Ink.copy(alpha = 0.94f),
+                            ),
+                        ),
                     ),
                 )
+
+                Row(
+                    modifier = Modifier.align(Alignment.TopStart).fillMaxWidth().padding(14.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Surface(
+                        color = Home58Ink.copy(alpha = 0.84f),
+                        shape = RoundedCornerShape(50),
+                    ) {
+                        Text(
+                            if (evolving) "EVOLVING STORY" else friendlyHomeEventTypeV066(event?.eventType),
+                            color = Home58Gold,
+                            fontSize = 8.sp,
+                            fontWeight = FontWeight.Black,
+                            letterSpacing = 0.7.sp,
+                            modifier = Modifier.padding(horizontal = 9.dp, vertical = 5.dp),
+                        )
+                    }
+                    Spacer(Modifier.weight(1f))
+                    Surface(color = Home58Ink.copy(alpha = 0.84f), shape = RoundedCornerShape(50)) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 9.dp, vertical = 5.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Box(Modifier.size(6.dp).clip(CircleShape).background(statusColor))
+                            Spacer(Modifier.width(5.dp))
+                            Text(
+                                if (story.officialSourceCount > 0) "Official" else home58StateLabel(item.state),
+                                color = statusColor,
+                                fontSize = 8.sp,
+                                fontWeight = FontWeight.Bold,
+                            )
+                        }
+                    }
+                }
+
                 Column(
                     modifier = Modifier.align(Alignment.BottomStart).fillMaxWidth().padding(horizontal = 18.dp, vertical = 16.dp),
-                    verticalArrangement = Arrangement.spacedBy(5.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
+                    val identity = event?.entityName ?: item.source.name ?: item.source.handle ?: "CineRelay story"
+                    Text(identity, color = Home58Gold, fontSize = 11.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     Text(
-                        item.source.name ?: item.source.handle ?: "Favorite channel",
-                        color = Home58Gold,
-                        fontSize = 11.sp,
+                        event?.headline?.takeIf { it.isNotBlank() } ?: item.title,
+                        color = Home58Text,
+                        fontSize = 20.sp,
+                        lineHeight = 24.sp,
                         fontWeight = FontWeight.Bold,
-                        maxLines = 1,
+                        maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
                     )
-                    Text(item.title, color = Home58Text, fontSize = 19.sp, lineHeight = 23.sp, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                    Text(home58TimeAgo(item.observedAt), color = Home58Text.copy(alpha = 0.68f), fontSize = 10.sp)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            item.source.name ?: item.source.handle ?: "CineRelay",
+                            color = Home58Text.copy(alpha = 0.74f),
+                            fontSize = 9.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f),
+                        )
+                        val storyMeta = buildList {
+                            if (story.updates.size > 1) add("${story.updates.size} updates")
+                            if (story.sourceCount > 1) add("${story.sourceCount} sources")
+                            home58TimeAgo(item.observedAt).takeIf { it.isNotBlank() }?.let { add(it) }
+                        }.joinToString(" • ")
+                        if (storyMeta.isNotBlank()) {
+                            Spacer(Modifier.width(8.dp))
+                            Text(storyMeta, color = Home58Text.copy(alpha = 0.62f), fontSize = 9.sp)
+                        }
+                    }
                 }
             }
         }
-        if (heroItems.size > 1) {
+        if (heroStories.size > 1) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
-                repeat(heroItems.size) { dot ->
+                repeat(heroStories.size) { dot ->
                     Box(
                         Modifier.padding(horizontal = 3.dp).size(if (dot == pagerState.currentPage) 18.dp else 6.dp, 5.dp)
                             .clip(CircleShape)
@@ -253,8 +338,14 @@ private fun HomeHeroPagerV058(heroItems: List<NewsroomSignal>, onOpenUpdate: (Ne
 private fun HomeHeroEmptyV058(favoriteSources: List<PersonalizationSource>) {
     Surface(color = Home58Panel, shape = RoundedCornerShape(24.dp), modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
         Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
-            Text("Your favorites are quiet right now", color = Home58Text, fontSize = 19.sp, fontWeight = FontWeight.Bold)
-            Text(if (favoriteSources.isEmpty()) "Choose favorite channels to personalize this space." else "The next fresh upload from your favorite channels will appear here first.", color = Home58Muted, fontSize = 13.sp)
+            Text("Your cinema feed is quiet right now", color = Home58Text, fontSize = 19.sp, fontWeight = FontWeight.Bold)
+            Text(
+                if (favoriteSources.isEmpty()) "Choose favorite channels to personalize this space. CineRelay will still surface strong verified stories as they arrive."
+                else "The next fresh story from your favorites or trusted movie sources will appear here first.",
+                color = Home58Muted,
+                fontSize = 13.sp,
+                lineHeight = 19.sp,
+            )
         }
     }
 }
@@ -298,13 +389,20 @@ private fun HomeRailV058(rail: HomeRailV058, onOpenUpdate: (NewsroomSignal) -> U
 @Composable
 private fun HomeCardV059(story: HomeStoryV059, onClick: () -> Unit) {
     val item = story.representative
+    val event = item.canonicalEvent
     Column(modifier = Modifier.width(220.dp).clickable(onClick = onClick), verticalArrangement = Arrangement.spacedBy(7.dp)) {
         Box(Modifier.fillMaxWidth().aspectRatio(16f / 9f).clip(RoundedCornerShape(17.dp)).background(Home58Raised)) {
             if (!item.thumbnailUrl.isNullOrBlank()) {
                 AsyncImage(model = item.thumbnailUrl, contentDescription = item.title, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
             }
             Surface(color = Home58Ink.copy(alpha = 0.84f), shape = RoundedCornerShape(50), modifier = Modifier.align(Alignment.BottomStart).padding(8.dp)) {
-                Text(home58StateLabel(item.state), color = if (item.state == "VERIFIED") Home58Green else Home58Gold, fontSize = 9.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp))
+                Text(
+                    if (story.officialSourceCount > 0) "Official" else home58StateLabel(item.state),
+                    color = if (story.officialSourceCount > 0 || item.state == "VERIFIED") Home58Green else Home58Gold,
+                    fontSize = 9.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                )
             }
             if (story.updates.size > 1 || story.sourceCount > 1) {
                 val storyMeta = buildList {
@@ -316,7 +414,18 @@ private fun HomeCardV059(story: HomeStoryV059, onClick: () -> Unit) {
                 }
             }
         }
-        Text(item.title, color = Home58Text, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, lineHeight = 17.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+        event?.entityName?.takeIf { it.isNotBlank() }?.let {
+            Text(it, color = Home58Gold, fontSize = 9.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
+        Text(
+            event?.headline?.takeIf { it.isNotBlank() } ?: item.title,
+            color = Home58Text,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.SemiBold,
+            lineHeight = 17.sp,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+        )
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(item.source.name ?: item.source.handle ?: "CineRelay", color = Home58Muted, fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
             Spacer(Modifier.width(7.dp))
@@ -339,6 +448,14 @@ private fun buildHomeRailsV059(
     }
 
     add("From Your Favorites", favorites)
+    add(
+        "Evolving Stories",
+        stories.filter { it.updates.size > 1 || it.sourceCount > 1 }
+            .sortedWith(
+                compareByDescending<HomeStoryV059> { it.updates.size + it.sourceCount }
+                    .thenByDescending { homeSignalInstantV059(it.representative) },
+            ),
+    )
     add(
         "Trending Across Sources",
         stories.filter { it.sourceCount >= 2 }
@@ -477,6 +594,30 @@ private fun homeRepresentativeScoreV059(signal: NewsroomSignal): Int {
     return score
 }
 
+private fun homeHeroScoreV066(story: HomeStoryV059): Int {
+    val signal = story.representative
+    var score = 0
+    if (!signal.thumbnailUrl.isNullOrBlank()) score += 32
+    score += story.officialSourceCount.coerceAtMost(3) * 18
+    score += story.sourceCount.coerceAtMost(4) * 8
+    score += story.updates.size.coerceAtMost(5) * 6
+    when (signal.canonicalEvent?.verificationState) {
+        "OFFICIAL" -> score += 35
+        "CONFIRMED" -> score += 28
+        "RELIABLE_REPORT" -> score += 12
+    }
+    val radar = signal.canonicalEvent?.radar
+    if (radar != null && radar.label != "NO_ACTION") score += radar.score.coerceIn(0, 100) / 4
+    val ageHours = Duration.between(homeSignalInstantV059(signal), Instant.now()).toHours().coerceAtLeast(0)
+    score += when {
+        ageHours <= 2 -> 24
+        ageHours <= 6 -> 18
+        ageHours <= 12 -> 10
+        else -> 2
+    }
+    return score
+}
+
 private fun homeSignalInstantV059(signal: NewsroomSignal): Instant {
     val value = signal.observedAt ?: signal.ingestedAt ?: signal.sourceObservedAt ?: return Instant.EPOCH
     return runCatching { Instant.parse(value) }.getOrDefault(Instant.EPOCH)
@@ -533,6 +674,19 @@ private fun homeStoryKindV059(title: String): String {
         value.contains("interview") || value.contains("press meet") || value.contains("event") -> "EVENT"
         else -> "GENERAL"
     }
+}
+
+private fun friendlyHomeEventTypeV066(value: String?): String = when (value) {
+    "TRAILER_RELEASED" -> "TRAILER"
+    "TEASER_RELEASED" -> "TEASER"
+    "GLIMPSE_RELEASED" -> "GLIMPSE"
+    "FIRST_LOOK_RELEASED", "POSTER_RELEASED" -> "NEW LOOK"
+    "OTT_DATE_ANNOUNCED", "OTT_DATE_CHANGED", "OTT_PLATFORM_ANNOUNCED", "OTT_RELEASED" -> "OTT UPDATE"
+    "THEATRICAL_DATE_ANNOUNCED", "THEATRICAL_DATE_CHANGED" -> "RELEASE UPDATE"
+    "CAST_ANNOUNCED", "CREW_ANNOUNCED" -> "PROJECT UPDATE"
+    "SONG_RELEASED", "SONG_ANNOUNCED" -> "MUSIC"
+    "INTERVIEW_RELEASED", "PRESS_MEET_ANNOUNCED" -> "INTERVIEW / EVENT"
+    else -> "TOP STORY"
 }
 
 private val HOME59_FIRST_PARTY_ROLES = setOf("PRODUCTION_HOUSE", "FILM_OFFICIAL", "CAST_CREW_OFFICIAL", "OTT_PLATFORM", "MUSIC_LABEL")
