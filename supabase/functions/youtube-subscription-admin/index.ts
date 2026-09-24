@@ -105,13 +105,16 @@ Deno.serve(async (request) => {
     const channelId = identity.platform_identity_id;
     assertYouTubeChannelId(channelId);
 
+    // Preserve enough history to find a still-active lease even after a long burst of
+    // failed renewal generations. A 20-row window hid Geetha Arts generation 2 behind
+    // 20 newer ERROR rows and caused false 409 no_active_subscription_to_renew responses.
     const { data: subscriptions, error: subscriptionError } = await supabase
       .from('connector_subscriptions')
       .select('id,generation,state,requested_at,verified_at,expires_at,renew_after')
       .eq('provider', YOUTUBE_WEBSUB_PROVIDER)
       .eq('source_identity_id', sourceIdentityId)
       .order('generation', { ascending: false })
-      .limit(20);
+      .limit(200);
     if (subscriptionError) throw subscriptionError;
     const rows = (subscriptions ?? []) as SubscriptionRow[];
     const latestGeneration = Math.max(0, ...rows.map((item) => Number(item.generation)));
