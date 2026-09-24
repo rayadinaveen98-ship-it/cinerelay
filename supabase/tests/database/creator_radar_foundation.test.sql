@@ -171,7 +171,7 @@ insert into public.events (
   (
     'f5410000-0000-4000-8000-000000000006',
     'f5400000-0000-4000-8000-000000000001',
-    'UNMAPPED_SIGNAL',
+    'ALBUM_UPDATE',
     'RELIABLE_REPORT',
     'NORMAL',
     'P5.4 generic low-value signal',
@@ -202,11 +202,11 @@ insert into public.events (
 select results_eq(
   $$select opportunity_label from public.creator_radar_compute('f5410000-0000-4000-8000-000000000006'::uuid)$$,
   array['NO_ACTION'::text],
-  'unmapped low-value event remains NO_ACTION even when fresh'
+  'valid low-value event remains NO_ACTION even when fresh'
 );
 select ok(
   (select reason_codes @> array['TYPE_LOWER_SIGNAL_EVENT']::text[] from public.creator_radar_compute('f5410000-0000-4000-8000-000000000006'::uuid)),
-  'unmapped low-value event records the lower-signal reason'
+  'valid low-value event records the lower-signal reason'
 );
 select results_eq(
   $$select creator_score from public.creator_radar_compute('f5410000-0000-4000-8000-000000000007'::uuid)$$,
