@@ -42,6 +42,10 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -102,6 +106,7 @@ fun OttReleasesV054(
     onSelectEvidence: (OttEvidenceFilter) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    var filtersExpanded by remember { mutableStateOf(false) }
     MaterialTheme(colorScheme = OttColors) {
         Surface(modifier = modifier.fillMaxSize(), color = OttInk) {
             Scaffold(
@@ -111,8 +116,8 @@ fun OttReleasesV054(
                         colors = TopAppBarDefaults.topAppBarColors(containerColor = OttInk),
                         title = {
                             Column {
-                                Text("OTT", color = OttGold, fontSize = 9.sp, fontWeight = FontWeight.Black, letterSpacing = 1.7.sp)
-                                Text("OTT Releases", color = OttText, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+                                Text("CINERELAY OTT", color = OttGold, fontSize = 9.sp, fontWeight = FontWeight.Black, letterSpacing = 1.7.sp)
+                                Text("Streaming Guide", color = OttText, fontSize = 22.sp, fontWeight = FontWeight.Bold)
                             }
                         },
                         actions = {
@@ -126,29 +131,17 @@ fun OttReleasesV054(
             ) { padding ->
                 LazyColumn(
                     modifier = Modifier.fillMaxSize().padding(padding),
-                    contentPadding = PaddingValues(start = 14.dp, end = 14.dp, top = 6.dp, bottom = 104.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    contentPadding = PaddingValues(start = 14.dp, end = 14.dp, top = 4.dp, bottom = 118.dp),
+                    verticalArrangement = Arrangement.spacedBy(14.dp),
                 ) {
-                    item {
-                        Text(
-                            "Evidence-backed streaming calendar for India. Confirmed dates stay separate from reported dates.",
-                            color = OttMuted,
-                            fontSize = 11.sp,
-                            lineHeight = 16.sp,
-                        )
-                    }
+                    item { OttOverviewV060(state) }
 
                     item {
-                        OttWindowRowV054(state.window, onSelectWindow)
-                    }
-
-                    item {
-                        OttProviderRowV054(state.providers, state.providerCode, onSelectProvider)
-                    }
-
-                    item {
-                        OttFilterRowsV054(
+                        OttFiltersV060(
                             state = state,
+                            expanded = filtersExpanded,
+                            onToggle = { filtersExpanded = !filtersExpanded },
+                            onSelectProvider = onSelectProvider,
                             onSelectLanguage = onSelectLanguage,
                             onSelectContentType = onSelectContentType,
                             onSelectEvidence = onSelectEvidence,
@@ -163,17 +156,36 @@ fun OttReleasesV054(
                         }
                     }
 
-                    if (state.loading && state.items.isEmpty()) {
+                    if (state.loading && !state.loaded) {
                         item {
                             Box(Modifier.fillMaxWidth().height(180.dp), contentAlignment = Alignment.Center) {
                                 CircularProgressIndicator(color = OttGold, strokeWidth = 2.dp)
                             }
                         }
-                    } else if (!state.loading && state.items.isEmpty()) {
-                        item { OttEmptyV054(state) }
                     } else {
-                        items(state.items, key = { it.id }) { release ->
-                            OttReleaseCardV054(release)
+                        item {
+                            OttReleaseSectionV060(
+                                title = "Today’s OTT Releases",
+                                subtitle = state.today?.let { formatOttDateV054(it) } ?: "What is available today",
+                                items = state.todayItems,
+                                emptyMessage = "No evidence-backed OTT premieres are dated for today yet.",
+                            )
+                        }
+                        item {
+                            OttReleaseSectionV060(
+                                title = "This Weekend",
+                                subtitle = ottWeekendLabelV060(state.weekendStart, state.weekendEnd),
+                                items = state.weekendItems,
+                                emptyMessage = "No confirmed or reported releases are mapped to this weekend yet.",
+                            )
+                        }
+                        item {
+                            OttReleaseSectionV060(
+                                title = "Coming in the Next 30 Days",
+                                subtitle = state.windowEnd?.let { "Through ${formatOttDateV054(it)}" } ?: "Confirmed and reported upcoming premieres",
+                                items = state.upcomingItems,
+                                emptyMessage = "No matching upcoming releases are currently backed by retained evidence.",
+                            )
                         }
                     }
                 }
@@ -183,50 +195,148 @@ fun OttReleasesV054(
 }
 
 @Composable
-private fun OttWindowRowV054(selected: OttWindow, onSelect: (OttWindow) -> Unit) {
-    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        item { OttChipV054("Today", selected == OttWindow.TODAY) { onSelect(OttWindow.TODAY) } }
-        item { OttChipV054("This week", selected == OttWindow.THIS_WEEK) { onSelect(OttWindow.THIS_WEEK) } }
-        item { OttChipV054("Upcoming", selected == OttWindow.UPCOMING) { onSelect(OttWindow.UPCOMING) } }
-        item { OttChipV054("Released", selected == OttWindow.RELEASED) { onSelect(OttWindow.RELEASED) } }
+private fun OttOverviewV060(state: OttUiState) {
+    Surface(color = OttPanel, shape = RoundedCornerShape(24.dp), modifier = Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text("What should I watch next?", color = OttText, fontSize = 19.sp, fontWeight = FontWeight.Bold)
+            Text(
+                "Useful release windows first. Languages, platforms and evidence controls stay out of the way until you need them.",
+                color = OttMuted,
+                fontSize = 11.sp,
+                lineHeight = 17.sp,
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OttCountPillV060("Today", state.todayItems.size, Modifier.weight(1f))
+                OttCountPillV060("Weekend", state.weekendItems.size, Modifier.weight(1f))
+                OttCountPillV060("30 days", state.upcomingItems.size, Modifier.weight(1f))
+            }
+        }
+    }
+}
+
+@Composable
+private fun OttCountPillV060(label: String, count: Int, modifier: Modifier = Modifier) {
+    Surface(color = OttRaised, shape = RoundedCornerShape(16.dp), modifier = modifier) {
+        Column(Modifier.padding(horizontal = 10.dp, vertical = 10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(count.toString(), color = OttGold, fontSize = 17.sp, fontWeight = FontWeight.Black)
+            Text(label, color = OttMuted, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+        }
+    }
+}
+
+@Composable
+private fun OttFiltersV060(
+    state: OttUiState,
+    expanded: Boolean,
+    onToggle: () -> Unit,
+    onSelectProvider: (String?) -> Unit,
+    onSelectLanguage: (String?) -> Unit,
+    onSelectContentType: (OttContentType) -> Unit,
+    onSelectEvidence: (OttEvidenceFilter) -> Unit,
+) {
+    val activeCount = listOf(
+        state.providerCode != null,
+        state.language != null,
+        state.contentType != OttContentType.ALL,
+        state.evidence != OttEvidenceFilter.ALL,
+    ).count { it }
+
+    Surface(color = OttPanel, shape = RoundedCornerShape(20.dp), modifier = Modifier.fillMaxWidth()) {
+        Column {
+            Row(
+                modifier = Modifier.fillMaxWidth().clickable(onClick = onToggle).padding(horizontal = 15.dp, vertical = 13.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(Modifier.weight(1f)) {
+                    Text("Filters", color = OttText, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                    Text(
+                        if (activeCount == 0) "Optional · platform, language and verification" else "$activeCount active filter${if (activeCount == 1) "" else "s"}",
+                        color = if (activeCount == 0) OttMuted else OttGold,
+                        fontSize = 9.sp,
+                    )
+                }
+                Text(if (expanded) "Hide" else "Show", color = OttGold, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+            }
+
+            if (expanded) {
+                HorizontalDivider(color = OttLine)
+                Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(13.dp)) {
+                    OttProviderRowV054(state.providers, state.providerCode, onSelectProvider)
+                    Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
+                        Text("LANGUAGE", color = OttMuted, fontSize = 8.sp, fontWeight = FontWeight.Black, letterSpacing = 1.2.sp)
+                        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            items(OttLanguages, key = { it.first ?: "all" }) { (code, label) ->
+                                OttChipV054(label, state.language == code) { onSelectLanguage(code) }
+                            }
+                        }
+                    }
+                    Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
+                        Text("CONTENT", color = OttMuted, fontSize = 8.sp, fontWeight = FontWeight.Black, letterSpacing = 1.2.sp)
+                        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            item { OttChipV054("Movies + Series", state.contentType == OttContentType.ALL) { onSelectContentType(OttContentType.ALL) } }
+                            item { OttChipV054("Movies", state.contentType == OttContentType.MOVIES) { onSelectContentType(OttContentType.MOVIES) } }
+                            item { OttChipV054("Series", state.contentType == OttContentType.SERIES) { onSelectContentType(OttContentType.SERIES) } }
+                        }
+                    }
+                    Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
+                        Text("VERIFICATION", color = OttMuted, fontSize = 8.sp, fontWeight = FontWeight.Black, letterSpacing = 1.2.sp)
+                        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            item { OttChipV054("All evidence", state.evidence == OttEvidenceFilter.ALL) { onSelectEvidence(OttEvidenceFilter.ALL) } }
+                            item { OttChipV054("Confirmed", state.evidence == OttEvidenceFilter.CONFIRMED) { onSelectEvidence(OttEvidenceFilter.CONFIRMED) } }
+                            item { OttChipV054("Reported", state.evidence == OttEvidenceFilter.REPORTED) { onSelectEvidence(OttEvidenceFilter.REPORTED) } }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun OttReleaseSectionV060(
+    title: String,
+    subtitle: String,
+    items: List<OttRelease>,
+    emptyMessage: String,
+) {
+    Surface(color = OttPanel, shape = RoundedCornerShape(24.dp), modifier = Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(vertical = 15.dp), verticalArrangement = Arrangement.spacedBy(11.dp)) {
+            Column(Modifier.padding(horizontal = 16.dp)) {
+                Text(title, color = OttText, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                Spacer(Modifier.height(3.dp))
+                Text(subtitle, color = OttMuted, fontSize = 10.sp)
+            }
+            if (items.isEmpty()) {
+                Text(
+                    emptyMessage,
+                    color = OttMuted,
+                    fontSize = 11.sp,
+                    lineHeight = 17.sp,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+                )
+            } else {
+                LazyRow(
+                    contentPadding = PaddingValues(horizontal = 14.dp),
+                    horizontalArrangement = Arrangement.spacedBy(11.dp),
+                ) {
+                    items(items, key = { it.id }) { release ->
+                        OttReleaseCardV054(release, Modifier.width(286.dp))
+                    }
+                }
+            }
+        }
     }
 }
 
 @Composable
 private fun OttProviderRowV054(providers: List<OttProvider>, selectedCode: String?, onSelect: (String?) -> Unit) {
-    Column {
+    Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
         Text("PLATFORM", color = OttMuted, fontSize = 8.sp, fontWeight = FontWeight.Black, letterSpacing = 1.2.sp)
-        Spacer(Modifier.height(7.dp))
         LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             item { OttChipV054("All", selectedCode == null) { onSelect(null) } }
             items(providers, key = { it.code }) { provider ->
                 OttChipV054(provider.name, selectedCode == provider.code) { onSelect(provider.code) }
             }
-        }
-    }
-}
-
-@Composable
-private fun OttFilterRowsV054(
-    state: OttUiState,
-    onSelectLanguage: (String?) -> Unit,
-    onSelectContentType: (OttContentType) -> Unit,
-    onSelectEvidence: (OttEvidenceFilter) -> Unit,
-) {
-    Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
-        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            items(OttLanguages, key = { it.first ?: "all" }) { (code, label) ->
-                OttChipV054(label, state.language == code) { onSelectLanguage(code) }
-            }
-        }
-        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            item { OttChipV054("Movies + Series", state.contentType == OttContentType.ALL) { onSelectContentType(OttContentType.ALL) } }
-            item { OttChipV054("Movies", state.contentType == OttContentType.MOVIES) { onSelectContentType(OttContentType.MOVIES) } }
-            item { OttChipV054("Series", state.contentType == OttContentType.SERIES) { onSelectContentType(OttContentType.SERIES) } }
-            item { OttChipV054("All evidence", state.evidence == OttEvidenceFilter.ALL) { onSelectEvidence(OttEvidenceFilter.ALL) } }
-            item { OttChipV054("Confirmed", state.evidence == OttEvidenceFilter.CONFIRMED) { onSelectEvidence(OttEvidenceFilter.CONFIRMED) } }
-            item { OttChipV054("Reported", state.evidence == OttEvidenceFilter.REPORTED) { onSelectEvidence(OttEvidenceFilter.REPORTED) } }
-            item { OttChipV054("Date TBA", state.evidence == OttEvidenceFilter.TBA) { onSelectEvidence(OttEvidenceFilter.TBA) } }
         }
     }
 }
@@ -249,34 +359,7 @@ private fun OttChipV054(label: String, selected: Boolean, onClick: () -> Unit) {
 }
 
 @Composable
-private fun OttEmptyV054(state: OttUiState) {
-    Surface(color = OttPanel, shape = RoundedCornerShape(22.dp), modifier = Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(horizontal = 20.dp, vertical = 24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            Box(Modifier.size(9.dp).clip(CircleShape).background(OttGold))
-            Spacer(Modifier.height(12.dp))
-            Text("No matching OTT releases yet", color = OttText, fontSize = 17.sp, fontWeight = FontWeight.Bold)
-            Spacer(Modifier.height(6.dp))
-            Text(
-                "CineRelay will not invent a date to fill this screen. Releases appear when evidence reaches the selected window and filters.",
-                color = OttMuted,
-                fontSize = 11.sp,
-                lineHeight = 17.sp,
-            )
-            if (state.providers.isNotEmpty()) {
-                Spacer(Modifier.height(12.dp))
-                Text(
-                    "Tracking ${state.providers.size} OTT platforms in the India registry.",
-                    color = OttGold,
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.Bold,
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun OttReleaseCardV054(release: OttRelease) {
+private fun OttReleaseCardV054(release: OttRelease, modifier: Modifier = Modifier) {
     val context = LocalContext.current
     val evidenceColor = when (release.evidenceStatus) {
         "CONFIRMED" -> OttGreen
@@ -291,22 +374,22 @@ private fun OttReleaseCardV054(release: OttRelease) {
     }
 
     Card(
-        colors = CardDefaults.cardColors(containerColor = OttPanel),
-        shape = RoundedCornerShape(22.dp),
-        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = OttRaised),
+        shape = RoundedCornerShape(20.dp),
+        modifier = modifier,
     ) {
-        Column(Modifier.padding(15.dp)) {
+        Column(Modifier.padding(14.dp)) {
             Row(verticalAlignment = Alignment.Top) {
                 Surface(color = OttGold.copy(alpha = 0.10f), shape = RoundedCornerShape(14.dp)) {
                     Column(
-                        modifier = Modifier.width(64.dp).padding(horizontal = 8.dp, vertical = 10.dp),
+                        modifier = Modifier.width(58.dp).padding(horizontal = 7.dp, vertical = 9.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
                     ) {
                         Text(ottDatePrimaryV054(release), color = OttGold, fontSize = 16.sp, fontWeight = FontWeight.Black)
                         Text(ottDateSecondaryV054(release), color = OttMuted, fontSize = 9.sp, fontWeight = FontWeight.Bold)
                     }
                 }
-                Spacer(Modifier.width(12.dp))
+                Spacer(Modifier.width(11.dp))
                 Column(Modifier.weight(1f)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
@@ -314,15 +397,18 @@ private fun OttReleaseCardV054(release: OttRelease) {
                             color = OttGold,
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f),
                         )
-                        Spacer(Modifier.width(7.dp))
+                        Spacer(Modifier.width(5.dp))
                         Surface(color = evidenceColor.copy(alpha = 0.12f), shape = RoundedCornerShape(50)) {
                             Text(
-                                prettyOttV054(release.evidenceStatus),
+                                if (release.evidenceStatus == "CONFIRMED") "Confirmed" else prettyOttV054(release.evidenceStatus),
                                 color = evidenceColor,
-                                fontSize = 8.sp,
+                                fontSize = 7.sp,
                                 fontWeight = FontWeight.Black,
-                                modifier = Modifier.padding(horizontal = 7.dp, vertical = 4.dp),
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp),
                             )
                         }
                     }
@@ -330,66 +416,67 @@ private fun OttReleaseCardV054(release: OttRelease) {
                     Text(
                         release.entity.name,
                         color = OttText,
-                        fontSize = 18.sp,
+                        fontSize = 16.sp,
                         fontWeight = FontWeight.SemiBold,
-                        lineHeight = 23.sp,
+                        lineHeight = 20.sp,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
                     )
                     Spacer(Modifier.height(4.dp))
                     Text(
                         listOfNotNull(
-                            release.entity.type.takeIf { it.isNotBlank() }?.let(::prettyOttV054),
                             release.languages.takeIf { it.isNotEmpty() }?.joinToString(" • ") { languageNameV054(it) },
                             stateLabel,
                         ).joinToString("  •  "),
                         color = OttMuted,
-                        fontSize = 10.sp,
+                        fontSize = 9.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
                     )
                 }
             }
 
             release.previousReleaseDate?.takeIf { it != release.releaseDate }?.let { previous ->
-                Spacer(Modifier.height(11.dp))
-                Surface(color = OttAmber.copy(alpha = 0.08f), shape = RoundedCornerShape(12.dp)) {
+                Spacer(Modifier.height(10.dp))
+                Surface(color = OttAmber.copy(alpha = 0.08f), shape = RoundedCornerShape(11.dp)) {
                     Text(
                         "Date updated from ${formatOttDateV054(previous)}",
                         color = OttAmber,
-                        fontSize = 10.sp,
+                        fontSize = 9.sp,
                         fontWeight = FontWeight.Bold,
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 8.dp),
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 9.dp, vertical = 7.dp),
                     )
                 }
             }
 
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(11.dp))
             HorizontalDivider(color = OttLine)
-            Spacer(Modifier.height(10.dp))
+            Spacer(Modifier.height(9.dp))
 
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
                     if (release.evidence.firstParty > 0) Icons.Default.CheckCircle else Icons.Default.Info,
                     contentDescription = null,
                     tint = if (release.evidence.firstParty > 0) OttGreen else OttMuted,
-                    modifier = Modifier.size(15.dp),
+                    modifier = Modifier.size(14.dp),
                 )
                 Spacer(Modifier.width(6.dp))
                 Text(
-                    "${release.evidence.total} evidence • ${release.evidence.firstParty} first-party${if (release.evidence.conflicting > 0) " • ${release.evidence.conflicting} conflicting" else ""}",
+                    "${release.evidence.total} source${if (release.evidence.total == 1) "" else "s"} • ${release.evidence.firstParty} first-party",
                     color = OttMuted,
-                    fontSize = 10.sp,
+                    fontSize = 9.sp,
                     modifier = Modifier.weight(1f),
                 )
             }
 
             val sourceRef = release.evidence.refs.firstOrNull { !it.canonicalUrl.isNullOrBlank() }
             if (sourceRef != null) {
-                Spacer(Modifier.height(7.dp))
+                Spacer(Modifier.height(6.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         sourceRef.source.name ?: sourceRef.title ?: "Evidence source",
                         color = OttText,
-                        fontSize = 10.sp,
+                        fontSize = 9.sp,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f),
@@ -400,21 +487,24 @@ private fun OttReleaseCardV054(release: OttRelease) {
                                 runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) }
                             }
                         },
-                        contentPadding = PaddingValues(horizontal = 7.dp, vertical = 2.dp),
+                        contentPadding = PaddingValues(horizontal = 5.dp, vertical = 1.dp),
                     ) {
-                        Icon(Icons.Default.OpenInNew, contentDescription = null, modifier = Modifier.size(13.dp))
-                        Spacer(Modifier.width(4.dp))
-                        Text("Evidence", fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                        Icon(Icons.Default.OpenInNew, contentDescription = null, modifier = Modifier.size(12.dp))
+                        Spacer(Modifier.width(3.dp))
+                        Text("Source", fontSize = 8.sp, fontWeight = FontWeight.Bold)
                     }
                 }
             }
-
-            release.lastVerifiedAt?.let { verified ->
-                Spacer(Modifier.height(3.dp))
-                Text("Last verified ${verified.take(10)}", color = OttMuted, fontSize = 8.sp)
-            }
         }
     }
+}
+
+private fun ottWeekendLabelV060(start: String?, end: String?): String {
+    if (start.isNullOrBlank() || end.isNullOrBlank()) return "Friday to Sunday"
+    val startDate = runCatching { LocalDate.parse(start) }.getOrNull() ?: return "Friday to Sunday"
+    val endDate = runCatching { LocalDate.parse(end) }.getOrNull() ?: return "Friday to Sunday"
+    val formatter = DateTimeFormatter.ofPattern("d MMM", Locale.ENGLISH)
+    return if (startDate == endDate) startDate.format(formatter) else "${startDate.format(formatter)} – ${endDate.format(formatter)}"
 }
 
 private fun ottDatePrimaryV054(release: OttRelease): String {
