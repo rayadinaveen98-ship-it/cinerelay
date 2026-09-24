@@ -51,7 +51,7 @@ Deno.serve(async (request) => {
       ok: true,
       limit,
       refreshed: Number(data ?? 0),
-      engineVersion: 'creator-radar-v1',
+      engineVersion: 'creator-radar-v2',
     });
   } catch (error) {
     console.error('creator-radar-worker failure', error);
