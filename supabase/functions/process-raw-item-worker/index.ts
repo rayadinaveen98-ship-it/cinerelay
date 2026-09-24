@@ -220,12 +220,6 @@ async function submitOttDiscovery(rawItemId: string, signal: OttMovieReleaseSign
 }
 
 async function persistOttRelease(entityId: string, rawItemId: string, signal: OttMovieReleaseSignal): Promise<void> {
-  // A "now streaming" item proves availability but not the historical release day.
-  // Until the canonical schema supports RELEASED-with-unknown-date, only precise
-  // dated signals write a release row. The raw evidence remains available for
-  // future reconciliation.
-  if (!signal.releaseDate) return;
-
   const { error } = await supabase.rpc('upsert_ott_release_with_evidence', {
     p_entity_id: entityId,
     p_provider_code: signal.providerCode,
@@ -233,11 +227,13 @@ async function persistOttRelease(entityId: string, rawItemId: string, signal: Ot
     p_territory: 'IN',
     p_languages: signal.primaryLanguage ? [signal.primaryLanguage] : [],
     p_release_type: signal.releaseType,
-    p_release_date: signal.releaseDate,
+    p_release_date: signal.releaseDate ?? null,
     p_date_precision: signal.datePrecision,
     p_state: signal.state,
     p_evidence_status: signal.evidenceStatus,
-    p_reason: 'Deterministic OTT movie release signal from retained source evidence',
+    p_reason: signal.releaseDate
+      ? 'Deterministic OTT movie release signal from retained source evidence'
+      : 'First-party OTT availability signal; exact historical premiere day not asserted',
   });
   if (error) throw error;
 }
