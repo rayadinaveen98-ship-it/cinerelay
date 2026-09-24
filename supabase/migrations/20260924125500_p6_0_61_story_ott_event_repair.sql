@@ -5,22 +5,13 @@ begin;
 do $migration$
 declare
   v_definition text;
-  v_before text := $needle$
-  if v_accept_canonical then
-    if v_existing.id is null and p_release_date is null then
-      v_event_type := 'OTT_PLATFORM_ANNOUNCED';
-    elsif v_existing.id is null and p_release_date is not null then
-      v_event_type := 'OTT_DATE_ANNOUNCED';
-$needle$;
-  v_after text := $replacement$
-  if v_accept_canonical then
-    if v_existing.id is null and v_state = 'RELEASED' then
-      v_event_type := 'OTT_RELEASED';
-    elsif v_existing.id is null and p_release_date is null then
-      v_event_type := 'OTT_PLATFORM_ANNOUNCED';
-    elsif v_existing.id is null and p_release_date is not null then
-      v_event_type := 'OTT_DATE_ANNOUNCED';
-$replacement$;
+  v_before text := $needle$if v_accept_canonical then
+    if v_existing.id is null and p_release_date is null then v_event_type := 'OTT_PLATFORM_ANNOUNCED';
+    elsif v_existing.id is null and p_release_date is not null then v_event_type := 'OTT_DATE_ANNOUNCED';$needle$;
+  v_after text := $replacement$if v_accept_canonical then
+    if v_existing.id is null and v_state = 'RELEASED' then v_event_type := 'OTT_RELEASED';
+    elsif v_existing.id is null and p_release_date is null then v_event_type := 'OTT_PLATFORM_ANNOUNCED';
+    elsif v_existing.id is null and p_release_date is not null then v_event_type := 'OTT_DATE_ANNOUNCED';$replacement$;
 begin
   select pg_get_functiondef(
     'public.upsert_ott_release_with_evidence(uuid,text,uuid,text,text[],text,date,text,text,text,text)'::regprocedure
@@ -83,20 +74,15 @@ begin
   order by r.last_verified_at desc
   limit 1;
 
-  if v_release_id is null then
-    return;
-  end if;
+  if v_release_id is null then return; end if;
 
-  select ore.raw_item_id
-    into v_raw_item_id
+  select ore.raw_item_id into v_raw_item_id
   from public.ott_release_evidence ore
   where ore.ott_release_id = v_release_id
   order by ore.is_first_party desc, ore.observed_at asc
   limit 1;
 
-  if v_raw_item_id is null then
-    return;
-  end if;
+  if v_raw_item_id is null then return; end if;
 
   v_event_id := public.upsert_canonical_event_with_evidence(
     gen_random_uuid(),
