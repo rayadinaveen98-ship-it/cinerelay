@@ -148,7 +148,7 @@ fun PersonalizationOnboardingV055(
                     }
                 }
                 else -> {
-                    val recommendations = recommendedSourcesV060(
+                    val recommendations = recommendedSourcesV066(
                         sources = personalization.availableSources,
                         selectedLanguages = state.selectedLanguages,
                     )
@@ -169,7 +169,7 @@ fun PersonalizationOnboardingV055(
                                 Text(if (showAllChannels) "All official channels" else "Recommended for you", color = PersonalText, fontSize = 24.sp, fontWeight = FontWeight.Bold)
                                 Text(
                                     if (showAllChannels) "Browse all ${personalization.availableSources.size} official YouTube channels"
-                                    else "Start with five strong picks. You can browse every channel anytime.",
+                                    else "Five balanced picks for your cinema languages. You can browse every channel anytime.",
                                     color = PersonalMuted,
                                     fontSize = 12.sp,
                                 )
@@ -310,35 +310,106 @@ private fun FavoriteSourceRowV055(
     }
 }
 
-private fun recommendedSourcesV060(
+private fun recommendedSourcesV066(
     sources: List<PersonalizationSource>,
     selectedLanguages: Set<String>,
 ): List<PersonalizationSource> {
     if (sources.size <= 5) return sources
-    return sources
-        .sortedWith(
-            compareByDescending<PersonalizationSource> { sourceLanguageScoreV060(it, selectedLanguages) }
-                .thenByDescending { sourceRoleScoreV060(it.role) }
-                .thenBy { it.name.lowercase() },
+
+    val ranked = sources.sortedWith(
+        compareByDescending<PersonalizationSource> { sourceRecommendationScoreV066(it, selectedLanguages) }
+            .thenBy { it.name.lowercase() },
+    )
+    val selected = mutableListOf<PersonalizationSource>()
+
+    fun add(source: PersonalizationSource?) {
+        if (source != null && selected.none { it.identityId == source.identityId } && selected.size < 5) selected += source
+    }
+
+    // First give each selected cinema language a strong anchor when one exists.
+    selectedLanguages.sorted().forEach { code ->
+        add(
+            ranked.firstOrNull { source ->
+                sourceLanguageMatchV066(source, code) && source.role in setOf("PRODUCTION_HOUSE", "FILM_OFFICIAL")
+            } ?: ranked.firstOrNull { sourceLanguageMatchV066(it, code) },
         )
-        .take(5)
+    }
+
+    // Avoid five visually identical studio choices: include a useful streaming and
+    // music lane when the live catalog has a relevant source for the user's cinema.
+    add(
+        ranked.firstOrNull {
+            it.role == "OTT_PLATFORM" && (sourceMatchesAnyLanguageV066(it, selectedLanguages) || isUniversalOttV066(it))
+        },
+    )
+    add(
+        ranked.firstOrNull {
+            it.role == "MUSIC_LABEL" && sourceMatchesAnyLanguageV066(it, selectedLanguages)
+        },
+    )
+
+    val productionCount = { selected.count { it.role == "PRODUCTION_HOUSE" || it.role == "FILM_OFFICIAL" } }
+    ranked.forEach { source ->
+        if (selected.size >= 5) return@forEach
+        val isProduction = source.role == "PRODUCTION_HOUSE" || source.role == "FILM_OFFICIAL"
+        if (isProduction && productionCount() >= 3) return@forEach
+        if (sourceRecommendationScoreV066(source, selectedLanguages) > 0) add(source)
+    }
+    ranked.forEach(::add)
+
+    return selected.take(5)
 }
 
-private fun sourceLanguageScoreV060(source: PersonalizationSource, selectedLanguages: Set<String>): Int {
-    if (selectedLanguages.isEmpty()) return 0
-    val value = "${source.name} ${source.handle.orEmpty()}".lowercase()
-    val hints = mapOf(
-        "te" to listOf("telugu", "mythri", "sithara", "haarika", "geetha arts", "people media", "dvv", "vyjayanthi", "suresh productions", "aha"),
-        "ta" to listOf("tamil", "sun pictures", "lyca", "red giant", "think music", "sathyajyothi"),
-        "ml" to listOf("malayalam", "aashirvad", "saregama malayalam", "manorama"),
-        "kn" to listOf("kannada", "hombale", "kfi", "anand audio"),
-        "hi" to listOf("hindi", "dharma", "yrf", "maddock", "nadiadwala", "tips official"),
-        "en" to listOf("netflix", "prime video", "sony pictures", "warner", "universal", "paramount"),
-    )
-    return selectedLanguages.sumOf { code ->
-        if (hints[code].orEmpty().any(value::contains)) 100 else 0
-    }
+private fun sourceRecommendationScoreV066(source: PersonalizationSource, selectedLanguages: Set<String>): Int {
+    val languageMatches = selectedLanguages.count { sourceLanguageMatchV066(source, it) }
+    var score = languageMatches * 120 + sourceRoleScoreV060(source.role)
+    if (source.role == "OTT_PLATFORM" && isUniversalOttV066(source)) score += 18
+    if (!source.artworkUrl.isNullOrBlank()) score += 3
+    return score
 }
+
+private fun sourceMatchesAnyLanguageV066(source: PersonalizationSource, selectedLanguages: Set<String>): Boolean =
+    selectedLanguages.any { sourceLanguageMatchV066(source, it) }
+
+private fun sourceLanguageMatchV066(source: PersonalizationSource, code: String): Boolean {
+    val value = "${source.name} ${source.handle.orEmpty()}".lowercase()
+    val hints = SOURCE_LANGUAGE_HINTS_V066[code].orEmpty()
+    return hints.any(value::contains)
+}
+
+private fun isUniversalOttV066(source: PersonalizationSource): Boolean {
+    if (source.role != "OTT_PLATFORM") return false
+    val value = "${source.name} ${source.handle.orEmpty()}".lowercase()
+    return listOf("netflix india", "prime video india", "sony liv", "sunnxt", "sun nxt").any(value::contains)
+}
+
+private val SOURCE_LANGUAGE_HINTS_V066 = mapOf(
+    "te" to listOf(
+        "telugu", "mythri", "sithara", "haarika", "geetha arts", "people media", "dvv", "vyjayanthi",
+        "suresh productions", "aha", "annapurna", "slv cinemas", "uv creations", "aditya music", "mango music",
+        "tseries telugu", "t-series telugu", "jiohotstar telugu", "tips telugu", "sri venkateswara creations",
+    ),
+    "ta" to listOf(
+        "tamil", "sun pictures", "lyca", "think music", "sathya jyothi", "dream warrior", "ags entertainment",
+        "seven screen", "raaj kamal", "madras talkies", "2d entertainment", "jiohotstar tamil", "saregama tamil",
+        "tips tamil", "wunderbar", "prince pictures", "potential studios",
+    ),
+    "ml" to listOf(
+        "malayalam", "aashirvad", "mammootty kampany", "bhavana studios", "weekend blockbusters", "friday film house",
+        "prithviraj productions", "amal neerad", "jiohotstar malayalam", "saregama malayalam", "goodwill", "magic frames",
+        "anto joseph", "e4 entertainment",
+    ),
+    "kn" to listOf(
+        "kannada", "hombale", "paramvah", "krg studios", "kvn productions", "jiohotstar kannada", "lahari music",
+    ),
+    "hi" to listOf(
+        "dharma", "yrf", "maddock", "nadiadwala", "red chillies", "excel movies", "balaji motion", "pooja entertainment",
+        "zee studios", "pen movies", "panorama studios", "tips films",
+    ),
+    "en" to listOf(
+        "netflix", "prime video", "sony pictures", "warner", "universal", "paramount",
+    ),
+)
 
 private fun sourceRoleScoreV060(role: String?): Int = when (role) {
     "PRODUCTION_HOUSE" -> 40
