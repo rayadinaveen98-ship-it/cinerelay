@@ -133,6 +133,7 @@ fun NotificationDetailV055(
                                 ) {
                                     item { EventDetailHeaderV061(target) }
                                     target.event.story?.let { story ->
+                                        if (story.timeline.isNotEmpty()) item { StoryChangeNowV066(story) }
                                         item { StoryIntelligenceOverviewV061(story) }
                                         if (story.timeline.isNotEmpty()) {
                                             item {
@@ -282,6 +283,49 @@ private fun EventDetailHeaderV061(target: ConsumerDeepLinkTarget.Event) {
 }
 
 @Composable
+private fun StoryChangeNowV066(story: ConsumerStory) {
+    val current = story.timeline.firstOrNull { it.current } ?: story.timeline.firstOrNull() ?: return
+    val previous = story.timeline.firstOrNull { it.id != current.id }
+    Surface(
+        color = DetailGold.copy(alpha = 0.08f),
+        shape = RoundedCornerShape(22.dp),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text("WHAT CHANGED NOW", color = DetailGold, fontSize = 9.sp, fontWeight = FontWeight.Black, letterSpacing = 1.0.sp)
+                    Text(friendlyEventTypeV061(current.eventType), color = DetailMuted, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
+                }
+                current.detectedAt?.let {
+                    Surface(color = DetailInk.copy(alpha = 0.58f), shape = RoundedCornerShape(50)) {
+                        Text(detailTimeAgoV061(it), color = DetailText, fontSize = 9.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 9.dp, vertical = 5.dp))
+                    }
+                }
+            }
+            Text(current.headline, color = DetailText, fontSize = 17.sp, lineHeight = 22.sp, fontWeight = FontWeight.Bold)
+            current.summary?.takeIf { it.isNotBlank() }?.let {
+                Text(it, color = DetailMuted, fontSize = 11.sp, lineHeight = 17.sp)
+            }
+            if (previous != null) {
+                Surface(color = DetailInk.copy(alpha = 0.40f), shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(horizontal = 11.dp, vertical = 9.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                        Text("PREVIOUS CONTEXT", color = DetailMuted, fontSize = 8.sp, fontWeight = FontWeight.Black, letterSpacing = 0.7.sp)
+                        Text(previous.headline, color = DetailText.copy(alpha = 0.78f), fontSize = 10.sp, lineHeight = 15.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    }
+                }
+            }
+            val strength = buildList {
+                add("${story.sourceCount} source${if (story.sourceCount == 1) "" else "s"}")
+                if (story.officialSourceCount > 0) add("${story.officialSourceCount} official")
+                if (story.evidenceCount > 0) add("${story.evidenceCount} evidence")
+            }.joinToString(" • ")
+            Text(strength, color = DetailGreen, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+        }
+    }
+}
+
+@Composable
 private fun StoryIntelligenceOverviewV061(story: ConsumerStory) {
     Surface(color = DetailPanel, shape = RoundedCornerShape(22.dp), modifier = Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -298,12 +342,15 @@ private fun StoryIntelligenceOverviewV061(story: ConsumerStory) {
                 StoryStatV061(story.timeline.size.toString(), "Updates", Modifier.weight(1f))
             }
             Text(
-                if (story.sourceCount > 1) "Multiple sources are attached to this story. Open the evidence below to inspect each original update."
-                else "This story currently has one retained source. CineRelay will keep the timeline updated as more evidence arrives.",
+                if (story.sourceCount > 1) "Multiple retained sources support this evolving story. Each update stays traceable to its original evidence."
+                else "This story currently has one retained source. CineRelay will keep the same thread updated when stronger evidence arrives.",
                 color = DetailMuted,
                 fontSize = 10.sp,
                 lineHeight = 16.sp,
             )
+            story.latestEvidenceAt?.let {
+                Text("Latest evidence ${detailTimeAgoV061(it)}", color = DetailMuted, fontSize = 9.sp)
+            }
         }
     }
 }
