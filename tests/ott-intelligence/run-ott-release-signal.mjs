@@ -93,6 +93,40 @@ assert.equal(nowStreaming.state, 'RELEASED');
 assert.equal(nowStreaming.datePrecision, 'TBA');
 assert.equal(nowStreaming.releaseDate, undefined);
 
+const netflixIrumudi = extractOttMovieReleaseSignal({
+  title: 'Irumudi | Hindi Trailer | Ravi Teja | Priya Bhavani Shankar | Netflix India',
+  text: 'A fistful of anger, a heart full of love, thats our Trinath. Watch Irumudi on Netflix, out 18 September in Telugu, Hindi, Tamil, Kannada and Malayalam.',
+  publishedAt: '2026-09-17T10:30:00Z',
+  source: { authorityTier: 1, role: 'OTT_PLATFORM', name: 'Netflix India' },
+});
+assert.ok(netflixIrumudi, 'Netflix India dated availability inside an official trailer description should be retained');
+assert.equal(netflixIrumudi.title, 'Irumudi');
+assert.equal(netflixIrumudi.providerCode, 'NETFLIX');
+assert.equal(netflixIrumudi.releaseDate, '2026-09-18');
+assert.equal(netflixIrumudi.state, 'UPCOMING');
+assert.equal(netflixIrumudi.primaryLanguage, 'te');
+
+const netflixLove = extractOttMovieReleaseSignal({
+  title: '#Love | Save the Date | Arjun Das, Aishwarya Lekshmi | Netflix India',
+  text: '#Love. Is it all about chemistry or compatibility? Watch #Love, out 2 October, in Tamil, Hindi, Telugu, Kannada and Malayalam, only on Netflix.',
+  publishedAt: '2026-09-17T06:36:41Z',
+  source: { authorityTier: 1, role: 'OTT_PLATFORM', name: 'Netflix India' },
+});
+assert.ok(netflixLove);
+assert.equal(netflixLove.title, '#Love');
+assert.equal(netflixLove.releaseDate, '2026-10-02');
+assert.equal(netflixLove.primaryLanguage, 'ta', 'multi-language availability should preserve the first explicitly named language');
+
+const netflixAnimals = extractOttMovieReleaseSignal({
+  title: 'Animals | Official Trailer | Netflix',
+  text: 'When their son is kidnapped, an LA mayoral candidate and his wife scramble to raise the ransom. Animals is only on Netflix 9 October.',
+  publishedAt: '2026-09-15T14:00:04Z',
+  source: { authorityTier: 1, role: 'OTT_PLATFORM', name: 'Netflix India' },
+});
+assert.ok(netflixAnimals);
+assert.equal(netflixAnimals.title, 'Animals');
+assert.equal(netflixAnimals.releaseDate, '2026-10-09');
+
 const crossPromoDate = extractOttMovieReleaseSignal({
   title: 'Month Of Madhu Telugu Movie | Watch Now On Aha | Naveen Chandra | Swathi | Srikanth Nagothi',
   text: 'Month Of Madhu Telugu Movie ft. Naveen Chandra and Swathi Reddy. Stay tuned & Subscribe to Aha YouTube channel for more Latest Movies, Shows & Web Series. Click here to watch: Chiranjeeva Movie Teaser | Raj Tarun | Premieres 7th Nov | Aha',
@@ -104,6 +138,17 @@ assert.equal(crossPromoDate.providerCode, 'AHA');
 assert.equal(crossPromoDate.state, 'RELEASED');
 assert.equal(crossPromoDate.releaseDate, undefined, 'dates from unrelated description cross-promos must never attach to the current title');
 assert.equal(crossPromoDate.datePrecision, 'TBA');
+
+assert.equal(
+  extractOttMovieReleaseSignal({
+    title: 'Dupahiya Season 2 - Official Trailer | Prime Video India',
+    text: 'Dupahiya Season 2 releases on October 1, only on Prime Video India.',
+    publishedAt: '2026-09-21T06:30:12Z',
+    source: { authorityTier: 1, role: 'OTT_PLATFORM', name: 'Prime Video India' },
+  }),
+  undefined,
+  'movie calendar extraction must not misclassify a dated series season as a movie',
+);
 
 assert.equal(
   extractOttMovieReleaseSignal({
