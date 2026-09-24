@@ -104,6 +104,7 @@ class OttViewModelV054(application: Application) : AndroidViewModel(application)
                 }
             }.onSuccess { (todayFeed, upcomingFeed) ->
                 val todayIso = todayFeed.today ?: upcomingFeed.today
+                val todayDate = todayIso?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
                 val weekend = weekendRangeV060(todayIso)
                 val weekendItems = if (weekend == null) {
                     emptyList()
@@ -112,12 +113,14 @@ class OttViewModelV054(application: Application) : AndroidViewModel(application)
                         val date = release.releaseDate?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
                         date != null && !date.isBefore(weekend.first) && !date.isAfter(weekend.second)
                     }
-                }
+                }.distinctBy { it.id }
+                val weekendIds = weekendItems.mapTo(mutableSetOf()) { it.id }
                 val upcomingItems = upcomingFeed.items.filter { release ->
                     val date = release.releaseDate?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
-                    val todayDate = todayIso?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
-                    date != null && (todayDate == null || date.isAfter(todayDate))
-                }
+                    date != null &&
+                        (todayDate == null || date.isAfter(todayDate)) &&
+                        release.id !in weekendIds
+                }.distinctBy { it.id }
                 val allItems = (todayFeed.items + weekendItems + upcomingItems).distinctBy { it.id }
                 val providers = (upcomingFeed.providers + todayFeed.providers).distinctBy { it.code }
 
@@ -127,8 +130,8 @@ class OttViewModelV054(application: Application) : AndroidViewModel(application)
                     providers = providers,
                     items = allItems,
                     todayItems = todayFeed.items.distinctBy { it.id },
-                    weekendItems = weekendItems.distinctBy { it.id },
-                    upcomingItems = upcomingItems.distinctBy { it.id },
+                    weekendItems = weekendItems,
+                    upcomingItems = upcomingItems,
                     today = todayIso,
                     weekendStart = weekend?.first?.toString(),
                     weekendEnd = weekend?.second?.toString(),
