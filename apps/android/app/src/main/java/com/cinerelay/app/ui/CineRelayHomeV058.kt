@@ -306,9 +306,13 @@ private fun HomeCardV059(story: HomeStoryV059, onClick: () -> Unit) {
             Surface(color = Home58Ink.copy(alpha = 0.84f), shape = RoundedCornerShape(50), modifier = Modifier.align(Alignment.BottomStart).padding(8.dp)) {
                 Text(home58StateLabel(item.state), color = if (item.state == "VERIFIED") Home58Green else Home58Gold, fontSize = 9.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp))
             }
-            if (story.sourceCount > 1) {
+            if (story.updates.size > 1 || story.sourceCount > 1) {
+                val storyMeta = buildList {
+                    if (story.updates.size > 1) add("${story.updates.size} updates")
+                    if (story.sourceCount > 1) add("${story.sourceCount} sources")
+                }.joinToString(" • ")
                 Surface(color = Home58Ink.copy(alpha = 0.88f), shape = RoundedCornerShape(50), modifier = Modifier.align(Alignment.TopEnd).padding(8.dp)) {
-                    Text("${story.sourceCount} sources", color = Home58Text, fontSize = 9.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp))
+                    Text(storyMeta, color = Home58Text, fontSize = 9.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp))
                 }
             }
         }
@@ -387,9 +391,12 @@ private fun clusterHomeStoriesV059(signals: List<NewsroomSignal>): List<HomeStor
         val representative = bestHomeRepresentativeV059(cluster)
         val sourceKeys = cluster.map(::homeSourceKeyV059).filter { it.isNotBlank() }.toSet()
         val officialKeys = cluster.filter { (it.source.authorityTier ?: 99) <= 1 }.map(::homeSourceKeyV059).filter { it.isNotBlank() }.toSet()
+        val entityId = cluster.mapNotNull { it.canonicalEvent?.entityId?.takeIf(String::isNotBlank) }.firstOrNull()
         val eventId = cluster.mapNotNull { it.canonicalEvent?.id?.takeIf(String::isNotBlank) }.firstOrNull()
         HomeStoryV059(
-            key = eventId?.let { "event:$it" } ?: "story:${cluster.map { it.id }.sorted().first()}",
+            key = entityId?.let { "entity:$it" }
+                ?: eventId?.let { "event:$it" }
+                ?: "story:${cluster.map { it.id }.sorted().first()}",
             representative = representative,
             updates = cluster.sortedByDescending(::homeSignalInstantV059),
             sourceCount = sourceKeys.size.coerceAtLeast(1),
@@ -399,15 +406,21 @@ private fun clusterHomeStoriesV059(signals: List<NewsroomSignal>): List<HomeStor
 }
 
 private fun shouldShareHomeStoryV059(left: NewsroomSignal, right: NewsroomSignal): Boolean {
-    val leftEvent = left.canonicalEvent?.id?.takeIf(String::isNotBlank)
-    val rightEvent = right.canonicalEvent?.id?.takeIf(String::isNotBlank)
-    if (leftEvent != null && rightEvent != null) return leftEvent == rightEvent
-
     val leftInstant = homeSignalInstantV059(left)
     val rightInstant = homeSignalInstantV059(right)
     if (leftInstant != Instant.EPOCH && rightInstant != Instant.EPOCH) {
         if (abs(Duration.between(leftInstant, rightInstant).toMinutes()) > 18L * 60L) return false
     }
+
+    val leftEntity = left.canonicalEvent?.entityId?.takeIf(String::isNotBlank)
+    val rightEntity = right.canonicalEvent?.entityId?.takeIf(String::isNotBlank)
+    if (leftEntity != null && rightEntity != null) {
+        return leftEntity == rightEntity
+    }
+
+    val leftEvent = left.canonicalEvent?.id?.takeIf(String::isNotBlank)
+    val rightEvent = right.canonicalEvent?.id?.takeIf(String::isNotBlank)
+    if (leftEvent != null && rightEvent != null) return leftEvent == rightEvent
 
     val leftLanguages = explicitHomeLanguagesV059(left.title)
     val rightLanguages = explicitHomeLanguagesV059(right.title)
