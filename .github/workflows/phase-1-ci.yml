@@ -98,6 +98,8 @@ jobs:
         run: deno check --config supabase/functions/feed-poll-worker/deno.json supabase/functions/feed-poll-worker/index.ts
       - name: Type-check page-poll-worker
         run: deno check --config supabase/functions/page-poll-worker/deno.json supabase/functions/page-poll-worker/index.ts
+      - name: Type-check ott-provider-detail-worker
+        run: deno check --config supabase/functions/ott-provider-detail-worker/deno.json supabase/functions/ott-provider-detail-worker/index.ts
       - name: Type-check threads-profile-poll-worker
         run: deno check --config supabase/functions/threads-profile-poll-worker/deno.json supabase/functions/threads-profile-poll-worker/index.ts
       - name: Type-check instagram-business-poll-worker
@@ -144,6 +146,7 @@ jobs:
             youtube-maintenance-worker
             feed-poll-worker
             page-poll-worker
+            ott-provider-detail-worker
             threads-profile-poll-worker
             instagram-business-poll-worker
             x-profile-poll-worker
