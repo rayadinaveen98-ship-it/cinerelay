@@ -48,6 +48,7 @@ data class OttUiState(
     val items: List<OttRelease> = emptyList(),
     val todayItems: List<OttRelease> = emptyList(),
     val weekendItems: List<OttRelease> = emptyList(),
+    val nowStreamingItems: List<OttRelease> = emptyList(),
     val upcomingItems: List<OttRelease> = emptyList(),
     val today: String? = null,
     val weekendStart: String? = null,
@@ -100,10 +101,18 @@ class OttViewModelV054(application: Application) : AndroidViewModel(application)
                         evidenceStatus = request.evidence.apiValue,
                         limit = 100,
                     )
-                    todayFeed to upcomingFeed
+                    val releasedFeed = client.ott(
+                        window = OttWindow.RELEASED.apiValue,
+                        providerCode = request.providerCode,
+                        language = request.language,
+                        contentType = request.contentType.apiValue,
+                        evidenceStatus = request.evidence.apiValue,
+                        limit = 100,
+                    )
+                    Triple(todayFeed, upcomingFeed, releasedFeed)
                 }
-            }.onSuccess { (todayFeed, upcomingFeed) ->
-                val todayIso = todayFeed.today ?: upcomingFeed.today
+            }.onSuccess { (todayFeed, upcomingFeed, releasedFeed) ->
+                val todayIso = todayFeed.today ?: upcomingFeed.today ?: releasedFeed.today
                 val todayDate = todayIso?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
                 val weekend = weekendRangeV060(todayIso)
                 val weekendItems = if (weekend == null) {
@@ -115,14 +124,23 @@ class OttViewModelV054(application: Application) : AndroidViewModel(application)
                     }
                 }.distinctBy { it.id }
                 val weekendIds = weekendItems.mapTo(mutableSetOf()) { it.id }
+                val todayIds = todayFeed.items.mapTo(mutableSetOf()) { it.id }
+                val nowStreamingItems = releasedFeed.items
+                    .filter { it.id !in todayIds }
+                    .sortedWith(
+                        compareByDescending<OttRelease> { it.lastVerifiedAt ?: it.firstObservedAt ?: "" }
+                            .thenBy { it.entity.name },
+                    )
+                    .distinctBy { it.id }
+                    .take(30)
                 val upcomingItems = upcomingFeed.items.filter { release ->
                     val date = release.releaseDate?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
                     date != null &&
                         (todayDate == null || date.isAfter(todayDate)) &&
                         release.id !in weekendIds
                 }.distinctBy { it.id }
-                val allItems = (todayFeed.items + weekendItems + upcomingItems).distinctBy { it.id }
-                val providers = (upcomingFeed.providers + todayFeed.providers).distinctBy { it.code }
+                val allItems = (todayFeed.items + weekendItems + nowStreamingItems + upcomingItems).distinctBy { it.id }
+                val providers = (upcomingFeed.providers + todayFeed.providers + releasedFeed.providers).distinctBy { it.code }
 
                 _state.value = _state.value.copy(
                     loading = false,
@@ -131,6 +149,7 @@ class OttViewModelV054(application: Application) : AndroidViewModel(application)
                     items = allItems,
                     todayItems = todayFeed.items.distinctBy { it.id },
                     weekendItems = weekendItems,
+                    nowStreamingItems = nowStreamingItems,
                     upcomingItems = upcomingItems,
                     today = todayIso,
                     weekendStart = weekend?.first?.toString(),
