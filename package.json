@@ -20,7 +20,7 @@
     "test:benchmark": "npm run build && node tests/benchmark/run-benchmark.mjs",
     "test:newsroom": "npm run build:domain && node tests/newsroom/run-newsroom-filter.mjs",
     "test:newsroom-state": "node tests/newsroom/run-newsroom-state-contract.mjs",
-    "test:ott": "npm run build:domain && node tests/ott-intelligence/run-ott-release-signal.mjs",
+    "test:ott": "npm run build:domain && node tests/ott-intelligence/run-ott-release-signal.mjs && node tests/ott-intelligence/run-ott-nonmovie-guard.mjs",
     "test:push-presentation": "npm run build:domain && node tests/benchmark/run-push-presentation.mjs",
     "test:youtube": "npm run build:youtube && node tests/youtube-connector/run-youtube-connector.mjs && node tests/youtube-connector/run-youtube-planning.mjs",
     "test:feed": "npm run build:feed && node tests/feed-connector/run-feed-connector.mjs && node tests/feed-connector/run-processing-contract.mjs",
