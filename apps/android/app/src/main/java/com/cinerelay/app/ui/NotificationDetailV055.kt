@@ -250,6 +250,7 @@ private fun EventDetailHeaderV061(target: ConsumerDeepLinkTarget.Event) {
     val event = target.event
     val lifecycle = event.story?.lifecycle
     val lifecycleColor = storyLifecycleColorV061(lifecycle)
+    val verificationColor = detailVerificationColorV066(event.verificationState)
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
             Surface(color = lifecycleColor.copy(alpha = 0.12f), shape = RoundedCornerShape(50)) {
@@ -261,10 +262,10 @@ private fun EventDetailHeaderV061(target: ConsumerDeepLinkTarget.Event) {
                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
                 )
             }
-            Surface(color = DetailGreen.copy(alpha = 0.10f), shape = RoundedCornerShape(50)) {
+            Surface(color = verificationColor.copy(alpha = 0.10f), shape = RoundedCornerShape(50)) {
                 Text(
                     friendlyVerificationV055(event.verificationState),
-                    color = DetailGreen,
+                    color = verificationColor,
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.padding(horizontal = 10.dp, vertical = 7.dp),
@@ -285,7 +286,10 @@ private fun EventDetailHeaderV061(target: ConsumerDeepLinkTarget.Event) {
 @Composable
 private fun StoryChangeNowV066(story: ConsumerStory) {
     val current = story.timeline.firstOrNull { it.current } ?: story.timeline.firstOrNull() ?: return
-    val previous = story.timeline.firstOrNull { it.id != current.id }
+    val currentIndex = story.timeline.indexOfFirst { it.id == current.id }
+    val previous = if (currentIndex >= 0) story.timeline.drop(currentIndex + 1).firstOrNull()
+        ?: story.timeline.firstOrNull { it.id != current.id }
+    else story.timeline.firstOrNull { it.id != current.id }
     Surface(
         color = DetailGold.copy(alpha = 0.08f),
         shape = RoundedCornerShape(22.dp),
@@ -367,12 +371,7 @@ private fun StoryStatV061(value: String, label: String, modifier: Modifier = Mod
 
 @Composable
 private fun StoryTimelineEntryV061(entry: ConsumerStoryTimelineEntry) {
-    val verificationColor = when (entry.verificationState) {
-        "OFFICIAL", "CONFIRMED" -> DetailGreen
-        "RELIABLE_REPORT", "DEVELOPING" -> DetailAmber
-        "RUMOR" -> DetailRed
-        else -> DetailMuted
-    }
+    val verificationColor = detailVerificationColorV066(entry.verificationState)
     Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Box(
@@ -468,11 +467,19 @@ private fun friendlyEventTypeV061(value: String?): String = value
     ?: "Story update"
 
 private fun friendlyVerificationV055(value: String?): String = when (value) {
-    "OFFICIAL", "CONFIRMED" -> "Official"
+    "OFFICIAL" -> "Official"
+    "CONFIRMED" -> "Confirmed"
     "RELIABLE_REPORT" -> "Reported"
     "DEVELOPING" -> "Developing"
     "RUMOR" -> "Unconfirmed"
     else -> "Update"
+}
+
+private fun detailVerificationColorV066(value: String?): Color = when (value) {
+    "OFFICIAL", "CONFIRMED" -> DetailGreen
+    "RELIABLE_REPORT", "DEVELOPING" -> DetailAmber
+    "RUMOR" -> DetailRed
+    else -> DetailBlue
 }
 
 private fun friendlyDetailRoleV055(role: String?): String = when (role) {
