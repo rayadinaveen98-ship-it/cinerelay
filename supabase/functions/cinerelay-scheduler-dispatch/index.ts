@@ -9,7 +9,7 @@ const supabase = createClient(supabaseUrl, serviceRoleKey, {
   auth: { persistSession: false, autoRefreshToken: false },
 });
 
-type Action = 'youtube-enrichment' | 'process-raw-item' | 'youtube-fallback' | 'youtube-maintenance' | 'feed-poll' | 'page-poll' | 'threads-profile-poll' | 'instagram-business-poll' | 'x-profile-poll' | 'push-delivery' | 'source-activity-push' | 'digest-compose' | 'creator-radar' | 'evidence-summary';
+type Action = 'youtube-enrichment' | 'process-raw-item' | 'youtube-fallback' | 'youtube-maintenance' | 'feed-poll' | 'page-poll' | 'ott-provider-detail' | 'threads-profile-poll' | 'instagram-business-poll' | 'x-profile-poll' | 'push-delivery' | 'source-activity-push' | 'digest-compose' | 'creator-radar' | 'evidence-summary';
 
 type DispatchTarget = {
   slug: string;
@@ -23,6 +23,7 @@ const TARGETS: Record<Action, DispatchTarget> = {
   'youtube-maintenance': { slug: 'youtube-maintenance-worker', body: { limit: 50 } },
   'feed-poll': { slug: 'feed-poll-worker', body: { limit: 20 } },
   'page-poll': { slug: 'page-poll-worker', body: { limit: 20 } },
+  'ott-provider-detail': { slug: 'ott-provider-detail-worker', body: { limit: 20 } },
   'threads-profile-poll': { slug: 'threads-profile-poll-worker', body: { limit: 20 } },
   'instagram-business-poll': { slug: 'instagram-business-poll-worker', body: { limit: 20 } },
   'x-profile-poll': { slug: 'x-profile-poll-worker', body: { limit: 20 } },
