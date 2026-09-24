@@ -110,17 +110,17 @@ export function decideFallbackHealth(input: {
 
   if (input.recoveredUploadCount > 0) {
     return {
-      degraded: true,
+      degraded: false,
       errorCode: 'WEBSUB_MISSED_DELIVERY',
-      errorMessage: `Authoritative uploads polling found ${input.recoveredUploadCount} upload(s) that were not observed via WebSub`,
+      errorMessage: `Authoritative uploads polling recovered ${input.recoveredUploadCount} upload(s) not observed via WebSub; ingestion remains healthy while the accelerator is monitored`,
     };
   }
 
   if (input.existingErrorCode === 'WEBSUB_MISSED_DELIVERY') {
     return {
-      degraded: true,
+      degraded: false,
       errorCode: 'WEBSUB_MISSED_DELIVERY',
-      errorMessage: 'Authoritative uploads polling is healthy; awaiting a successful WebSub delivery to restore accelerator health',
+      errorMessage: 'Authoritative uploads polling remains healthy; WebSub accelerator recovery is still being monitored',
     };
   }
 
