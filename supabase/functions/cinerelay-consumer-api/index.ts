@@ -275,7 +275,19 @@ async function event(eventId: string, userId: string | null) {
   if (evidenceResult.error) throw evidenceResult.error;
   if (timelineResult.error) throw timelineResult.error;
 
-  const rawIds = (evidenceResult.data ?? []).map((row) => row.raw_item_id).filter(Boolean);
+  const timelineRows = timelineResult.data ?? [];
+  const timelineEventIds = timelineRows.map((row) => row.id).filter(Boolean);
+  const storyEvidenceResult = timelineEventIds.length
+    ? await admin.from('event_evidence').select('event_id,raw_item_id,evidence_role,weight').in('event_id', timelineEventIds)
+    : { data: [], error: null };
+  if (storyEvidenceResult.error) throw storyEvidenceResult.error;
+
+  const currentEvidenceRows = evidenceResult.data ?? [];
+  const storyEvidenceRows = storyEvidenceResult.data ?? [];
+  const rawIds = [...new Set([
+    ...currentEvidenceRows.map((row) => row.raw_item_id),
+    ...storyEvidenceRows.map((row) => row.raw_item_id),
+  ].filter(Boolean))];
   const rawResult = rawIds.length
     ? await admin.from('raw_items').select('id,source_identity_id,canonical_url,raw_title,published_at,metadata').in('id', rawIds)
     : { data: [], error: null };
@@ -298,7 +310,7 @@ async function event(eventId: string, userId: string | null) {
   const rawMap = new Map(raws.map((row) => [row.id, row]));
   const identityMap = new Map(identities.map((row) => [row.id, row]));
   const sourceMap = new Map((sourceResult.data ?? []).map((row) => [row.id, row]));
-  const evidence = (evidenceResult.data ?? []).map((row) => {
+  const evidence = currentEvidenceRows.map((row) => {
     const raw = rawMap.get(row.raw_item_id);
     const identity = raw ? identityMap.get(raw.source_identity_id) : undefined;
     const source = identity ? sourceMap.get(identity.source_id) : undefined;
@@ -322,14 +334,26 @@ async function event(eventId: string, userId: string | null) {
     };
   }).sort((left, right) => Number(right.weight ?? 0) - Number(left.weight ?? 0));
 
-  const sourceKeys = new Set(evidence.map((item) => item.source.sourceId ?? item.source.identityId ?? item.source.name).filter(Boolean));
+  const storySourceDescriptors = storyEvidenceRows.map((row) => {
+    const raw = rawMap.get(row.raw_item_id);
+    const identity = raw ? identityMap.get(raw.source_identity_id) : undefined;
+    const source = identity ? sourceMap.get(identity.source_id) : undefined;
+    return {
+      rawItemId: row.raw_item_id,
+      sourceKey: identity?.source_id ?? identity?.id ?? source?.display_name ?? null,
+      authorityTier: source?.authority_tier ?? null,
+      publishedAt: raw?.published_at ?? null,
+    };
+  });
+  const sourceKeys = new Set(storySourceDescriptors.map((item) => item.sourceKey).filter(Boolean));
   const officialSourceKeys = new Set(
-    evidence
-      .filter((item) => Number(item.source.authorityTier ?? 99) <= 1)
-      .map((item) => item.source.sourceId ?? item.source.identityId ?? item.source.name)
+    storySourceDescriptors
+      .filter((item) => Number(item.authorityTier ?? 99) <= 1)
+      .map((item) => item.sourceKey)
       .filter(Boolean),
   );
-  const timeline = (timelineResult.data ?? []).map((row) => ({
+  const storyRawIds = new Set(storySourceDescriptors.map((item) => item.rawItemId).filter(Boolean));
+  const timeline = timelineRows.map((row) => ({
     id: row.id,
     current: row.id === eventRow.id,
     eventType: row.event_type,
@@ -342,7 +366,10 @@ async function event(eventId: string, userId: string | null) {
     announcedAt: row.announced_at,
     occurredAt: row.occurred_at,
   }));
-  const evidenceTimes = evidence.map((item) => item.publishedAt).filter((value): value is string => Boolean(value)).sort();
+  const evidenceTimes = storySourceDescriptors
+    .map((item) => item.publishedAt)
+    .filter((value): value is string => Boolean(value))
+    .sort();
   const story = {
     lifecycle: storyLifecycle({
       eventType: eventRow.event_type ?? null,
@@ -351,11 +378,11 @@ async function event(eventId: string, userId: string | null) {
       sourceCount: sourceKeys.size,
       timelineCount: timeline.length,
     }),
-    evidenceCount: evidence.length,
+    evidenceCount: storyRawIds.size,
     sourceCount: sourceKeys.size,
     officialSourceCount: officialSourceKeys.size,
-    firstEvidenceAt: evidenceTimes[0] ?? eventRow.detected_at,
-    latestEvidenceAt: evidenceTimes[evidenceTimes.length - 1] ?? eventRow.detected_at,
+    firstEvidenceAt: evidenceTimes[0] ?? timeline[timeline.length - 1]?.detectedAt ?? eventRow.detected_at,
+    latestEvidenceAt: evidenceTimes[evidenceTimes.length - 1] ?? timeline[0]?.detectedAt ?? eventRow.detected_at,
     timeline,
   };
 
