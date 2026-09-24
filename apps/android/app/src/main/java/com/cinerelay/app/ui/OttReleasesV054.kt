@@ -136,7 +136,7 @@ fun OttReleasesV054(
                     contentPadding = PaddingValues(start = 14.dp, end = 14.dp, top = 4.dp, bottom = 118.dp),
                     verticalArrangement = Arrangement.spacedBy(14.dp),
                 ) {
-                    item { OttOverviewV066(state) }
+                    item { OttOverviewV069(state) }
 
                     item {
                         OttFiltersV060(
@@ -185,6 +185,15 @@ fun OttReleasesV054(
                         }
                         item {
                             OttReleaseSectionV066(
+                                eyebrow = "AVAILABLE NOW",
+                                title = "Now Streaming",
+                                subtitle = "Recently verified movies and series already available",
+                                items = state.nowStreamingItems,
+                                emptyMessage = "No matching now-streaming releases are currently backed by retained evidence.",
+                            )
+                        }
+                        item {
+                            OttReleaseSectionV066(
                                 eyebrow = "COMING SOON",
                                 title = "Coming in the Next 30 Days",
                                 subtitle = state.windowEnd?.let { "Through ${formatOttDateV054(it)}" } ?: "Confirmed and reported upcoming premieres",
@@ -200,7 +209,7 @@ fun OttReleasesV054(
 }
 
 @Composable
-private fun OttOverviewV066(state: OttUiState) {
+private fun OttOverviewV069(state: OttUiState) {
     Surface(color = OttPanel, shape = RoundedCornerShape(24.dp), modifier = Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -217,7 +226,7 @@ private fun OttOverviewV066(state: OttUiState) {
                 }
             }
             Text(
-                "Weekend first, then today and the next 30 days. Platform, language and verification controls stay optional.",
+                "Weekend and today first, plus what is already streaming and what is coming over the next 30 days. Filters stay optional.",
                 color = OttMuted,
                 fontSize = 11.sp,
                 lineHeight = 17.sp,
@@ -225,6 +234,9 @@ private fun OttOverviewV066(state: OttUiState) {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 OttCountPillV060("Weekend", state.weekendItems.size, Modifier.weight(1f))
                 OttCountPillV060("Today", state.todayItems.size, Modifier.weight(1f))
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OttCountPillV060("Streaming", state.nowStreamingItems.size, Modifier.weight(1f))
                 OttCountPillV060("30 days", state.upcomingItems.size, Modifier.weight(1f))
             }
         }
@@ -347,7 +359,7 @@ private fun OttReleaseSectionV066(
                     horizontalArrangement = Arrangement.spacedBy(11.dp),
                 ) {
                     items(items, key = { it.id }) { release ->
-                        OttReleaseCardV066(release, Modifier.width(300.dp))
+                        OttReleaseCardV069(release, Modifier.width(300.dp))
                     }
                 }
             }
@@ -386,7 +398,7 @@ private fun OttChipV054(label: String, selected: Boolean, onClick: () -> Unit) {
 }
 
 @Composable
-private fun OttReleaseCardV066(release: OttRelease, modifier: Modifier = Modifier) {
+private fun OttReleaseCardV069(release: OttRelease, modifier: Modifier = Modifier) {
     val context = LocalContext.current
     val evidenceColor = when (release.evidenceStatus) {
         "CONFIRMED" -> OttGreen
@@ -453,6 +465,13 @@ private fun OttReleaseCardV066(release: OttRelease, modifier: Modifier = Modifie
                         overflow = TextOverflow.Ellipsis,
                     )
                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        OttMetaChipV066(
+                            when (release.entity.type.uppercase(Locale.ENGLISH)) {
+                                "SERIES", "SEASON" -> "Series"
+                                else -> "Movie"
+                            },
+                            OttGold,
+                        )
                         release.languages.take(2).forEach { language -> OttMetaChipV066(languageNameV054(language), OttBlue) }
                         ottReleaseTypeLabelV066(release.releaseType)?.let { OttMetaChipV066(it, OttMuted) }
                     }
@@ -463,6 +482,18 @@ private fun OttReleaseCardV066(release: OttRelease, modifier: Modifier = Modifie
                 Surface(color = OttAmber.copy(alpha = 0.08f), shape = RoundedCornerShape(11.dp)) {
                     Text(
                         "Date updated from ${formatOttDateV054(previous)}",
+                        color = OttAmber,
+                        fontSize = 9.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 9.dp, vertical = 7.dp),
+                    )
+                }
+            }
+
+            if (release.evidence.conflicting > 0) {
+                Surface(color = OttAmber.copy(alpha = 0.08f), shape = RoundedCornerShape(11.dp)) {
+                    Text(
+                        "${release.evidence.conflicting} conflicting evidence item${if (release.evidence.conflicting == 1) "" else "s"} retained — open source before publishing.",
                         color = OttAmber,
                         fontSize = 9.sp,
                         fontWeight = FontWeight.Bold,
@@ -580,12 +611,12 @@ private fun ottWeekendLabelV060(start: String?, end: String?): String {
 }
 
 private fun ottDatePrimaryV054(release: OttRelease): String {
-    val date = release.releaseDate ?: return "TBA"
+    val date = release.releaseDate ?: return "NOW"
     return runCatching { LocalDate.parse(date).dayOfMonth.toString() }.getOrDefault("—")
 }
 
 private fun ottDateSecondaryV054(release: OttRelease): String {
-    val date = release.releaseDate ?: return release.datePrecision
+    val date = release.releaseDate ?: return if (release.state == "RELEASED") "LIVE" else release.datePrecision
     return runCatching {
         LocalDate.parse(date).format(DateTimeFormatter.ofPattern("MMM", Locale.ENGLISH)).uppercase(Locale.ENGLISH)
     }.getOrDefault("DATE")
