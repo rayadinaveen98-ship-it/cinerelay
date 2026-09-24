@@ -94,7 +94,7 @@ fun RadarV058(
     val watchlist = ranked.filter { it !in actionable }
     val canonicalRawIds = remember(ranked) { ranked.mapNotNull { it.evidence?.canonicalUrl }.toSet() }
     val freshSourceOpportunities = remember(state.homeSignals, canonicalRawIds) {
-        buildRawRadarOpportunitiesV059(state.homeSignals, canonicalRawIds)
+        buildRawRadarOpportunitiesV060(state.homeSignals, canonicalRawIds)
     }
 
     MaterialTheme(
@@ -126,7 +126,7 @@ fun RadarV058(
                     Column(Modifier.weight(1f)) {
                         Text("CINERELAY", color = RadarGold58, fontSize = 9.sp, fontWeight = FontWeight.Black, letterSpacing = 1.5.sp)
                         Text("Radar", color = RadarText58, fontSize = 26.sp, fontWeight = FontWeight.Bold)
-                        Text("Fresh opportunities · rescans every minute", color = RadarMuted58, fontSize = 11.sp)
+                        Text("Fresh creator opportunities · rescans every minute", color = RadarMuted58, fontSize = 11.sp)
                     }
                     IconButton(onClick = onRefresh, enabled = !state.loading) {
                         if (state.loading) CircularProgressIndicator(Modifier.size(19.dp), strokeWidth = 2.dp, color = RadarGold58)
@@ -147,7 +147,7 @@ fun RadarV058(
                         Spacer(Modifier.height(18.dp))
                         Text("Radar is scanning", color = RadarText58, fontSize = 21.sp, fontWeight = FontWeight.Bold)
                         Spacer(Modifier.height(7.dp))
-                        Text("Pull down anytime. CineRelay checks fresh movie, trailer, OTT, release and announcement signals every minute.", color = RadarMuted58, fontSize = 13.sp, lineHeight = 19.sp)
+                        Text("CineRelay keeps rescoring trailers, casting, release changes, OTT, production activity and other creator-worthy signals as evidence arrives.", color = RadarMuted58, fontSize = 13.sp, lineHeight = 19.sp)
                     }
                 } else {
                     LazyColumn(
@@ -155,7 +155,7 @@ fun RadarV058(
                         verticalArrangement = Arrangement.spacedBy(13.dp),
                     ) {
                         item {
-                            RadarSummaryV059(
+                            RadarSummaryV060(
                                 actionableCount = actionable.size,
                                 sourceOpportunityCount = freshSourceOpportunities.size,
                                 totalCount = ranked.size + freshSourceOpportunities.size,
@@ -166,9 +166,9 @@ fun RadarV058(
                             items(actionable, key = { "action:${it.id}" }) { event -> RadarOpportunityCardV058(event, true) { onOpen(event) } }
                         }
                         if (freshSourceOpportunities.isNotEmpty()) {
-                            item { RadarSectionTitleV058("Fresh source signals", "New things worth checking before everyone catches up") }
+                            item { RadarSectionTitleV058("Fresh source signals", "New official and trusted-source activity worth checking before the conversation moves on") }
                             items(freshSourceOpportunities, key = { "raw:${it.signal.id}" }) { opportunity ->
-                                RawRadarOpportunityCardV059(opportunity) { onOpenUpdate(opportunity.signal) }
+                                RawRadarOpportunityCardV060(opportunity) { onOpenUpdate(opportunity.signal) }
                             }
                         }
                         if (watchlist.isNotEmpty()) {
@@ -183,7 +183,7 @@ fun RadarV058(
 }
 
 @Composable
-private fun RadarSummaryV059(actionableCount: Int, sourceOpportunityCount: Int, totalCount: Int) {
+private fun RadarSummaryV060(actionableCount: Int, sourceOpportunityCount: Int, totalCount: Int) {
     Surface(color = RadarPanel58, shape = RoundedCornerShape(18.dp), modifier = Modifier.fillMaxWidth()) {
         Column(Modifier.padding(15.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -191,9 +191,12 @@ private fun RadarSummaryV059(actionableCount: Int, sourceOpportunityCount: Int, 
                     Text("Live scan", color = RadarGold58, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                     Text("${actionableCount + sourceOpportunityCount} things worth checking", color = RadarText58, fontSize = 15.sp, fontWeight = FontWeight.Bold)
                 }
-                Text("1 min", color = RadarMuted58, fontSize = 10.sp)
+                Text("1 min refresh", color = RadarMuted58, fontSize = 10.sp)
             }
-            Text("$actionableCount ranked opportunities · $sourceOpportunityCount fresh source signals · $totalCount tracked here", color = RadarMuted58, fontSize = 10.sp)
+            Text("$actionableCount ranked stories · $sourceOpportunityCount fresh source opportunities · 36h opportunity window", color = RadarMuted58, fontSize = 10.sp)
+            if (totalCount > actionableCount + sourceOpportunityCount) {
+                Text("${totalCount - actionableCount - sourceOpportunityCount} additional signals stay on the watchlist.", color = RadarMuted58.copy(alpha = 0.82f), fontSize = 9.sp)
+            }
         }
     }
 }
@@ -234,11 +237,11 @@ private fun RadarOpportunityCardV058(event: EventCard, actionable: Boolean, onCl
 }
 
 @Composable
-private fun RawRadarOpportunityCardV059(opportunity: RawRadarOpportunityV059, onClick: () -> Unit) {
+private fun RawRadarOpportunityCardV060(opportunity: RawRadarOpportunityV059, onClick: () -> Unit) {
     val signal = opportunity.signal
     val accent = when {
         opportunity.score >= 90 -> RadarRed58
-        opportunity.score >= 75 -> RadarGold58
+        opportunity.score >= 76 -> RadarGold58
         opportunity.score >= 60 -> RadarGreen58
         else -> RadarBlue58
     }
@@ -264,40 +267,53 @@ private fun RawRadarOpportunityCardV059(opportunity: RawRadarOpportunityV059, on
     }
 }
 
-private fun buildRawRadarOpportunitiesV059(signals: List<NewsroomSignal>, canonicalUrls: Set<String>): List<RawRadarOpportunityV059> {
+private fun buildRawRadarOpportunitiesV060(signals: List<NewsroomSignal>, canonicalUrls: Set<String>): List<RawRadarOpportunityV059> {
     val now = Instant.now()
     return signals.asSequence()
         .distinctBy { it.id }
         .filter { signal ->
             val instant = radarSignalInstantV059(signal)
-            instant != Instant.EPOCH && Duration.between(instant, now).toHours() in 0..23
+            instant != Instant.EPOCH && Duration.between(instant, now).toHours() in 0..35
         }
         .filterNot { signal -> !signal.canonicalUrl.isNullOrBlank() && signal.canonicalUrl in canonicalUrls }
-        .mapNotNull(::scoreRawRadarOpportunityV059)
-        .filter { it.score >= 50 }
+        .mapNotNull(::scoreRawRadarOpportunityV060)
+        .filter { it.score >= 44 }
         .sortedWith(compareByDescending<RawRadarOpportunityV059> { it.score }.thenByDescending { radarSignalInstantV059(it.signal) })
-        .take(24)
+        .take(36)
         .toList()
 }
 
-private fun scoreRawRadarOpportunityV059(signal: NewsroomSignal): RawRadarOpportunityV059? {
+private fun scoreRawRadarOpportunityV060(signal: NewsroomSignal): RawRadarOpportunityV059? {
     val title = signal.title.lowercase(Locale.ROOT)
+    val lowValueCatalog = listOf(
+        "full movie", "comedy scene", "best scene", "movie scene", "clip", "episode promo", "serial promo", "recap",
+    ).any(title::contains)
+
     val type = when {
-        "trailer" in title -> Triple("Trailer just landed", "A fresh trailer can support a fast breakdown, reaction or craft angle.", 82)
-        "teaser" in title || "glimpse" in title -> Triple("Fresh teaser / glimpse", "A new visual drop is usually time-sensitive. Check it before the conversation moves on.", 76)
-        "release date" in title || "releasing on" in title || "date changed" in title || "postponed" in title -> Triple("Release update", "A date announcement or change can become a quick news explainer.", 84)
-        "first look" in title || "poster" in title -> Triple("New visual update", "A fresh first look or poster may have a useful design, casting or announcement angle.", 64)
-        "streaming" in title || "ott" in title || "digital premiere" in title || "premiere" in title -> Triple("Streaming update", "Check whether this adds a new platform, date or availability angle.", 70)
-        "song" in title || "lyrical" in title || "single" in title || "jukebox" in title -> Triple("Music drop", "A fresh song or single may be useful for a quick reaction or movie-update Short.", 58)
-        "announcement" in title || "announced" in title || "launch" in title -> Triple("New announcement", "Fresh official announcements are worth checking for a clean update angle.", 62)
-        "interview" in title || "press meet" in title || "event" in title -> Triple("Fresh interview / event", "Look for a new quote, reveal or clip that adds something beyond the event itself.", 50)
+        "trailer" in title -> Triple("Trailer just landed", "A fresh trailer can support a fast breakdown, reaction or craft angle.", 86)
+        "teaser" in title || "glimpse" in title -> Triple("Fresh teaser / glimpse", "A new visual drop is time-sensitive. Check the frames, story clues and craft angle while it is fresh.", 80)
+        "release date" in title || "releasing on" in title || "date changed" in title || "postponed" in title || "preponed" in title -> Triple("Release update", "A release-date announcement or change is useful for a quick verified explainer.", 88)
+        "title reveal" in title || "title announcement" in title -> Triple("Title reveal", "A new title reveal can support a fast update plus first-impression angle.", 72)
+        "first look" in title || "motion poster" in title || "character poster" in title || "poster" in title -> Triple("New visual reveal", "A fresh official visual may have a useful design, character or announcement angle.", 66)
+        "streaming" in title || "ott" in title || "digital premiere" in title || "premiere" in title -> Triple("Streaming update", "Check whether this adds a new platform, date, language or availability angle.", 76)
+        "joins the cast" in title || "joins cast" in title || "cast announcement" in title || "starring" in title || "on board" in title || "onboard" in title -> Triple("Casting update", "A confirmed casting change can become a clean news update or project-context Short.", 67)
+        "shoot begins" in title || "shoot starts" in title || "shooting begins" in title || "schedule begins" in title || "new schedule" in title || "wraps shoot" in title || "shoot wrapped" in title || "wrap up" in title || "muhurat" in title || "pooja ceremony" in title -> Triple("Production movement", "Fresh production activity can be worth covering when it changes the project timeline or confirms progress.", 58)
+        "censor" in title || "runtime" in title || "advance booking" in title || "bookings open" in title || "pre sales" in title || "pre-sales" in title -> Triple("Release-week signal", "Censor, runtime or booking updates can become useful release-week coverage.", 65)
+        "box office" in title || "collections" in title || "crosses" in title || "record" in title || "milestone" in title -> Triple("Performance milestone", "Check whether the number is official or well sourced before turning it into coverage.", 54)
+        "sequel" in title || "franchise" in title || "remake" in title || "spin off" in title || "spinoff" in title -> Triple("Project development", "A sequel, franchise or remake development can be worth a context-first update.", 62)
+        "behind the scenes" in title || "making of" in title || "making video" in title -> Triple("Making / BTS opportunity", "Fresh making material can support a craft-focused breakdown if it reveals process or technique.", 50)
+        "song" in title || "lyrical" in title || "single" in title || "jukebox" in title -> Triple("Music drop", "A fresh song or single may be useful when it reveals visuals, choreography, tone or story context.", 52)
+        "announcement" in title || "announced" in title || "launch" in title -> Triple("New announcement", "Fresh official announcements are worth checking for a clean update angle.", 64)
+        "interview" in title || "press meet" in title || "event" in title -> Triple("Fresh interview / event", "Look for a new quote, reveal or clip that adds something beyond the event itself.", 46)
         else -> return null
     }
 
+    if (lowValueCatalog && type.third < 60) return null
+
     var score = type.third
     score += when (signal.source.authorityTier) {
-        1 -> 15
-        2 -> 9
+        1 -> 16
+        2 -> 10
         3 -> 4
         else -> 0
     }
@@ -306,10 +322,11 @@ private fun scoreRawRadarOpportunityV059(signal: NewsroomSignal): RawRadarOpport
 
     val ageHours = Duration.between(radarSignalInstantV059(signal), Instant.now()).toHours().coerceAtLeast(0)
     score -= when {
-        ageHours <= 2 -> 0
-        ageHours <= 6 -> 3
-        ageHours <= 12 -> 8
-        else -> 14
+        ageHours <= 1 -> 0
+        ageHours <= 4 -> 2
+        ageHours <= 8 -> 5
+        ageHours <= 18 -> 10
+        else -> 18
     }
     return RawRadarOpportunityV059(signal, type.first, type.second, score.coerceIn(0, 100))
 }
