@@ -62,7 +62,7 @@ const MONTHS: Record<string, number> = {
   dec: 12, december: 12,
 };
 
-const BAD_TITLE_MARKERS = /\b(trailer|teaser|promo|glimpse|scene|clip|highlights?|song|interview|review|episodes?|ep\.?\s*\d+|recap|behind\s+the\s+scenes|sneak\s+peek|match|innings|wickets?|goals?)\b/i;
+const BAD_TITLE_MARKERS = /\b(trailer|teaser|promo|glimpse|scene|clip|highlights?|song|interview|review|episodes?|ep\.?\s*\d+|recap|behind\s+the\s+scenes|sneak\s+peek|match|innings|wickets?|goals?|season\s+\d+)\b/i;
 const RELEASE_LANGUAGE = /\b(stream(?:ing|s)?(?:\s+from|\s+on|\s+now)?|premier(?:e|es|ing)(?:\s+on)?|releas(?:e|es|ing)(?:\s+on)?|now\s+streaming|watch\s+now|available\s+now|digital\s+(?:debut|premiere|release))\b/i;
 
 function compactWhitespace(value: string): string {
@@ -89,12 +89,19 @@ function providerCode(value: string): string | undefined {
 }
 
 function languageCode(value: string): string | undefined {
-  if (/\btelugu\b|#telugumovie\b/i.test(value)) return 'te';
-  if (/\btamil\b|#tamilmovie\b/i.test(value)) return 'ta';
-  if (/\bmalayalam\b|#malayalammovie\b|\bmollywood\b/i.test(value)) return 'ml';
-  if (/\bkannada\b|#kannadamovie\b|\bsandalwood\b/i.test(value)) return 'kn';
-  if (/\bhindi\b|#hindimovie\b|\bbollywood\b/i.test(value)) return 'hi';
-  return undefined;
+  const normalized = value.toLowerCase();
+  const markers: Array<{ code: string; patterns: RegExp[] }> = [
+    { code: 'te', patterns: [/\btelugu\b/i, /#telugumovie\b/i] },
+    { code: 'ta', patterns: [/\btamil\b/i, /#tamilmovie\b/i] },
+    { code: 'ml', patterns: [/\bmalayalam\b/i, /#malayalammovie\b/i, /\bmollywood\b/i] },
+    { code: 'kn', patterns: [/\bkannada\b/i, /#kannadamovie\b/i, /\bsandalwood\b/i] },
+    { code: 'hi', patterns: [/\bhindi\b/i, /#hindimovie\b/i, /\bbollywood\b/i] },
+  ];
+  const matches = markers.flatMap(({ code, patterns }) => patterns.map((pattern) => {
+    const found = pattern.exec(normalized);
+    return found ? { code, index: found.index } : null;
+  }).filter((item): item is { code: string; index: number } => item !== null));
+  return matches.sort((left, right) => left.index - right.index)[0]?.code;
 }
 
 function parsePublishedDate(value?: string): Date {
@@ -196,6 +203,9 @@ function extractMovieTitle(
     if (allowDirectOttHeadline) {
       patterns.push(
         /^(.{2,100}?)\s*[|,:;\-–—]\s*(?:(?:now\s+)?streaming(?:\s+now)?|watch\s+now|available\s+now|streaming\s+from|premier(?:e|es|ing)\s+on|releas(?:e|es|ing)\s+on)\b/i,
+        new RegExp(`\\bwatch\\s+(.{2,100}?)\\s+on\\s+${PROVIDER_NAME_PATTERN}\\s*,?\\s*out\\s+\\d{1,2}`, 'i'),
+        /\bwatch\s+(.{2,100}?)\s*,?\s*out\s+\d{1,2}/i,
+        new RegExp(`(?:^|[.!?]\\s+)(.{2,100}?)\\s+is\\s+(?:only\\s+)?on\\s+${PROVIDER_NAME_PATTERN}\\s+\\d{1,2}`, 'i'),
       );
     }
     for (const pattern of patterns) {
@@ -219,6 +229,13 @@ function isFirstParty(source: OttSignalSource): boolean {
   return source.authorityTier <= 2 && FIRST_PARTY_ROLES.has((source.role ?? '').toUpperCase());
 }
 
+function hasFirstPartyDatedAvailability(value: string, allowDirectOttHeadline: boolean): boolean {
+  if (!allowDirectOttHeadline) return false;
+  const watchOut = /\bwatch\s+.{2,100}?\s*(?:on\s+(?:netflix|prime\s*video|amazon\s*prime|jio\s*hotstar|jiohotstar|hotstar|zee\s*5|zee5|sony\s*liv|sonyliv|aha(?:\s*video)?|sun\s*nxt|sunnxt|etv\s*win|etvwin)\s*)?,?\s*out\s+\d{1,2}\b/i;
+  const onlyOnDate = new RegExp(`\\b.{2,100}?\\s+is\\s+(?:only\\s+)?on\\s+${PROVIDER_NAME_PATTERN}\\s+\\d{1,2}\\b`, 'i');
+  return watchOut.test(value) || onlyOnDate.test(value);
+}
+
 export function extractOttMovieReleaseSignal(input: OttMovieReleaseSignalInput): OttMovieReleaseSignal | undefined {
   const title = compactWhitespace(decodeHeadlineEntities(input.title ?? ''));
   const text = compactWhitespace(decodeHeadlineEntities(input.text ?? ''));
@@ -235,7 +252,8 @@ export function extractOttMovieReleaseSignal(input: OttMovieReleaseSignalInput):
   const allowTradeHeadline = !firstParty && sourceRole === 'TRADE_MEDIA' && input.source.authorityTier <= 3;
   const releaseText = primaryReleaseText(text, sourceRole);
   const releaseContext = compactWhitespace(`${title} ${releaseText}`);
-  if (!releaseContext || !RELEASE_LANGUAGE.test(releaseContext)) return undefined;
+  const firstPartyDatedAvailability = hasFirstPartyDatedAvailability(releaseContext, allowDirectOttHeadline);
+  if (!releaseContext || (!RELEASE_LANGUAGE.test(releaseContext) && !firstPartyDatedAvailability)) return undefined;
 
   const movieTitle = extractMovieTitle(title, releaseText, allowDirectOttHeadline, allowTradeHeadline);
   if (!movieTitle) return undefined;
@@ -253,9 +271,6 @@ export function extractOttMovieReleaseSignal(input: OttMovieReleaseSignalInput):
   }
 
   const originalLanguage = /\b(original\s+(?:movie|film)|(?:movie|film)\s+original|direct\s+digital\s+debut)\b/i.test(releaseContext);
-  // Trade feeds often append publication-brand footers such as "Latest Telugu cinema news".
-  // Those labels describe the outlet, not the title. Restrict trade language inference to
-  // the article lead; if the language is not stated there, leave it unknown rather than guess.
   const languageContext = firstParty ? `${input.source.name ?? ''} ${releaseContext}` : releaseContext.slice(0, 900);
   const sourceLanguage = languageCode(languageContext);
 
