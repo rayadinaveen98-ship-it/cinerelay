@@ -15,6 +15,7 @@ assert.equal(sony.datePrecision, 'DAY');
 assert.equal(sony.state, 'UPCOMING');
 assert.equal(sony.evidenceStatus, 'CONFIRMED');
 assert.equal(sony.primaryLanguage, 'ta');
+assert.equal(sony.contentType, 'MOVIE');
 assert.equal(sony.signalType, 'OTT_RELEASE');
 
 const dayFirst = extractOttMovieReleaseSignal({
@@ -119,13 +120,14 @@ assert.equal(netflixLove.primaryLanguage, 'ta', 'multi-language availability sho
 
 const netflixAnimals = extractOttMovieReleaseSignal({
   title: 'Animals | Official Trailer | Netflix',
-  text: 'When their son is kidnapped, an LA mayoral candidate and his wife scramble to raise the ransom. Animals is only on Netflix 9 October.',
+  text: 'When their son is kidnapped, an LA mayoral candidate and his wife scramble to raise the ransom while making choices that could tear their world apart. Directed by and starring Ben Affleck, with Kerry Washington, Steven Yeun, Gillian Anderson, Adriana Paz and Luis Gerardo Méndez, Animals is only on Netflix 9 October.',
   publishedAt: '2026-09-15T14:00:04Z',
   source: { authorityTier: 1, role: 'OTT_PLATFORM', name: 'Netflix India' },
 });
-assert.ok(netflixAnimals);
+assert.ok(netflixAnimals, 'live Netflix Animals description shape should resolve the movie title from its official trailer heading');
 assert.equal(netflixAnimals.title, 'Animals');
 assert.equal(netflixAnimals.releaseDate, '2026-10-09');
+assert.equal(netflixAnimals.contentType, 'MOVIE');
 
 const crossPromoDate = extractOttMovieReleaseSignal({
   title: 'Month Of Madhu Telugu Movie | Watch Now On Aha | Naveen Chandra | Swathi | Srikanth Nagothi',
