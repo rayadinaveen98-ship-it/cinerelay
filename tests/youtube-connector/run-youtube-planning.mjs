@@ -122,19 +122,19 @@ await test('quiet source is not marked stale merely because no WebSub delivery h
   assert.deepEqual(decideFallbackHealth({ gapExceededWindow: false, recoveredUploadCount: 0, existingErrorCode: null }), { degraded: false });
 });
 
-await test('authoritative polling proves a missed WebSub accelerator delivery', async () => {
+await test('authoritative polling recovers a missed WebSub delivery without degrading source health', async () => {
   assert.deepEqual(decideFallbackHealth({ gapExceededWindow: false, recoveredUploadCount: 1, existingErrorCode: null }), {
-    degraded: true,
+    degraded: false,
     errorCode: 'WEBSUB_MISSED_DELIVERY',
-    errorMessage: 'Authoritative uploads polling found 1 upload(s) that were not observed via WebSub',
+    errorMessage: 'Authoritative uploads polling recovered 1 upload(s) not observed via WebSub; ingestion remains healthy while the accelerator is monitored',
   });
 });
 
-await test('missed WebSub delivery stays degraded while authoritative polling remains healthy', async () => {
+await test('WebSub accelerator warning persists while authoritative polling remains healthy', async () => {
   assert.deepEqual(decideFallbackHealth({ gapExceededWindow: false, recoveredUploadCount: 0, existingErrorCode: 'WEBSUB_MISSED_DELIVERY' }), {
-    degraded: true,
+    degraded: false,
     errorCode: 'WEBSUB_MISSED_DELIVERY',
-    errorMessage: 'Authoritative uploads polling is healthy; awaiting a successful WebSub delivery to restore accelerator health',
+    errorMessage: 'Authoritative uploads polling remains healthy; WebSub accelerator recovery is still being monitored',
   });
 });
 
@@ -160,7 +160,7 @@ await test('unspecified priority remains backward-compatible with normal fifteen
   assert.equal(decideDiscoveryIntervalMs({ existingErrorCode: null }), YOUTUBE_DISCOVERY_INTERVAL_MS.normal);
 });
 
-await test('WebSub delivery degradation accelerates authoritative discovery to five minutes', async () => {
+await test('WebSub delivery warning accelerates authoritative discovery to five minutes', async () => {
   assert.equal(decideDiscoveryIntervalMs({ existingErrorCode: 'WEBSUB_MISSED_DELIVERY', priority: 'NORMAL' }), YOUTUBE_DISCOVERY_INTERVAL_MS.hot);
   assert.equal(YOUTUBE_DISCOVERY_INTERVAL_MS.hot, 5 * 60 * 1000);
 });
