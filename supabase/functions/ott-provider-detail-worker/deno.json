@@ -1,0 +1,7 @@
+{
+  "compilerOptions": {"strict": true},
+  "imports": {
+    "@supabase/supabase-js": "npm:@supabase/supabase-js@2",
+    "node-html-parser": "npm:node-html-parser@7.0.1"
+  }
+}
