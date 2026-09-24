@@ -54,13 +54,13 @@ begin
       'sourceClass', 'FIRST_PARTY_OTT_RELEASE_PAGE',
       'discoveryPriority', 'HIGH',
       'parserProfile', jsonb_build_object(
-        'profileVersion', 'jiostar-jiohotstar-ott-release-v1',
+        'profileVersion', 'jiostar-jiohotstar-ott-release-v2',
         'itemSelector', 'a[href]',
         'linkSelector', '@self',
         'titleSelector', '@self',
-        'includeUrlPattern', '^https://www\\.jiostar\\.com/news/[^/?#]+/?$',
-        'includeTitlePattern', '(?:\\bto\\s+stream\\b|\\bstreaming\\b|\\bpremieres?\\b|\\bavailable\\b).*\\bJioHotstar\\b|\\bJioHotstar\\b.*(?:\\bto\\s+stream\\b|\\bstreaming\\b|\\bpremieres?\\b|\\bavailable\\b)',
-        'excludeTitlePattern', '\\b(?:season|series|episode|episodes|show|reality|Bigg Boss|Hotstar Specials|television|TV premiere|ratings?|benchmark|sponsor)\\b',
+        'includeUrlPattern', '^https://www\.jiostar\.com/news/[^/?#]+/?$',
+        'includeTitlePattern', '(?:\bto\s+stream\b|\bstreaming\b|\bpremieres?\b|\bavailable\b).*\bJioHotstar\b|\bJioHotstar\b.*(?:\bto\s+stream\b|\bstreaming\b|\bpremieres?\b|\bavailable\b)',
+        'excludeTitlePattern', '\b(?:season|series|episode|episodes|show|reality|Bigg Boss|Hotstar Specials|television|TV premiere|ratings?|benchmark|sponsor)\b',
         'maxItems', 30,
         'minItems', 1,
         'order', 'NEWEST_FIRST'
