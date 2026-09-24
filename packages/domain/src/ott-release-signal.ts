@@ -12,6 +12,7 @@ export type OttMovieReleaseSignal = {
   state: 'UPCOMING' | 'RELEASED' | 'TBA';
   evidenceStatus: 'CONFIRMED' | 'REPORTED';
   releaseType: 'ORIGINAL' | 'POST_THEATRICAL';
+  contentType: 'MOVIE';
   primaryLanguage?: string;
   confidence: number;
   weight: number;
@@ -206,6 +207,7 @@ function extractMovieTitle(
         new RegExp(`\\bwatch\\s+(.{2,100}?)\\s+on\\s+${PROVIDER_NAME_PATTERN}\\s*,?\\s*out\\s+\\d{1,2}`, 'i'),
         /\bwatch\s+(.{2,100}?)\s*,?\s*out\s+\d{1,2}/i,
         new RegExp(`(?:^|[.!?]\\s+)(.{2,100}?)\\s+is\\s+(?:only\\s+)?on\\s+${PROVIDER_NAME_PATTERN}\\s+\\d{1,2}`, 'i'),
+        /^(.{2,100}?)\s*\|\s*(?:(?:hindi|telugu|tamil|malayalam|kannada|english)\s+)?(?:official\s+)?(?:trailer|teaser)\b/i,
       );
     }
     for (const pattern of patterns) {
@@ -283,6 +285,7 @@ export function extractOttMovieReleaseSignal(input: OttMovieReleaseSignalInput):
     state,
     evidenceStatus: firstParty ? 'CONFIRMED' : 'REPORTED',
     releaseType: originalLanguage ? 'ORIGINAL' : 'POST_THEATRICAL',
+    contentType: 'MOVIE',
     ...(sourceLanguage ? { primaryLanguage: sourceLanguage } : {}),
     confidence: firstParty ? 0.97 : 0.92,
     weight: firstParty ? 0.98 : 0.9,
