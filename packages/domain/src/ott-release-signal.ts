@@ -65,6 +65,8 @@ const MONTHS: Record<string, number> = {
 
 const BAD_TITLE_MARKERS = /\b(trailer|teaser|promo|glimpse|scene|clip|highlights?|song|interview|review|episodes?|ep\.?\s*\d+|recap|behind\s+the\s+scenes|sneak\s+peek|match|innings|wickets?|goals?|season\s+\d+)\b/i;
 const RELEASE_LANGUAGE = /\b(stream(?:ing|s)?(?:\s+from|\s+on|\s+now)?|premier(?:e|es|ing)(?:\s+on)?|releas(?:e|es|ing)(?:\s+on)?|now\s+streaming|watch\s+now|available\s+now|digital\s+(?:debut|premiere|release))\b/i;
+const NON_MOVIE_TITLE_MARKERS = /(?:\bhotstar\s+specials\b|\bseason\s*\d+\b|\bepisodes?\s*\d*\b|\bep\.?\s*\d+\b|\bweb\s*series\b|\bwebseries\b|\btv\s+show\b|\breality\s+show\b|\bgame\s+show\b|\bserial\b|\bweek\s*\d+\s*[-–—]\s*promo\b|\bsat\s*[-–—]\s*sun\b|\bmon\s*[-–—]\s*fri\b|\bsign\s+up\s+for\s+sony\s+liv\b)/i;
+const NON_MOVIE_RELEASE_TAGS = /#(?:hotstarspecials|[^\s#]*season\d+|[^\s#]*s\d+on(?:jhs|jiohotstar)|webseries)\b/i;
 
 function compactWhitespace(value: string): string {
   return value.normalize('NFKC').replace(/\s+/g, ' ').trim();
@@ -238,6 +240,17 @@ function hasFirstPartyDatedAvailability(value: string, allowDirectOttHeadline: b
   return watchOut.test(value) || onlyOnDate.test(value);
 }
 
+function hasStrongNonMovieContext(title: string, releaseText: string): boolean {
+  if (NON_MOVIE_TITLE_MARKERS.test(title)) return true;
+  const lead = releaseText.slice(0, 700);
+  return NON_MOVIE_RELEASE_TAGS.test(lead);
+}
+
+function ambiguousUndatedStreamingPackaging(title: string): boolean {
+  const pipeCount = (title.match(/\|/g) ?? []).length;
+  return pipeCount > 1 && !/\b(movie|film)\b/i.test(title);
+}
+
 export function extractOttMovieReleaseSignal(input: OttMovieReleaseSignalInput): OttMovieReleaseSignal | undefined {
   const title = compactWhitespace(decodeHeadlineEntities(input.title ?? ''));
   const text = compactWhitespace(decodeHeadlineEntities(input.text ?? ''));
@@ -256,6 +269,7 @@ export function extractOttMovieReleaseSignal(input: OttMovieReleaseSignalInput):
   const releaseContext = compactWhitespace(`${title} ${releaseText}`);
   const firstPartyDatedAvailability = hasFirstPartyDatedAvailability(releaseContext, allowDirectOttHeadline);
   if (!releaseContext || (!RELEASE_LANGUAGE.test(releaseContext) && !firstPartyDatedAvailability)) return undefined;
+  if (allowDirectOttHeadline && hasStrongNonMovieContext(title, releaseText)) return undefined;
 
   const movieTitle = extractMovieTitle(title, releaseText, allowDirectOttHeadline, allowTradeHeadline);
   if (!movieTitle) return undefined;
@@ -264,6 +278,7 @@ export function extractOttMovieReleaseSignal(input: OttMovieReleaseSignalInput):
   const releaseDate = extractDate(releaseContext, publishedAt);
   const nowStreaming = /\b(now\s+streaming|streaming\s+now|watch\s+now|available\s+now)\b/i.test(releaseContext);
   if (!releaseDate && !nowStreaming) return undefined;
+  if (allowDirectOttHeadline && nowStreaming && !releaseDate && ambiguousUndatedStreamingPackaging(title)) return undefined;
 
   let state: OttMovieReleaseSignal['state'] = 'TBA';
   if (nowStreaming) state = 'RELEASED';
