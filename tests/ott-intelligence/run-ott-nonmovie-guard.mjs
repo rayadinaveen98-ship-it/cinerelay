@@ -106,6 +106,17 @@ assert.equal(masterChef.providerCode, 'SONYLIV');
 assert.equal(masterChef.releaseDate, '2026-10-19');
 assert.equal(masterChef.state, 'UPCOMING');
 
+assert.equal(
+  extractOttSeriesReleaseSignal({
+    title: 'SONY VIZHA GRAND LAUNCH ON OCT 19th at 8PM | IDHU NAMMA VIBE!',
+    text: 'Sony Vizha - Idhu Namma Vibe! Grand launch on October 19th | 8 PM #SonyVizha #IdhuNammaVibe',
+    publishedAt: '2026-09-24T05:00:00Z',
+    source: sony,
+  }),
+  undefined,
+  'generic platform event or banner launch labels must never become canonical series titles',
+);
+
 for (const noisy of [
   {
     title: 'HeartBeat: Season 3 | Week 9 - Promo 1 | JioHotstar',
