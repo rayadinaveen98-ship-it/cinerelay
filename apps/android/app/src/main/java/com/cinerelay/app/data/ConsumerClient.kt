@@ -66,6 +66,30 @@ data class ConsumerEvidence(
     val source: ConsumerSource,
 )
 
+data class ConsumerStoryTimelineEntry(
+    val id: String,
+    val current: Boolean,
+    val eventType: String?,
+    val verificationState: String?,
+    val priorityBand: String?,
+    val headline: String,
+    val summary: String?,
+    val status: String?,
+    val detectedAt: String?,
+    val announcedAt: String?,
+    val occurredAt: String?,
+)
+
+data class ConsumerStory(
+    val lifecycle: String,
+    val evidenceCount: Int,
+    val sourceCount: Int,
+    val officialSourceCount: Int,
+    val firstEvidenceAt: String?,
+    val latestEvidenceAt: String?,
+    val timeline: List<ConsumerStoryTimelineEntry>,
+)
+
 data class ConsumerEvent(
     val id: String,
     val entityId: String,
@@ -79,6 +103,7 @@ data class ConsumerEvent(
     val headline: String,
     val summary: String?,
     val detectedAt: String?,
+    val story: ConsumerStory?,
     val evidence: List<ConsumerEvidence>,
 )
 
@@ -258,6 +283,39 @@ private fun JSONObject.toConsumerUpdate(): ConsumerUpdate = ConsumerUpdate(
     source = (optJSONObject("source") ?: JSONObject()).toConsumerSource(),
 )
 
+private fun JSONObject.toConsumerStory(): ConsumerStory {
+    val timelineArray = optJSONArray("timeline") ?: JSONArray()
+    val timeline = buildList {
+        for (index in 0 until timelineArray.length()) {
+            val row = timelineArray.optJSONObject(index) ?: continue
+            add(
+                ConsumerStoryTimelineEntry(
+                    id = row.optString("id"),
+                    current = row.optBoolean("current", false),
+                    eventType = row.optionalConsumerString("eventType"),
+                    verificationState = row.optionalConsumerString("verificationState"),
+                    priorityBand = row.optionalConsumerString("priorityBand"),
+                    headline = row.optString("headline", "Story update"),
+                    summary = row.optionalConsumerString("summary"),
+                    status = row.optionalConsumerString("status"),
+                    detectedAt = row.optionalConsumerString("detectedAt"),
+                    announcedAt = row.optionalConsumerString("announcedAt"),
+                    occurredAt = row.optionalConsumerString("occurredAt"),
+                ),
+            )
+        }
+    }
+    return ConsumerStory(
+        lifecycle = optString("lifecycle", "NEW"),
+        evidenceCount = optInt("evidenceCount", 0),
+        sourceCount = optInt("sourceCount", 0),
+        officialSourceCount = optInt("officialSourceCount", 0),
+        firstEvidenceAt = optionalConsumerString("firstEvidenceAt"),
+        latestEvidenceAt = optionalConsumerString("latestEvidenceAt"),
+        timeline = timeline,
+    )
+}
+
 private fun JSONObject.toConsumerEvent(): ConsumerEvent {
     val evidenceArray = optJSONArray("evidence") ?: JSONArray()
     val evidence = buildList {
@@ -288,6 +346,7 @@ private fun JSONObject.toConsumerEvent(): ConsumerEvent {
         headline = optString("headline", "CineRelay story"),
         summary = optionalConsumerString("summary"),
         detectedAt = optionalConsumerString("detectedAt"),
+        story = optJSONObject("story")?.toConsumerStory(),
         evidence = evidence,
     )
 }
