@@ -167,20 +167,20 @@ fun OttReleasesV054(
                     } else {
                         item {
                             OttReleaseSectionV066(
-                                eyebrow = "TODAY",
-                                title = "Today’s OTT Releases",
-                                subtitle = state.today?.let { formatOttDateV054(it) } ?: "What is available today",
-                                items = state.todayItems,
-                                emptyMessage = "No evidence-backed OTT premieres are dated for today yet.",
-                            )
-                        }
-                        item {
-                            OttReleaseSectionV066(
                                 eyebrow = "WEEKEND",
                                 title = "This Weekend",
                                 subtitle = ottWeekendLabelV060(state.weekendStart, state.weekendEnd),
                                 items = state.weekendItems,
                                 emptyMessage = "No confirmed or reported releases are mapped to this weekend yet.",
+                            )
+                        }
+                        item {
+                            OttReleaseSectionV066(
+                                eyebrow = "TODAY",
+                                title = "Today’s OTT Releases",
+                                subtitle = state.today?.let { formatOttDateV054(it) } ?: "What is available today",
+                                items = state.todayItems,
+                                emptyMessage = "No evidence-backed OTT premieres are dated for today yet.",
                             )
                         }
                         item {
@@ -217,14 +217,14 @@ private fun OttOverviewV066(state: OttUiState) {
                 }
             }
             Text(
-                "Release windows first. Platform, language and verification controls stay optional until you need them.",
+                "Weekend first, then today and the next 30 days. Platform, language and verification controls stay optional.",
                 color = OttMuted,
                 fontSize = 11.sp,
                 lineHeight = 17.sp,
             )
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OttCountPillV060("Today", state.todayItems.size, Modifier.weight(1f))
                 OttCountPillV060("Weekend", state.weekendItems.size, Modifier.weight(1f))
+                OttCountPillV060("Today", state.todayItems.size, Modifier.weight(1f))
                 OttCountPillV060("30 days", state.upcomingItems.size, Modifier.weight(1f))
             }
         }
