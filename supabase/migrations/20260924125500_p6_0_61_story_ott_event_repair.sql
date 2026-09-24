@@ -2,26 +2,29 @@ begin;
 
 -- Story Intelligence consumes canonical events, so a first-party "Watch Now" signal
 -- must materialize as OTT_RELEASED even when the historical premiere day is unknown.
+-- Be tolerant of pg_get_functiondef formatting so this works on a fresh database
+-- and on environments where P6.0.60 has already rewritten the function body.
 do $migration$
 declare
   v_definition text;
-  v_before text := $needle$if v_accept_canonical then
-    if v_existing.id is null and p_release_date is null then v_event_type := 'OTT_PLATFORM_ANNOUNCED';
-    elsif v_existing.id is null and p_release_date is not null then v_event_type := 'OTT_DATE_ANNOUNCED';$needle$;
-  v_after text := $replacement$if v_accept_canonical then
-    if v_existing.id is null and v_state = 'RELEASED' then v_event_type := 'OTT_RELEASED';
-    elsif v_existing.id is null and p_release_date is null then v_event_type := 'OTT_PLATFORM_ANNOUNCED';
-    elsif v_existing.id is null and p_release_date is not null then v_event_type := 'OTT_DATE_ANNOUNCED';$replacement$;
 begin
   select pg_get_functiondef(
     'public.upsert_ott_release_with_evidence(uuid,text,uuid,text,text[],text,date,text,text,text,text)'::regprocedure
   ) into v_definition;
 
-  if position(v_before in v_definition) = 0 then
-    raise exception 'p6_0_61_ott_event_branch_not_found';
+  if position('v_existing.id is null and v_state = ''RELEASED''' in v_definition) = 0 then
+    v_definition := regexp_replace(
+      v_definition,
+      '(if[[:space:]]+v_accept_canonical[[:space:]]+then[[:space:]]*)if[[:space:]]+v_existing\.id[[:space:]]+is[[:space:]]+null[[:space:]]+and[[:space:]]+p_release_date[[:space:]]+is[[:space:]]+null[[:space:]]+then',
+      E'\\1if v_existing.id is null and v_state = ''RELEASED'' then\n      v_event_type := ''OTT_RELEASED'';\n    elsif v_existing.id is null and p_release_date is null then',
+      'i'
+    );
   end if;
 
-  v_definition := replace(v_definition, v_before, v_after);
+  if position('v_existing.id is null and v_state = ''RELEASED''' in v_definition) = 0 then
+    raise exception 'p6_0_61_failed_to_install_released_event_branch';
+  end if;
+
   execute v_definition;
 end;
 $migration$;
@@ -37,14 +40,12 @@ where e.status = 'ACTIVE'
   and e.structured_data ->> 'providerCode' = 'AHA'
   and e.structured_data ->> 'releaseDate' = '2026-11-07'
   and exists (
-    select 1
-    from public.entities en
+    select 1 from public.entities en
     where en.id = e.primary_entity_id
       and lower(en.canonical_name) like 'month of madhu%'
   )
   and exists (
-    select 1
-    from public.ott_releases r
+    select 1 from public.ott_releases r
     join public.ott_providers p on p.id = r.provider_id
     where r.entity_id = e.primary_entity_id
       and p.code = 'AHA'
