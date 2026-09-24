@@ -271,8 +271,9 @@ export function extractOttMovieReleaseSignal(input: OttMovieReleaseSignalInput):
   }
 
   const originalLanguage = /\b(original\s+(?:movie|film)|(?:movie|film)\s+original|direct\s+digital\s+debut)\b/i.test(releaseContext);
-  const languageContext = firstParty ? `${input.source.name ?? ''} ${releaseContext}` : releaseContext.slice(0, 900);
-  const sourceLanguage = languageCode(languageContext);
+  const sourceLanguage = firstParty
+    ? (languageCode(releaseText) ?? languageCode(`${input.source.name ?? ''} ${title}`))
+    : languageCode(releaseContext.slice(0, 900));
 
   return {
     title: movieTitle,
