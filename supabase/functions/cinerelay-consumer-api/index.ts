@@ -17,6 +17,7 @@ const corsHeaders = {
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const PERSONALIZATION_VERSION = 1;
+const STORY_WINDOW_DAYS = 90;
 
 type User = { id: string; email: string | null };
 type Action = 'personalization' | 'savePersonalization' | 'rawItem' | 'event';
@@ -91,6 +92,21 @@ function thumbnailUrlOf(metadata: unknown): string | null {
 
 function artworkUrlOf(connectorConfig: unknown): string | null {
   return stringValue(recordValue(connectorConfig).artworkUrl);
+}
+
+function storyLifecycle(input: {
+  eventType: string | null;
+  verificationState: string | null;
+  status: string | null;
+  sourceCount: number;
+  timelineCount: number;
+}): string {
+  if (input.status === 'RETRACTED' || input.status === 'SUPPRESSED') return 'RETRACTED';
+  if (input.eventType?.endsWith('_RELEASED') || input.eventType === 'THEATRICAL_RELEASED' || input.eventType === 'OTT_RELEASED') return 'RELEASED';
+  if ((input.verificationState === 'OFFICIAL' || input.verificationState === 'CONFIRMED') && input.sourceCount >= 2) return 'CONFIRMED';
+  if (input.timelineCount > 1) return 'UPDATED';
+  if (input.verificationState === 'RELIABLE_REPORT' || input.verificationState === 'DEVELOPING' || input.verificationState === 'RUMOR') return 'DEVELOPING';
+  return 'NEW';
 }
 
 async function personalization(user: User) {
@@ -243,12 +259,21 @@ async function event(eventId: string, userId: string | null) {
   if (error) throw error;
   if (!eventRow) return { ok: false, error: 'event_not_available' };
 
-  const [entityResult, evidenceResult] = await Promise.all([
+  const storySince = new Date(Date.now() - STORY_WINDOW_DAYS * 24 * 60 * 60 * 1000).toISOString();
+  const [entityResult, evidenceResult, timelineResult] = await Promise.all([
     admin.from('entities').select('id,canonical_name,entity_type,primary_language,country_code,slug,status').eq('id', eventRow.primary_entity_id).maybeSingle(),
     admin.from('event_evidence').select('raw_item_id,evidence_role,weight').eq('event_id', eventRow.id),
+    admin.from('events')
+      .select('id,event_type,verification_state,priority_band,headline,summary,status,detected_at,announced_at,occurred_at')
+      .eq('primary_entity_id', eventRow.primary_entity_id)
+      .in('status', ['ACTIVE', 'SUPERSEDED'])
+      .gte('detected_at', storySince)
+      .order('detected_at', { ascending: false })
+      .limit(18),
   ]);
   if (entityResult.error) throw entityResult.error;
   if (evidenceResult.error) throw evidenceResult.error;
+  if (timelineResult.error) throw timelineResult.error;
 
   const rawIds = (evidenceResult.data ?? []).map((row) => row.raw_item_id).filter(Boolean);
   const rawResult = rawIds.length
@@ -285,6 +310,8 @@ async function event(eventId: string, userId: string | null) {
       publishedAt: raw?.published_at ?? null,
       thumbnailUrl: thumbnailUrlOf(raw?.metadata),
       source: {
+        identityId: identity?.id ?? null,
+        sourceId: identity?.source_id ?? null,
         name: source?.display_name ?? identity?.handle ?? null,
         handle: identity?.handle ?? null,
         platform: identity?.platform ?? null,
@@ -294,6 +321,43 @@ async function event(eventId: string, userId: string | null) {
       },
     };
   }).sort((left, right) => Number(right.weight ?? 0) - Number(left.weight ?? 0));
+
+  const sourceKeys = new Set(evidence.map((item) => item.source.sourceId ?? item.source.identityId ?? item.source.name).filter(Boolean));
+  const officialSourceKeys = new Set(
+    evidence
+      .filter((item) => Number(item.source.authorityTier ?? 99) <= 1)
+      .map((item) => item.source.sourceId ?? item.source.identityId ?? item.source.name)
+      .filter(Boolean),
+  );
+  const timeline = (timelineResult.data ?? []).map((row) => ({
+    id: row.id,
+    current: row.id === eventRow.id,
+    eventType: row.event_type,
+    verificationState: row.verification_state,
+    priorityBand: row.priority_band,
+    headline: row.headline,
+    summary: row.summary ?? null,
+    status: row.status,
+    detectedAt: row.detected_at,
+    announcedAt: row.announced_at,
+    occurredAt: row.occurred_at,
+  }));
+  const evidenceTimes = evidence.map((item) => item.publishedAt).filter((value): value is string => Boolean(value)).sort();
+  const story = {
+    lifecycle: storyLifecycle({
+      eventType: eventRow.event_type ?? null,
+      verificationState: eventRow.verification_state ?? null,
+      status: eventRow.status ?? null,
+      sourceCount: sourceKeys.size,
+      timelineCount: timeline.length,
+    }),
+    evidenceCount: evidence.length,
+    sourceCount: sourceKeys.size,
+    officialSourceCount: officialSourceKeys.size,
+    firstEvidenceAt: evidenceTimes[0] ?? eventRow.detected_at,
+    latestEvidenceAt: evidenceTimes[evidenceTimes.length - 1] ?? eventRow.detected_at,
+    timeline,
+  };
 
   let followed = false;
   if (userId && eventRow.primary_entity_id) {
@@ -326,6 +390,7 @@ async function event(eventId: string, userId: string | null) {
       detectedAt: eventRow.detected_at,
       announcedAt: eventRow.announced_at,
       occurredAt: eventRow.occurred_at,
+      story,
       evidence,
     },
   };
