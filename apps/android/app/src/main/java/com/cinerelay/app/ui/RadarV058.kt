@@ -126,7 +126,7 @@ fun RadarV058(
                     Column(Modifier.weight(1f)) {
                         Text("CINERELAY", color = RadarGold58, fontSize = 9.sp, fontWeight = FontWeight.Black, letterSpacing = 1.5.sp)
                         Text("Radar", color = RadarText58, fontSize = 26.sp, fontWeight = FontWeight.Bold)
-                        Text("Fresh creator opportunities · rescans every minute", color = RadarMuted58, fontSize = 11.sp)
+                        Text("What is worth covering now · rescored every minute", color = RadarMuted58, fontSize = 11.sp)
                     }
                     IconButton(onClick = onRefresh, enabled = !state.loading) {
                         if (state.loading) CircularProgressIndicator(Modifier.size(19.dp), strokeWidth = 2.dp, color = RadarGold58)
@@ -155,25 +155,25 @@ fun RadarV058(
                         verticalArrangement = Arrangement.spacedBy(13.dp),
                     ) {
                         item {
-                            RadarSummaryV060(
+                            RadarSummaryV066(
                                 actionableCount = actionable.size,
                                 sourceOpportunityCount = freshSourceOpportunities.size,
                                 totalCount = ranked.size + freshSourceOpportunities.size,
                             )
                         }
                         if (actionable.isNotEmpty()) {
-                            item { RadarSectionTitleV058("Top opportunities", "CineRelay has enough context to rank these strongly") }
-                            items(actionable, key = { "action:${it.id}" }) { event -> RadarOpportunityCardV058(event, true) { onOpen(event) } }
+                            item { RadarSectionTitleV058("Cover now", "Fresh, evidence-backed opportunities still inside CineRelay's action horizon") }
+                            items(actionable, key = { "action:${it.id}" }) { event -> RadarOpportunityCardV066(event, true) { onOpen(event) } }
                         }
                         if (freshSourceOpportunities.isNotEmpty()) {
-                            item { RadarSectionTitleV058("Fresh source signals", "New official and trusted-source activity worth checking before the conversation moves on") }
+                            item { RadarSectionTitleV058("Fresh source signals", "Very recent official or trusted-source activity that may become a full story") }
                             items(freshSourceOpportunities, key = { "raw:${it.signal.id}" }) { opportunity ->
-                                RawRadarOpportunityCardV060(opportunity) { onOpenUpdate(opportunity.signal) }
+                                RawRadarOpportunityCardV066(opportunity) { onOpenUpdate(opportunity.signal) }
                             }
                         }
                         if (watchlist.isNotEmpty()) {
-                            item { RadarSectionTitleV058("Keep watching", "Signals CineRelay will keep rescoring as new evidence arrives") }
-                            items(watchlist.take(16), key = { "watch:${it.id}" }) { event -> RadarOpportunityCardV058(event, false) { onOpen(event) } }
+                            item { RadarSectionTitleV058("Keep watching", "Context remains useful, but these are not in the cover-now lane") }
+                            items(watchlist.take(16), key = { "watch:${it.id}" }) { event -> RadarOpportunityCardV066(event, false) { onOpen(event) } }
                         }
                     }
                 }
@@ -183,20 +183,38 @@ fun RadarV058(
 }
 
 @Composable
-private fun RadarSummaryV060(actionableCount: Int, sourceOpportunityCount: Int, totalCount: Int) {
-    Surface(color = RadarPanel58, shape = RoundedCornerShape(18.dp), modifier = Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(15.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+private fun RadarSummaryV066(actionableCount: Int, sourceOpportunityCount: Int, totalCount: Int) {
+    Surface(color = RadarPanel58, shape = RoundedCornerShape(20.dp), modifier = Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(15.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
-                    Text("Live scan", color = RadarGold58, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                    Text("${actionableCount + sourceOpportunityCount} things worth checking", color = RadarText58, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                    Text("LIVE INTELLIGENCE", color = RadarGold58, fontSize = 9.sp, fontWeight = FontWeight.Black, letterSpacing = 1.0.sp)
+                    Text("${actionableCount + sourceOpportunityCount} things worth checking", color = RadarText58, fontSize = 17.sp, fontWeight = FontWeight.Bold)
                 }
-                Text("1 min refresh", color = RadarMuted58, fontSize = 10.sp)
+                Surface(color = RadarGreen58.copy(alpha = 0.10f), shape = RoundedCornerShape(50)) {
+                    Row(Modifier.padding(horizontal = 9.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Box(Modifier.size(6.dp).clip(CircleShape).background(RadarGreen58))
+                        Spacer(Modifier.width(5.dp))
+                        Text("1 min", color = RadarGreen58, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                    }
+                }
             }
-            Text("$actionableCount ranked stories · $sourceOpportunityCount fresh source opportunities · 36h opportunity window", color = RadarMuted58, fontSize = 10.sp)
-            if (totalCount > actionableCount + sourceOpportunityCount) {
-                Text("${totalCount - actionableCount - sourceOpportunityCount} additional signals stay on the watchlist.", color = RadarMuted58.copy(alpha = 0.82f), fontSize = 9.sp)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                RadarSummaryStatV066(actionableCount.toString(), "Ranked", Modifier.weight(1f))
+                RadarSummaryStatV066(sourceOpportunityCount.toString(), "Fresh signals", Modifier.weight(1f))
+                RadarSummaryStatV066((totalCount - actionableCount - sourceOpportunityCount).coerceAtLeast(0).toString(), "Watchlist", Modifier.weight(1f))
             }
+            Text("Radar v2 uses freshness decay, verification, evidence strength and source authority. Stories older than 72 hours leave the cover-now lane.", color = RadarMuted58, fontSize = 9.sp, lineHeight = 14.sp)
+        }
+    }
+}
+
+@Composable
+private fun RadarSummaryStatV066(value: String, label: String, modifier: Modifier = Modifier) {
+    Surface(color = RadarRaised58, shape = RoundedCornerShape(14.dp), modifier = modifier) {
+        Column(Modifier.padding(vertical = 9.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(value, color = RadarText58, fontSize = 16.sp, fontWeight = FontWeight.Black)
+            Text(label, color = RadarMuted58, fontSize = 8.sp, fontWeight = FontWeight.Bold)
         }
     }
 }
@@ -210,34 +228,74 @@ private fun RadarSectionTitleV058(title: String, subtitle: String) {
 }
 
 @Composable
-private fun RadarOpportunityCardV058(event: EventCard, actionable: Boolean, onClick: () -> Unit) {
+private fun RadarOpportunityCardV066(event: EventCard, actionable: Boolean, onClick: () -> Unit) {
+    val radar = event.radar
     val label = radarLabelV058(event, actionable)
-    val accent = when (event.radar?.label) {
+    val accent = when (radar?.label) {
         "TRAILER_ANALYSIS" -> RadarGold58
         "BREAKING_EXPLAINER" -> RadarRed58
         "SHORT_OPPORTUNITY" -> RadarGreen58
         "FOLLOW_UP_NEEDED" -> RadarAmber58
         else -> if (actionable) RadarGold58 else RadarMuted58
     }
-    Surface(color = RadarPanel58, shape = RoundedCornerShape(20.dp), modifier = Modifier.fillMaxWidth().clickable(onClick = onClick)) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    Surface(color = RadarPanel58, shape = RoundedCornerShape(22.dp), modifier = Modifier.fillMaxWidth().clickable(onClick = onClick)) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(Modifier.size(8.dp).clip(CircleShape).background(accent))
                 Spacer(Modifier.width(8.dp))
-                Text(label, color = accent, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                Spacer(Modifier.weight(1f))
-                Text(radarAgeV058(event.detectedAt), color = RadarMuted58, fontSize = 10.sp)
+                Text(label, color = accent, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                RadarScorePillV066(score = radar?.score ?: 0, accent = accent, actionable = actionable)
             }
-            event.entityName?.let { Text(it, color = RadarGold58, fontSize = 11.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis) }
-            Text(event.headline, color = RadarText58, fontSize = 17.sp, lineHeight = 22.sp, fontWeight = FontWeight.Bold, maxLines = 3, overflow = TextOverflow.Ellipsis)
-            event.summary?.takeIf { it.isNotBlank() }?.let { Text(it, color = RadarMuted58, fontSize = 12.sp, lineHeight = 18.sp, maxLines = 2, overflow = TextOverflow.Ellipsis) }
+
+            event.entityName?.let {
+                Text(it, color = RadarGold58, fontSize = 11.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+            Text(event.headline, color = RadarText58, fontSize = 18.sp, lineHeight = 23.sp, fontWeight = FontWeight.Bold, maxLines = 3, overflow = TextOverflow.Ellipsis)
+            event.summary?.takeIf { it.isNotBlank() }?.let {
+                Text(it, color = RadarMuted58, fontSize = 12.sp, lineHeight = 18.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            }
+
+            Row(horizontalArrangement = Arrangement.spacedBy(7.dp), verticalAlignment = Alignment.CenterVertically) {
+                RadarMetaChipV066(radarVerificationLabelV066(event.verificationState), radarVerificationColorV066(event.verificationState))
+                if (event.evidenceCount > 0) RadarMetaChipV066("${event.evidenceCount} evidence", RadarBlue58)
+                event.detectedAt?.let { RadarMetaChipV066(radarAgeV058(it), RadarMuted58) }
+            }
+
+            val reasonSummary = radarReasonSummaryV066(radar?.reasons.orEmpty())
+            if (reasonSummary.isNotBlank()) {
+                Surface(color = accent.copy(alpha = 0.07f), shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(horizontal = 11.dp, vertical = 9.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                        Text("WHY NOW", color = accent, fontSize = 8.sp, fontWeight = FontWeight.Black, letterSpacing = 0.8.sp)
+                        Text(reasonSummary, color = RadarText58.copy(alpha = 0.82f), fontSize = 10.sp, lineHeight = 15.sp)
+                    }
+                }
+            }
+
             Text(radarHintV058(event, actionable), color = RadarMuted58, fontSize = 11.sp, lineHeight = 16.sp)
         }
     }
 }
 
 @Composable
-private fun RawRadarOpportunityCardV060(opportunity: RawRadarOpportunityV059, onClick: () -> Unit) {
+private fun RadarScorePillV066(score: Int, accent: Color, actionable: Boolean) {
+    Surface(color = accent.copy(alpha = if (actionable) 0.14f else 0.08f), shape = RoundedCornerShape(13.dp)) {
+        Row(Modifier.padding(horizontal = 9.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text(score.toString(), color = accent, fontSize = 14.sp, fontWeight = FontWeight.Black)
+            Spacer(Modifier.width(4.dp))
+            Text("RADAR", color = accent.copy(alpha = 0.76f), fontSize = 7.sp, fontWeight = FontWeight.Black, letterSpacing = 0.6.sp)
+        }
+    }
+}
+
+@Composable
+private fun RadarMetaChipV066(label: String, accent: Color) {
+    Surface(color = accent.copy(alpha = 0.09f), shape = RoundedCornerShape(50)) {
+        Text(label, color = accent, fontSize = 8.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp))
+    }
+}
+
+@Composable
+private fun RawRadarOpportunityCardV066(opportunity: RawRadarOpportunityV059, onClick: () -> Unit) {
     val signal = opportunity.signal
     val accent = when {
         opportunity.score >= 90 -> RadarRed58
@@ -245,22 +303,20 @@ private fun RawRadarOpportunityCardV060(opportunity: RawRadarOpportunityV059, on
         opportunity.score >= 60 -> RadarGreen58
         else -> RadarBlue58
     }
-    Surface(color = RadarPanel58, shape = RoundedCornerShape(20.dp), modifier = Modifier.fillMaxWidth().clickable(onClick = onClick)) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    Surface(color = RadarPanel58, shape = RoundedCornerShape(22.dp), modifier = Modifier.fillMaxWidth().clickable(onClick = onClick)) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(9.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(Modifier.size(8.dp).clip(CircleShape).background(accent))
                 Spacer(Modifier.width(8.dp))
-                Text(opportunity.label, color = accent, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                Spacer(Modifier.weight(1f))
-                Text(radarSignalAgeV059(signal), color = RadarMuted58, fontSize = 10.sp)
+                Text(opportunity.label, color = accent, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                RadarScorePillV066(opportunity.score, accent, actionable = true)
             }
             Text(signal.title, color = RadarText58, fontSize = 17.sp, lineHeight = 22.sp, fontWeight = FontWeight.Bold, maxLines = 3, overflow = TextOverflow.Ellipsis)
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(signal.source.name ?: signal.source.handle ?: "CineRelay source", color = RadarGold58, fontSize = 11.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
-                if ((signal.source.authorityTier ?: 99) <= 1) {
-                    Spacer(Modifier.width(8.dp))
-                    Text("Official source", color = RadarGreen58, fontSize = 9.sp, fontWeight = FontWeight.Bold)
-                }
+                Spacer(Modifier.width(8.dp))
+                if ((signal.source.authorityTier ?: 99) <= 1) RadarMetaChipV066("Official", RadarGreen58)
+                else RadarMetaChipV066(radarSignalAgeV059(signal), RadarMuted58)
             }
             Text(opportunity.hint, color = RadarMuted58, fontSize = 11.sp, lineHeight = 16.sp)
         }
@@ -344,7 +400,52 @@ private fun radarHintV058(event: EventCard, actionable: Boolean): String = when 
     "BREAKING_EXPLAINER" -> "Fresh and important enough for a timely explainer or update."
     "SHORT_OPPORTUNITY" -> "Best suited to a fast, self-contained Short or Reel."
     "FOLLOW_UP_NEEDED" -> "The story is moving. Wait for the next strong confirmation or angle."
-    else -> if (actionable) "Open the story and supporting source before deciding your angle." else "Not urgent yet, but CineRelay will keep rescoring it as new evidence arrives."
+    else -> if (actionable) "Open the story and supporting source before deciding your angle." else "Not urgent now. CineRelay keeps the context here and will re-elevate it if new evidence arrives."
+}
+
+private fun radarReasonSummaryV066(reasons: List<String>): String {
+    val phrases = reasons.mapNotNull { reason ->
+        when {
+            reason == "TYPE_TRAILER_RELEASED" -> "fresh trailer"
+            reason == "TYPE_MAJOR_CHANGE" -> "major change"
+            reason == "TYPE_MAJOR_ANNOUNCEMENT" -> "major announcement"
+            reason == "TYPE_OTT_RELEASED" -> "OTT availability changed"
+            reason == "TYPE_HIGH_VALUE_VISUAL" -> "new visual material"
+            reason == "TYPE_RELEASE_WEEK_SIGNAL" -> "release-week signal"
+            reason == "TYPE_CREATOR_FRIENDLY_UPDATE" -> "creator-friendly update"
+            reason == "TYPE_CRAFT_MATERIAL" -> "craft / making material"
+            reason == "TYPE_PERFORMANCE_MILESTONE" -> "performance milestone"
+            reason == "TYPE_UPCOMING_DROP" -> "upcoming content drop"
+            reason == "TYPE_QUOTE_OR_EVENT_OPPORTUNITY" -> "new quote / event angle"
+            reason == "TYPE_FOLLOW_UP_EVENT" -> "story needs follow-up"
+            reason == "OFFICIAL_SOURCES_2_PLUS" -> "multiple official sources"
+            reason == "OFFICIAL_SOURCE_PRESENT" -> "official source"
+            reason == "MULTI_SOURCE_CORROBORATION" -> "multiple sources"
+            reason == "FRESH_2H" -> "very fresh"
+            reason == "FRESH_6H" -> "fresh in the last 6h"
+            reason == "FRESH_12H" -> "fresh today"
+            reason == "FRESH_24H" -> "within 24h"
+            reason == "AGE_OVER_72H_ACTION_HORIZON" -> "outside the 72h cover-now window"
+            else -> null
+        }
+    }.distinct().take(3)
+    return phrases.joinToString(" • ")
+}
+
+private fun radarVerificationLabelV066(value: String): String = when (value) {
+    "OFFICIAL" -> "Official"
+    "CONFIRMED" -> "Confirmed"
+    "RELIABLE_REPORT" -> "Reliable report"
+    "DEVELOPING" -> "Developing"
+    "RUMOR" -> "Rumor"
+    else -> "Evidence"
+}
+
+private fun radarVerificationColorV066(value: String): Color = when (value) {
+    "OFFICIAL", "CONFIRMED" -> RadarGreen58
+    "RELIABLE_REPORT", "DEVELOPING" -> RadarAmber58
+    "RUMOR" -> RadarRed58
+    else -> RadarMuted58
 }
 
 private fun radarSignalInstantV059(signal: NewsroomSignal): Instant {
