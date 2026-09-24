@@ -19,6 +19,50 @@ export type SubscriptionPlan = {
   hubRequest: { url: string; headers: Record<string, string>; body: string; topic: string };
 };
 
+export const HUB_RETRY_POLICY = Object.freeze({
+  maxAttempts: 3,
+  attemptTimeoutMs: 10_000,
+  delaysMs: [250, 750] as const,
+  failedRenewalBackoffMs: 30 * 60 * 1000,
+});
+
+const RETRYABLE_HUB_STATUSES = new Set([429, 500, 502, 503, 504]);
+
+export type HubRetryDecision = {
+  retry: boolean;
+  delayMs: number;
+};
+
+function retryDelayForAttempt(attempt: number): number {
+  return HUB_RETRY_POLICY.delaysMs[Math.min(attempt - 1, HUB_RETRY_POLICY.delaysMs.length - 1)] ?? 0;
+}
+
+export function maximumHubRetryWindowMs(): number {
+  return HUB_RETRY_POLICY.maxAttempts * HUB_RETRY_POLICY.attemptTimeoutMs
+    + HUB_RETRY_POLICY.delaysMs.reduce((total, delay) => total + delay, 0);
+}
+
+export function decideHubTransportRetry(attempt: number): HubRetryDecision {
+  if (!Number.isSafeInteger(attempt) || attempt < 1) throw new Error('Hub retry attempt must be a positive integer');
+  if (attempt >= HUB_RETRY_POLICY.maxAttempts) return { retry: false, delayMs: 0 };
+  return { retry: true, delayMs: retryDelayForAttempt(attempt) };
+}
+
+export function decideHubRetry(input: { attempt: number; status: number }): HubRetryDecision {
+  if (!Number.isSafeInteger(input.attempt) || input.attempt < 1) throw new Error('Hub retry attempt must be a positive integer');
+  if (!Number.isSafeInteger(input.status) || input.status < 100 || input.status > 599) throw new Error('Invalid hub HTTP status');
+  if (!RETRYABLE_HUB_STATUSES.has(input.status) || input.attempt >= HUB_RETRY_POLICY.maxAttempts) {
+    return { retry: false, delayMs: 0 };
+  }
+  return { retry: true, delayMs: retryDelayForAttempt(input.attempt) };
+}
+
+export function failedRenewalRetryAt(now: Date): string {
+  const timestamp = now.getTime();
+  if (!Number.isFinite(timestamp)) throw new Error('Invalid failed-renewal clock');
+  return new Date(timestamp + HUB_RETRY_POLICY.failedRenewalBackoffMs).toISOString();
+}
+
 function callbackUrlWithToken(baseUrl: string, token: string): string {
   const url = new URL(baseUrl);
   if (url.protocol !== 'https:' && url.hostname !== 'localhost' && url.hostname !== '127.0.0.1') throw new Error('Public WebSub callback must use HTTPS');

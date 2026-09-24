@@ -1,7 +1,7 @@
 begin;
 
 create extension if not exists pgtap with schema extensions;
-select plan(32);
+select plan(37);
 
 insert into public.entities (id, entity_type, canonical_name, primary_language, country_code, status)
 values ('f5400000-0000-4000-8000-000000000001','MOVIE','P5.4 Radar Movie','te','IN','ACTIVE');
@@ -35,8 +35,8 @@ select ok(
 
 select results_eq(
   $$select creator_score from public.creator_radar_compute('f5410000-0000-4000-8000-000000000001'::uuid)$$,
-  array[85::integer],
-  'official critical trailer scores 85 without evidence rows'
+  array[100::integer],
+  'fresh official critical trailer reaches the v2 score ceiling without evidence rows'
 );
 select results_eq(
   $$select opportunity_label from public.creator_radar_compute('f5410000-0000-4000-8000-000000000001'::uuid)$$,
@@ -63,8 +63,8 @@ select results_eq(
 
 select results_eq(
   $$select creator_score from public.creator_radar_compute('f5410000-0000-4000-8000-000000000002'::uuid)$$,
-  array[80::integer],
-  'confirmed critical release-date change scores 80 without evidence rows'
+  array[98::integer],
+  'fresh confirmed critical release-date change receives the v2 freshness boost'
 );
 select results_eq(
   $$select opportunity_label from public.creator_radar_compute('f5410000-0000-4000-8000-000000000002'::uuid)$$,
@@ -74,8 +74,8 @@ select results_eq(
 
 select results_eq(
   $$select creator_score from public.creator_radar_compute('f5410000-0000-4000-8000-000000000003'::uuid)$$,
-  array[46::integer],
-  'developing high-priority teaser scores 46 without evidence rows'
+  array[64::integer],
+  'fresh developing high-priority teaser receives the v2 freshness boost'
 );
 select results_eq(
   $$select opportunity_label from public.creator_radar_compute('f5410000-0000-4000-8000-000000000003'::uuid)$$,
@@ -89,13 +89,13 @@ select ok(
 
 select results_eq(
   $$select creator_score from public.creator_radar_compute('f5410000-0000-4000-8000-000000000004'::uuid)$$,
-  array[18::integer],
-  'lower-signal reliable report stays below action threshold'
+  array[44::integer],
+  'fresh reliable interview is intentionally elevated by Radar v2'
 );
 select results_eq(
   $$select opportunity_label from public.creator_radar_compute('f5410000-0000-4000-8000-000000000004'::uuid)$$,
-  array['NO_ACTION'::text],
-  'lower-signal reliable report maps to NO_ACTION'
+  array['SHORT_OPPORTUNITY'::text],
+  'fresh interview maps to SHORT_OPPORTUNITY in Radar v2'
 );
 
 select results_eq(
@@ -125,11 +125,11 @@ select results_eq(
   array[5::bigint],
   'all five events receive one radar entry'
 );
-select is(public.refresh_creator_radar(100), 0, 'repeat refresh is idempotent when no inputs changed');
+select is(public.refresh_creator_radar(100), 0, 'repeat refresh is idempotent before the 15-minute freshness bucket expires');
 select results_eq(
-  $$select count(*) from public.creator_radar_entries where engine_version='creator-radar-v1'$$,
+  $$select count(*) from public.creator_radar_entries where engine_version='creator-radar-v2'$$,
   array[5::bigint],
-  'all entries use the locked v1 engine version'
+  'all entries use the Radar v2 engine version'
 );
 select results_eq(
   $$select count(*) from public.creator_radar_entries where input_snapshot ? 'eventId'$$,
@@ -144,8 +144,8 @@ where id='f5410000-0000-4000-8000-000000000004'::uuid;
 select is(public.refresh_creator_radar(1), 1, 'event update makes only the changed radar entry stale');
 select results_eq(
   $$select creator_score::integer from public.creator_radar_entries where event_id='f5410000-0000-4000-8000-000000000004'::uuid$$,
-  array[28::integer],
-  'stale entry is rescored from updated factual inputs'
+  array[54::integer],
+  'stale entry is rescored with the v2 priority and freshness model'
 );
 select results_eq(
   $$select input_snapshot->>'priorityBand' from public.creator_radar_entries where event_id='f5410000-0000-4000-8000-000000000004'::uuid$$,
@@ -161,6 +161,66 @@ select results_eq(
   $$select count(*) from public.creator_radar_entries where opportunity_label='TRAILER_ANALYSIS'$$,
   array[1::bigint],
   'only actionable trailer remains TRAILER_ANALYSIS'
+);
+
+insert into public.events (
+  id, primary_entity_id, event_type, verification_state, priority_band,
+  headline, structured_data, dedupe_key, status, classifier_version,
+  detected_at, created_at, updated_at
+) values
+  (
+    'f5410000-0000-4000-8000-000000000006',
+    'f5400000-0000-4000-8000-000000000001',
+    'ALBUM_UPDATE',
+    'RELIABLE_REPORT',
+    'NORMAL',
+    'P5.4 generic low-value signal',
+    '{}',
+    'p54-event-6',
+    'ACTIVE',
+    'test-p54',
+    now()-interval '1 hour',
+    now()-interval '1 hour',
+    now()
+  ),
+  (
+    'f5410000-0000-4000-8000-000000000007',
+    'f5400000-0000-4000-8000-000000000001',
+    'TRAILER_RELEASED',
+    'OFFICIAL',
+    'CRITICAL',
+    'P5.4 stale trailer',
+    '{}',
+    'p54-event-7',
+    'ACTIVE',
+    'test-p54',
+    now()-interval '10 days',
+    now()-interval '10 days',
+    now()-interval '10 days'
+  );
+
+select results_eq(
+  $$select opportunity_label from public.creator_radar_compute('f5410000-0000-4000-8000-000000000006'::uuid)$$,
+  array['NO_ACTION'::text],
+  'valid low-value event remains NO_ACTION even when fresh'
+);
+select ok(
+  (select reason_codes @> array['TYPE_LOWER_SIGNAL_EVENT']::text[] from public.creator_radar_compute('f5410000-0000-4000-8000-000000000006'::uuid)),
+  'valid low-value event records the lower-signal reason'
+);
+select results_eq(
+  $$select creator_score from public.creator_radar_compute('f5410000-0000-4000-8000-000000000007'::uuid)$$,
+  array[0::integer],
+  'event older than seven days decays to zero'
+);
+select results_eq(
+  $$select opportunity_label from public.creator_radar_compute('f5410000-0000-4000-8000-000000000007'::uuid)$$,
+  array['NO_ACTION'::text],
+  'event older than seven days is no longer actionable'
+);
+select ok(
+  (select reason_codes @> array['AGE_OVER_7D']::text[] from public.creator_radar_compute('f5410000-0000-4000-8000-000000000007'::uuid)),
+  'stale event records the age-over-seven-days reason'
 );
 
 select * from finish();

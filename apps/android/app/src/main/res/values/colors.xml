@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="cinerelay_ink">#0D0F13</color>
+    <color name="cinerelay_surface">#15181E</color>
+    <color name="cinerelay_gold">#E7C36B</color>
+    <color name="cinerelay_gold_deep">#8F6B25</color>
+</resources>

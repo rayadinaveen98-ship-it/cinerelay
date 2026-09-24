@@ -19,6 +19,26 @@ class PushManager(
     fun firebaseReady(): Boolean =
         BuildConfig.FIREBASE_CONFIGURED && FirebaseApp.getApps(context).isNotEmpty()
 
+    suspend fun currentDeviceState(): PushState {
+        if (!firebaseReady()) {
+            return PushState(
+                firebaseConfigured = false,
+                registered = false,
+                message = "Add google-services.json to activate the real-device FCM canary",
+            )
+        }
+        if (sessionStore.read() == null) {
+            return PushState(true, false, "Sign in before registering this device")
+        }
+
+        val registered = backendClient.hasActiveDeviceRegistration(sessionStore.installationId())
+        return PushState(
+            firebaseConfigured = true,
+            registered = registered,
+            message = if (registered) "This Android device is registered with CineRelay" else "Ready to register this phone",
+        )
+    }
+
     suspend fun registerCurrentDevice(): PushState {
         if (!firebaseReady()) {
             return PushState(

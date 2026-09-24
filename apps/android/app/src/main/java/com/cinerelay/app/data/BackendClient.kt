@@ -49,13 +49,7 @@ class BackendClient(
             Request.Builder()
                 .url("$baseUrl/auth/v1/signup")
                 .header("apikey", publishableKey)
-                .post(
-                    JSONObject()
-                        .put("email", email.trim())
-                        .put("password", password)
-                        .toString()
-                        .toRequestBody(jsonType),
-                )
+                .post(JSONObject().put("email", email.trim()).put("password", password).toString().toRequestBody(jsonType))
                 .build(),
         )
         if (!response.ok) throw ApiException(response.errorMessage ?: "Account creation failed", response.code)
@@ -66,11 +60,7 @@ class BackendClient(
             return SignUpResult(session = parseAndStoreSession(response.json), confirmationRequired = false)
         }
 
-        val user = response.json.optJSONObject("user")
-        if (user != null && user.optString("id").isNotBlank()) {
-            return SignUpResult(session = null, confirmationRequired = true)
-        }
-        throw ApiException("Account created but the auth response was incomplete", 500)
+        return SignUpResult(session = null, confirmationRequired = true)
     }
 
     fun refreshSession(): Session {
@@ -99,6 +89,17 @@ class BackendClient(
             followCount = counts.optInt("follows", 0),
             alertCount = counts.optInt("alerts", 0),
         )
+    }
+
+    fun newsroom(platform: String = "YOUTUBE", limit: Int = 60): List<NewsroomSignal> {
+        val json = invokeGuestAware(
+            "cinerelay-newsroom-api",
+            JSONObject()
+                .put("action", "newsroom")
+                .put("platform", platform.uppercase())
+                .put("limit", limit.coerceIn(1, 100)),
+        )
+        return json.optJSONArray("items").toNewsroomSignals()
     }
 
     fun eventFeed(action: String, limit: Int = 40, allowGuest: Boolean = false): List<EventCard> {
@@ -134,10 +135,7 @@ class BackendClient(
     fun setFollow(entityId: String, active: Boolean) {
         val result = invokeAuthenticated(
             "cinerelay-mobile-api",
-            JSONObject()
-                .put("action", "setFollow")
-                .put("entityId", entityId)
-                .put("active", active),
+            JSONObject().put("action", "setFollow").put("entityId", entityId).put("active", active),
         )
         if (!result.optBoolean("ok", false)) throw ApiException(result.optString("error", "Follow update failed"), 400)
     }
@@ -155,6 +153,29 @@ class BackendClient(
                 .put("appId", "com.cinerelay.app"),
         )
         if (!result.optBoolean("ok", false)) throw ApiException(result.optString("error", "Device registration failed"), 400)
+    }
+
+    fun hasActiveDeviceRegistration(installationId: String): Boolean {
+        val result = invokeAuthenticated(
+            "cinerelay-device-registration-api",
+            JSONObject().put("action", "list"),
+        )
+        if (!result.optBoolean("ok", false)) throw ApiException(result.optString("error", "Could not read device registration"), 400)
+        val registrations = result.optJSONArray("registrations") ?: JSONArray()
+        for (index in 0 until registrations.length()) {
+            val row = registrations.optJSONObject(index) ?: continue
+            if (
+                row.optBoolean("active", false) &&
+                row.optString("provider").equals("FCM", ignoreCase = true) &&
+                row.optString("targetKind").equals("TOKEN", ignoreCase = true) &&
+                row.optString("platform").equals("ANDROID", ignoreCase = true) &&
+                row.optString("appId") == "com.cinerelay.app" &&
+                row.optString("installationId") == installationId
+            ) {
+                return true
+            }
+        }
+        return false
     }
 
     private fun invokeGuestAware(function: String, body: JSONObject): JSONObject {
@@ -199,9 +220,7 @@ class BackendClient(
             http.newCall(request).execute().use { response ->
                 val raw = response.body?.string().orEmpty()
                 val json = if (raw.isBlank()) JSONObject() else runCatching { JSONObject(raw) }.getOrElse { JSONObject().put("raw", raw) }
-                val error = json.optNullableString("error")
-                    ?: json.optNullableString("msg")
-                    ?: json.optNullableString("message")
+                val error = json.optNullableString("error") ?: json.optNullableString("msg") ?: json.optNullableString("message")
                 return JsonResponse(response.code, response.isSuccessful, json, error)
             }
         } catch (error: IOException) {
@@ -234,10 +253,7 @@ class BackendClient(
     )
 }
 
-data class SignUpResult(
-    val session: Session?,
-    val confirmationRequired: Boolean,
-)
+data class SignUpResult(val session: Session?, val confirmationRequired: Boolean)
 
 class ApiException(message: String, val statusCode: Int) : RuntimeException(message)
 
@@ -246,12 +262,46 @@ private fun JSONObject.optNullableString(key: String): String? {
     return optString(key).takeIf { it.isNotBlank() }
 }
 
-private fun JSONArray?.toEventCards(): List<EventCard> {
+private fun JSONArray?.toNewsroomSignals(): List<NewsroomSignal> {
     val array = this ?: JSONArray()
     return buildList {
         for (index in 0 until array.length()) {
-            array.optJSONObject(index)?.let { add(it.toEventCard()) }
+            val row = array.optJSONObject(index) ?: continue
+            val source = row.optJSONObject("source") ?: JSONObject()
+            add(
+                NewsroomSignal(
+                    id = row.optString("id"),
+                    state = row.optString("state", "UNCONFIRMED"),
+                    source = NewsroomSource(
+                        name = source.optNullableString("name"),
+                        authorityTier = if (source.has("authorityTier") && !source.isNull("authorityTier")) source.optInt("authorityTier") else null,
+                        role = source.optNullableString("role"),
+                        platform = source.optNullableString("platform"),
+                        handle = source.optNullableString("handle"),
+                        artworkUrl = source.optNullableString("artworkUrl"),
+                    ),
+                    itemType = row.optNullableString("itemType"),
+                    mediaType = row.optNullableString("mediaType"),
+                    languageCode = row.optNullableString("languageCode"),
+                    title = row.optString("title", "Untitled source update"),
+                    text = row.optNullableString("text"),
+                    thumbnailUrl = row.optNullableString("thumbnailUrl"),
+                    canonicalUrl = row.optNullableString("canonicalUrl"),
+                    sourceObservedAt = row.optNullableString("sourceObservedAt"),
+                    observedAt = row.optNullableString("observedAt"),
+                    ingestedAt = row.optNullableString("ingestedAt"),
+                    enrichmentState = row.optString("enrichmentState", "RAW"),
+                    canonicalEvent = row.optJSONObject("canonicalEvent")?.toEventCard(),
+                ),
+            )
         }
+    }
+}
+
+private fun JSONArray?.toEventCards(): List<EventCard> {
+    val array = this ?: JSONArray()
+    return buildList {
+        for (index in 0 until array.length()) array.optJSONObject(index)?.let { add(it.toEventCard()) }
     }
 }
 
@@ -292,9 +342,7 @@ private fun JSONObject.toEventCard(): EventCard {
             RadarSignal(
                 score = it.optInt("score", 0),
                 label = it.optString("label", "NO_ACTION"),
-                reasons = buildList {
-                    for (index in 0 until reasons.length()) add(reasons.optString(index))
-                },
+                reasons = buildList { for (index in 0 until reasons.length()) add(reasons.optString(index)) },
             )
         },
     )

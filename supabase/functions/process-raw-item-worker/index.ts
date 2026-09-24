@@ -1,6 +1,8 @@
 import { createClient } from '@supabase/supabase-js';
 // @deno-types="../../../packages/domain/dist/index.d.ts"
 import { normalizeItem, processSingle, resolveEntity } from '../../../packages/domain/dist/index.js';
+// @deno-types="../../../packages/domain/dist/ott-release-signal.d.ts"
+import { extractOttMovieReleaseSignal, type OttMovieReleaseSignal } from '../../../packages/domain/dist/ott-release-signal.js';
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL');
 const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
@@ -9,6 +11,7 @@ if (!supabaseUrl || !serviceRoleKey || !internalSecret) throw new Error('Missing
 
 const supabase = createClient(supabaseUrl, serviceRoleKey, { auth: { persistSession: false, autoRefreshToken: false } });
 const RESOLVER_VERSION = 'source-scope-resolver-v1';
+const TITLE_RESOLVER_VERSION = 'canonical-title-resolver-v1';
 const OPERATOR_RESOLVER_VERSION = 'operator-override-v1';
 const CLASSIFIER_VERSION = 'deterministic-domain-v1.1';
 
@@ -70,18 +73,40 @@ async function loadSource(sourceIdentityId: string): Promise<SourceDescriptor> {
 }
 
 async function loadEntity(entityId: string): Promise<EntityCandidate | undefined> {
-  const [{ data: entity, error: entityError }, { data: aliases, error: aliasError }] = await Promise.all([
-    supabase.from('entities').select('id,canonical_name,entity_type,status').eq('id', entityId).eq('status', 'ACTIVE').maybeSingle(),
-    supabase.from('entity_aliases').select('alias').eq('entity_id', entityId),
+  const entities = await loadEntities([entityId]);
+  return entities[0];
+}
+
+async function loadEntities(ids: string[]): Promise<EntityCandidate[]> {
+  const uniqueIds = [...new Set(ids.filter(Boolean))];
+  if (uniqueIds.length === 0) return [];
+
+  const [{ data: entities, error: entityError }, { data: aliases, error: aliasError }] = await Promise.all([
+    supabase.from('entities')
+      .select('id,canonical_name,entity_type,status')
+      .in('id', uniqueIds)
+      .in('entity_type', ['MOVIE', 'SERIES', 'SEASON'])
+      .eq('status', 'ACTIVE'),
+    supabase.from('entity_aliases').select('entity_id,alias').in('entity_id', uniqueIds).is('valid_to', null),
   ]);
   if (entityError) throw entityError;
   if (aliasError) throw aliasError;
-  if (!entity || !['MOVIE', 'SERIES', 'SEASON'].includes(String(entity.entity_type))) return undefined;
-  return {
-    id: String(entity.id),
-    canonicalName: String(entity.canonical_name),
-    aliases: (aliases ?? []).map((row) => String(row.alias ?? '')).filter(Boolean),
-  };
+
+  const aliasMap = new Map<string, string[]>();
+  for (const row of aliases ?? []) {
+    const entityId = String((row as Record<string, unknown>).entity_id);
+    const alias = String((row as Record<string, unknown>).alias ?? '').trim();
+    if (!alias) continue;
+    const current = aliasMap.get(entityId) ?? [];
+    current.push(alias);
+    aliasMap.set(entityId, current);
+  }
+
+  return (entities ?? []).map((row: Record<string, unknown>) => ({
+    id: String(row.id),
+    canonicalName: String(row.canonical_name),
+    aliases: aliasMap.get(String(row.id)) ?? [],
+  }));
 }
 
 async function loadOperatorOverride(rawItemId: string): Promise<{ id: string; entity: EntityCandidate } | undefined> {
@@ -102,27 +127,22 @@ async function loadCandidates(sourceIdentityId: string): Promise<EntityCandidate
     .order('priority', { ascending: true }).order('confidence', { ascending: false });
   if (scopeError) throw scopeError;
   const ids = [...new Set((scopeRows ?? []).map((row: Record<string, unknown>) => String(row.entity_id)).filter(Boolean))];
-  if (ids.length === 0) return [];
+  return loadEntities(ids);
+}
 
-  const { data: entities, error: entityError } = await supabase.from('entities')
-    .select('id,canonical_name,entity_type,status').in('id', ids).in('entity_type', ['MOVIE', 'SERIES', 'SEASON']).eq('status', 'ACTIVE');
-  if (entityError) throw entityError;
-  const { data: aliases, error: aliasError } = await supabase.from('entity_aliases').select('entity_id,alias').in('entity_id', ids);
-  if (aliasError) throw aliasError;
-
-  const aliasMap = new Map<string, string[]>();
-  for (const row of aliases ?? []) {
-    const entityId = String((row as Record<string, unknown>).entity_id);
-    const alias = String((row as Record<string, unknown>).alias ?? '').trim();
-    if (!alias) continue;
-    const current = aliasMap.get(entityId) ?? [];
-    current.push(alias);
-    aliasMap.set(entityId, current);
-  }
-
-  return (entities ?? []).map((row: Record<string, unknown>) => ({
-    id: String(row.id), canonicalName: String(row.canonical_name), aliases: aliasMap.get(String(row.id)) ?? [],
-  }));
+async function loadTitleCandidates(title: string): Promise<EntityCandidate[]> {
+  const trimmed = title.trim();
+  if (!trimmed) return [];
+  const { data, error } = await supabase.rpc('find_entity_candidates_for_title', {
+    p_title: trimmed,
+    p_limit: 12,
+  });
+  if (error) throw error;
+  const rows: Record<string, unknown>[] = Array.isArray(data)
+    ? data.filter((row): row is Record<string, unknown> => typeof row === 'object' && row !== null)
+    : [];
+  const ids: string[] = [...new Set(rows.map((row) => String(row.entity_id ?? '')).filter(Boolean))];
+  return loadEntities(ids);
 }
 
 async function currentTheatricalDate(entityId: string): Promise<string | undefined> {
@@ -169,6 +189,56 @@ async function persistEvent(rawItemId: string, event: Record<string, unknown>): 
   return String(data);
 }
 
+async function submitOttDiscovery(rawItemId: string, signal: OttMovieReleaseSignal): Promise<void> {
+  const metadata = {
+    signalType: signal.signalType,
+    contentType: signal.contentType,
+    providerCode: signal.providerCode,
+    releaseDate: signal.releaseDate ?? null,
+    datePrecision: signal.datePrecision,
+    state: signal.state,
+    evidenceStatus: signal.evidenceStatus,
+    releaseType: signal.releaseType,
+  };
+  const { data: candidateId, error } = await supabase.rpc('submit_entity_discovery_candidate', {
+    p_proposed_name: signal.title,
+    p_proposed_entity_type: 'MOVIE',
+    p_raw_item_id: rawItemId,
+    p_confidence: signal.confidence,
+    p_primary_language: signal.primaryLanguage ?? null,
+    p_country_code: 'IN',
+    p_match_method: 'DETERMINISTIC_TITLE',
+    p_weight: signal.weight,
+    p_metadata: metadata,
+  });
+  if (error) throw error;
+  if (!candidateId) throw new Error('ott_candidate_submission_returned_no_id');
+
+  const { error: promotionError } = await supabase.rpc('system_promote_verified_ott_candidate', {
+    p_candidate_id: String(candidateId),
+  });
+  if (promotionError) throw promotionError;
+}
+
+async function persistOttRelease(entityId: string, rawItemId: string, signal: OttMovieReleaseSignal): Promise<void> {
+  const { error } = await supabase.rpc('upsert_ott_release_with_evidence', {
+    p_entity_id: entityId,
+    p_provider_code: signal.providerCode,
+    p_raw_item_id: rawItemId,
+    p_territory: 'IN',
+    p_languages: signal.primaryLanguage ? [signal.primaryLanguage] : [],
+    p_release_type: signal.releaseType,
+    p_release_date: signal.releaseDate ?? null,
+    p_date_precision: signal.datePrecision,
+    p_state: signal.state,
+    p_evidence_status: signal.evidenceStatus,
+    p_reason: signal.releaseDate
+      ? 'Deterministic OTT movie release signal from retained source evidence'
+      : 'First-party OTT availability signal; exact historical premiere day not asserted',
+  });
+  if (error) throw error;
+}
+
 async function processJob(job: Record<string, unknown>, workerId: string): Promise<{ resolution: string; eventId?: string }> {
   const payload = job.payload as Record<string, unknown> | undefined;
   const rawItemId = typeof payload?.rawItemId === 'string' ? payload.rawItemId : '';
@@ -188,6 +258,13 @@ async function processJob(job: Record<string, unknown>, workerId: string): Promi
     text: typeof raw.raw_text === 'string' ? raw.raw_text : '',
     url: String(raw.canonical_url),
   };
+  const ottSignal = extractOttMovieReleaseSignal({
+    title: fixtureItem.title,
+    text: fixtureItem.text,
+    publishedAt: typeof raw.published_at === 'string' ? raw.published_at : undefined,
+    source,
+  });
+  const normalized = normalizeItem(fixtureItem, source);
 
   const operatorOverride = await loadOperatorOverride(rawItemId);
   let resolution: Resolution;
@@ -195,21 +272,59 @@ async function processJob(job: Record<string, unknown>, workerId: string): Promi
     resolution = { state: 'RESOLVED', score: 1, entity: operatorOverride.entity, matchedAlias: operatorOverride.entity.canonicalName };
     await persistResolution(rawItemId, resolution, [{ method: 'OPERATOR_OVERRIDE', overrideId: operatorOverride.id }], OPERATOR_RESOLVER_VERSION);
   } else {
-    const candidates = await loadCandidates(sourceIdentityId);
-    if (candidates.length === 0) {
-      await persistResolution(rawItemId, { state: 'UNRESOLVED', score: 0 }, [{ method: 'SOURCE_ENTITY_SCOPE', candidateCount: 0, matchedAlias: null }], RESOLVER_VERSION);
-      await completeJob(job, workerId);
-      return { resolution: 'UNRESOLVED' };
+    const scopedCandidates = await loadCandidates(sourceIdentityId);
+    const scopedResolution = scopedCandidates.length > 0
+      ? resolveEntity(normalized, { candidateEntities: scopedCandidates }) as Resolution
+      : { state: 'UNRESOLVED', score: 0 } as Resolution;
+
+    if (scopedResolution.state === 'RESOLVED' && scopedResolution.entity?.id) {
+      resolution = scopedResolution;
+      await persistResolution(rawItemId, resolution, [{
+        method: 'SOURCE_ENTITY_SCOPE',
+        candidateCount: scopedCandidates.length,
+        matchedAlias: resolution.matchedAlias ?? null,
+      }], RESOLVER_VERSION);
+    } else {
+      const titleCandidates = await loadTitleCandidates(fixtureItem.title);
+      if (titleCandidates.length > 0) {
+        resolution = resolveEntity(normalized, { candidateEntities: titleCandidates }) as Resolution;
+        await persistResolution(rawItemId, resolution, [
+          {
+            method: 'SOURCE_ENTITY_SCOPE',
+            candidateCount: scopedCandidates.length,
+            state: scopedResolution.state,
+            matchedAlias: scopedResolution.matchedAlias ?? null,
+          },
+          {
+            method: 'CANONICAL_TITLE_ALIAS',
+            candidateCount: titleCandidates.length,
+            matchedAlias: resolution.matchedAlias ?? null,
+            titleOnlyCandidateDiscovery: true,
+          },
+        ], TITLE_RESOLVER_VERSION);
+      } else {
+        resolution = scopedResolution;
+        await persistResolution(rawItemId, resolution, [{
+          method: 'SOURCE_ENTITY_SCOPE',
+          candidateCount: scopedCandidates.length,
+          matchedAlias: scopedResolution.matchedAlias ?? null,
+        }, {
+          method: 'CANONICAL_TITLE_ALIAS',
+          candidateCount: 0,
+          matchedAlias: null,
+          titleOnlyCandidateDiscovery: true,
+        }], scopedCandidates.length > 0 ? RESOLVER_VERSION : TITLE_RESOLVER_VERSION);
+      }
     }
-    const normalized = normalizeItem(fixtureItem, source);
-    resolution = resolveEntity(normalized, { candidateEntities: candidates }) as Resolution;
-    await persistResolution(rawItemId, resolution, [{ method: 'SOURCE_ENTITY_SCOPE', candidateCount: candidates.length, matchedAlias: resolution.matchedAlias ?? null }], RESOLVER_VERSION);
   }
 
   if (resolution.state !== 'RESOLVED' || !resolution.entity?.id) {
+    if (ottSignal) await submitOttDiscovery(rawItemId, ottSignal);
     await completeJob(job, workerId);
     return { resolution: resolution.state };
   }
+
+  if (ottSignal) await persistOttRelease(resolution.entity.id, rawItemId, ottSignal);
 
   const previousDate = await currentTheatricalDate(resolution.entity.id);
   const pipeline = processSingle(fixtureItem, source, {

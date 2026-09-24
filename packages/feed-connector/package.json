@@ -4,6 +4,6 @@
   "private": true,
   "type": "module",
   "dependencies": {
-    "fast-xml-parser": "5.2.5"
+    "fast-xml-parser": "5.10.1"
   }
 }

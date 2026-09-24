@@ -1,0 +1,44 @@
+name: CineRelay OTT Series CI
+
+on:
+  pull_request:
+    paths:
+      - 'packages/domain/src/ott-series-release-signal.ts'
+      - 'packages/domain/src/ott-release-signal.ts'
+      - 'tests/ott-intelligence/**'
+      - 'supabase/functions/ott-series-intelligence-worker/**'
+      - 'supabase/migrations/**'
+      - '.github/workflows/ott-series-ci.yml'
+  push:
+    branches:
+      - 'phase-6/**'
+    paths:
+      - 'packages/domain/src/ott-series-release-signal.ts'
+      - 'packages/domain/src/ott-release-signal.ts'
+      - 'tests/ott-intelligence/**'
+      - 'supabase/functions/ott-series-intelligence-worker/**'
+      - 'supabase/migrations/**'
+      - '.github/workflows/ott-series-ci.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  series-intelligence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install --no-audit --no-fund --ignore-scripts
+      - name: Build domain
+        run: npm run build:domain
+      - name: Run OTT intelligence contracts
+        run: node tests/ott-intelligence/run-ott-release-signal.mjs && node tests/ott-intelligence/run-ott-nonmovie-guard.mjs
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - name: Type-check OTT series worker
+        run: deno check --config supabase/functions/ott-series-intelligence-worker/deno.json supabase/functions/ott-series-intelligence-worker/index.ts

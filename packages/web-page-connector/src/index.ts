@@ -18,6 +18,8 @@ export type WebPageParserProfile = {
   linkAttribute?: string;
   includeUrlPattern?: string;
   excludeUrlPattern?: string;
+  includeTitlePattern?: string;
+  excludeTitlePattern?: string;
   maxItems?: number;
   minItems?: number;
   order?: 'NEWEST_FIRST' | 'OLDEST_FIRST';
@@ -139,6 +141,8 @@ export function parseWebPage(html: string, pageUrl: string, profile: WebPagePars
 
   const include = safeRegex(profile.includeUrlPattern, 'include_url');
   const exclude = safeRegex(profile.excludeUrlPattern, 'exclude_url');
+  const includeTitle = safeRegex(profile.includeTitlePattern, 'include_title');
+  const excludeTitle = safeRegex(profile.excludeTitlePattern, 'exclude_title');
   const maxItems = Math.max(1, Math.min(100, Number(profile.maxItems ?? 50)));
   const root = parse(html, { lowerCaseTagName: false, comment: false });
 
@@ -177,6 +181,8 @@ export function parseWebPage(html: string, pageUrl: string, profile: WebPagePars
 
     const title = selectedTitle(item, profile);
     if (!title) continue;
+    if (includeTitle && !includeTitle.test(title)) continue;
+    if (excludeTitle && excludeTitle.test(title)) continue;
     seen.add(stableId);
 
     const text = selectedText(item, profile.summarySelector);
