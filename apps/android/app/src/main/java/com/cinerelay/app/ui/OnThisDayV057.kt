@@ -166,7 +166,7 @@ fun OnThisDayV057(
                                 HistoryYearHeaderV060(year = year, selectedYear = selected.year, count = movies.size)
                             }
                             items(movies, key = { "history:${it.id}:${it.releaseDate}" }) { movie ->
-                                OnThisDayMovieRowV060(movie, modifier = Modifier.padding(horizontal = 18.dp))
+                                OnThisDayMovieRowV070(movie, modifier = Modifier.padding(horizontal = 18.dp))
                             }
                         }
                     }
@@ -311,7 +311,7 @@ private fun HistoryYearHeaderV060(year: Int, selectedYear: Int, count: Int) {
 }
 
 @Composable
-private fun OnThisDayMovieRowV060(movie: OnThisDayMovie, modifier: Modifier = Modifier) {
+private fun OnThisDayMovieRowV070(movie: OnThisDayMovie, modifier: Modifier = Modifier) {
     Surface(color = HistoryPanel, shape = RoundedCornerShape(22.dp), modifier = modifier.fillMaxWidth()) {
         Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
             Box(
@@ -353,18 +353,53 @@ private fun OnThisDayMovieRowV060(movie: OnThisDayMovie, modifier: Modifier = Mo
                     maxLines = 3,
                     overflow = TextOverflow.Ellipsis,
                 )
+                movie.nativeTitle
+                    ?.takeIf { it.isNotBlank() && !it.equals(movie.title, ignoreCase = true) }
+                    ?.let { nativeTitle ->
+                        Text(
+                            nativeTitle,
+                            color = HistoryMuted,
+                            fontSize = 10.sp,
+                            lineHeight = 14.sp,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
                 val meta = listOfNotNull(movie.language, movie.countryCode).filter { it.isNotBlank() }.joinToString(" • ")
                 if (meta.isNotBlank()) Text(meta, color = HistoryMuted, fontSize = 10.sp)
-                Surface(color = HistoryGold.copy(alpha = 0.10f), shape = RoundedCornerShape(50)) {
-                    Text(
-                        if (movie.yearsAgo == 1) "1 year ago today" else "${movie.yearsAgo} years ago today",
-                        color = HistoryGold,
-                        fontSize = 9.sp,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(horizontal = 9.dp, vertical = 5.dp),
-                    )
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Surface(color = HistoryGold.copy(alpha = 0.10f), shape = RoundedCornerShape(50)) {
+                        Text(
+                            if (movie.yearsAgo == 1) "1 year ago today" else "${movie.yearsAgo} years ago today",
+                            color = HistoryGold,
+                            fontSize = 9.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(horizontal = 9.dp, vertical = 5.dp),
+                        )
+                    }
+                    movie.verificationStatus?.takeIf { it.isNotBlank() }?.let { status ->
+                        val verified = status.uppercase(Locale.ENGLISH) in setOf("VERIFIED", "CONFIRMED", "OFFICIAL")
+                        Surface(
+                            color = (if (verified) HistoryGreen else HistoryMuted).copy(alpha = 0.10f),
+                            shape = RoundedCornerShape(50),
+                        ) {
+                            Text(
+                                historyVerificationLabelV070(status),
+                                color = if (verified) HistoryGreen else HistoryMuted,
+                                fontSize = 8.sp,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp),
+                            )
+                        }
+                    }
                 }
             }
         }
     }
 }
+
+private fun historyVerificationLabelV070(value: String): String = value
+    .lowercase(Locale.ENGLISH)
+    .split('_')
+    .filter { it.isNotBlank() }
+    .joinToString(" ") { token -> token.replaceFirstChar { it.titlecase(Locale.ENGLISH) } }
