@@ -20,6 +20,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.PageSize
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -119,36 +120,42 @@ fun CineRelayHomeV058(
             onSurfaceVariant = Home58Muted,
         ),
     ) {
-        PullToRefreshBox(
-            isRefreshing = state.loading,
-            onRefresh = onRefresh,
-            modifier = modifier.fillMaxSize().background(Home58Ink),
-        ) {
-            LazyColumn(
+        Box(modifier = modifier.fillMaxSize().background(Home58Ink)) {
+            PullToRefreshBox(
+                isRefreshing = state.loading,
+                onRefresh = onRefresh,
                 modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(bottom = 118.dp),
-                verticalArrangement = Arrangement.spacedBy(20.dp),
             ) {
-                item { HomeHeaderV058(state.loading, onRefresh, onSearch) }
-                item {
-                    if (heroItems.isNotEmpty()) HomeHeroPagerV058(heroItems, onOpenUpdate)
-                    else HomeHeroEmptyV058(favoriteSources)
-                }
-                item { HomeArchiveEntryV058(onOpenArchive) }
-                if (state.error != null) {
-                    item { Text(state.error, color = Color(0xFFF0B862), fontSize = 12.sp, modifier = Modifier.padding(horizontal = 20.dp)) }
-                }
-                if (rails.isEmpty() && !state.loading) {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(bottom = 154.dp),
+                    verticalArrangement = Arrangement.spacedBy(20.dp),
+                ) {
+                    item { HomeHeaderV058(state.loading, onRefresh, onSearch) }
                     item {
-                        Column(Modifier.fillMaxWidth().padding(horizontal = 22.dp, vertical = 24.dp)) {
-                            Text("You're caught up", color = Home58Text, fontSize = 20.sp, fontWeight = FontWeight.Bold)
-                            Spacer(Modifier.height(6.dp))
-                            Text("Pull down anytime. CineRelay will check your favorites and trusted movie sources for something new.", color = Home58Muted, fontSize = 13.sp, lineHeight = 19.sp)
+                        if (heroItems.isNotEmpty()) HomeHeroPagerV058(heroItems, onOpenUpdate)
+                        else HomeHeroEmptyV058(favoriteSources)
+                    }
+                    if (state.error != null) {
+                        item { Text(state.error, color = Color(0xFFF0B862), fontSize = 12.sp, modifier = Modifier.padding(horizontal = 20.dp)) }
+                    }
+                    if (rails.isEmpty() && !state.loading) {
+                        item {
+                            Column(Modifier.fillMaxWidth().padding(horizontal = 22.dp, vertical = 24.dp)) {
+                                Text("You're caught up", color = Home58Text, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                                Spacer(Modifier.height(6.dp))
+                                Text("Pull down anytime. CineRelay will check your favorites and trusted movie sources for something new.", color = Home58Muted, fontSize = 13.sp, lineHeight = 19.sp)
+                            }
                         }
                     }
+                    items(rails, key = { it.title }) { rail -> HomeRailV058(rail, onOpenUpdate) }
                 }
-                items(rails, key = { it.title }) { rail -> HomeRailV058(rail, onOpenUpdate) }
             }
+
+            HomeArchiveFloatingV060(
+                onOpenArchive = onOpenArchive,
+                modifier = Modifier.align(Alignment.BottomStart).padding(start = 16.dp, bottom = 96.dp),
+            )
         }
     }
 }
@@ -193,8 +200,10 @@ private fun HomeHeroPagerV058(heroItems: List<NewsroomSignal>, onOpenUpdate: (Ne
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         HorizontalPager(
             state = pagerState,
-            contentPadding = PaddingValues(horizontal = 16.dp),
-            pageSpacing = 10.dp,
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+            pageSize = PageSize.Fill,
+            contentPadding = PaddingValues(0.dp),
+            pageSpacing = 0.dp,
             beyondViewportPageCount = 1,
         ) { page ->
             val item = heroItems[page]
@@ -251,22 +260,27 @@ private fun HomeHeroEmptyV058(favoriteSources: List<PersonalizationSource>) {
 }
 
 @Composable
-private fun HomeArchiveEntryV058(onOpenArchive: () -> Unit) {
+private fun HomeArchiveFloatingV060(onOpenArchive: () -> Unit, modifier: Modifier = Modifier) {
     Surface(
-        color = Home58Panel,
-        shape = RoundedCornerShape(18.dp),
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp).clickable(onClick = onOpenArchive),
+        color = Home58Panel.copy(alpha = 0.96f),
+        shape = RoundedCornerShape(16.dp),
+        shadowElevation = 8.dp,
+        modifier = modifier.clickable(onClick = onOpenArchive),
     ) {
-        Row(Modifier.padding(horizontal = 16.dp, vertical = 13.dp), verticalAlignment = Alignment.CenterVertically) {
-            Surface(color = Home58Gold.copy(alpha = 0.12f), shape = RoundedCornerShape(12.dp), modifier = Modifier.size(38.dp)) {
-                Box(contentAlignment = Alignment.Center) { Icon(Icons.Default.Archive, contentDescription = null, tint = Home58Gold, modifier = Modifier.size(20.dp)) }
+        Row(
+            modifier = Modifier.padding(start = 10.dp, end = 14.dp, top = 9.dp, bottom = 9.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Surface(color = Home58Gold.copy(alpha = 0.14f), shape = RoundedCornerShape(11.dp), modifier = Modifier.size(34.dp)) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(Icons.Default.Archive, contentDescription = null, tint = Home58Gold, modifier = Modifier.size(18.dp))
+                }
             }
-            Spacer(Modifier.width(12.dp))
-            Column(Modifier.weight(1f)) {
-                Text("Archive", color = Home58Text, fontSize = 14.sp, fontWeight = FontWeight.Bold)
-                Text("Updates older than 24h · last 90 days", color = Home58Muted, fontSize = 10.sp)
+            Spacer(Modifier.width(9.dp))
+            Column {
+                Text("Archive", color = Home58Text, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                Text("Past updates", color = Home58Muted, fontSize = 9.sp)
             }
-            Text("Open", color = Home58Gold, fontSize = 11.sp, fontWeight = FontWeight.Bold)
         }
     }
 }
