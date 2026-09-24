@@ -15,6 +15,7 @@ if (!supabaseUrl || !serviceRoleKey || !internalSecret || !youtubeApiKey) throw 
 
 const supabase = createClient(supabaseUrl, serviceRoleKey, { auth: { persistSession: false, autoRefreshToken: false } });
 const VERIFICATION_TIMEOUT_MS = 15 * 60 * 1000;
+const SUBSCRIPTION_BOOTSTRAP_COOLDOWN_MS = 60 * 60 * 1000;
 const ARTWORK_REFRESH_MS = 7 * 24 * 60 * 60 * 1000;
 const ARTWORK_BATCH_SIZE = 50;
 
@@ -38,7 +39,7 @@ function stringValue(value: unknown): string | null {
   return typeof value === 'string' && value.trim().length > 0 ? value : null;
 }
 
-async function callSubscriptionAdmin(sourceIdentityId: string, action: 'renew'): Promise<{ ok: boolean; status: number }> {
+async function callSubscriptionAdmin(sourceIdentityId: string, action: 'subscribe' | 'renew'): Promise<{ ok: boolean; status: number }> {
   const response = await fetch(`${supabaseUrl!.replace(/\/$/, '')}/functions/v1/youtube-subscription-admin`, {
     method: 'POST',
     headers: {
@@ -70,6 +71,68 @@ async function markHealth(sourceIdentityId: string, healthState: string, code: s
     });
     if (insertError) throw insertError;
   }
+}
+
+async function bootstrapMissingSubscriptions(now: Date, limit: number): Promise<{
+  eligible: number;
+  requested: number;
+  failures: number;
+  cooldownSkipped: number;
+}> {
+  const { data: identities, error: identityError } = await supabase
+    .from('source_identities')
+    .select('id,created_at')
+    .eq('platform', 'YOUTUBE')
+    .eq('active', true)
+    .order('created_at', { ascending: false })
+    .limit(300);
+  if (identityError) throw identityError;
+
+  const { data: subscriptions, error: subscriptionError } = await supabase
+    .from('connector_subscriptions')
+    .select('source_identity_id,state,requested_at')
+    .eq('provider', 'YOUTUBE_WEBSUB')
+    .order('requested_at', { ascending: false })
+    .limit(2000);
+  if (subscriptionError) throw subscriptionError;
+
+  const liveSources = new Set<string>();
+  const latestAttempt = new Map<string, number>();
+  for (const row of subscriptions ?? []) {
+    const sourceIdentityId = String((row as Record<string, unknown>).source_identity_id ?? '');
+    if (!sourceIdentityId) continue;
+    const state = String((row as Record<string, unknown>).state ?? '');
+    if (state === 'ACTIVE' || state === 'PENDING' || state === 'RENEWING') liveSources.add(sourceIdentityId);
+    if (!latestAttempt.has(sourceIdentityId)) {
+      const requestedAt = stringValue((row as Record<string, unknown>).requested_at);
+      const requestedMs = requestedAt ? Date.parse(requestedAt) : Number.NaN;
+      if (Number.isFinite(requestedMs)) latestAttempt.set(sourceIdentityId, requestedMs);
+    }
+  }
+
+  const cooldownCutoff = now.getTime() - SUBSCRIPTION_BOOTSTRAP_COOLDOWN_MS;
+  let cooldownSkipped = 0;
+  const eligible: string[] = [];
+  for (const row of identities ?? []) {
+    const sourceIdentityId = String((row as Record<string, unknown>).id ?? '');
+    if (!sourceIdentityId || liveSources.has(sourceIdentityId)) continue;
+    const lastAttemptMs = latestAttempt.get(sourceIdentityId);
+    if (lastAttemptMs !== undefined && lastAttemptMs > cooldownCutoff) {
+      cooldownSkipped += 1;
+      continue;
+    }
+    eligible.push(sourceIdentityId);
+  }
+
+  let requested = 0;
+  let failures = 0;
+  for (const sourceIdentityId of eligible.slice(0, limit)) {
+    const result = await callSubscriptionAdmin(sourceIdentityId, 'subscribe');
+    if (result.ok) requested += 1;
+    else failures += 1;
+  }
+
+  return { eligible: eligible.length, requested, failures, cooldownSkipped };
 }
 
 async function refreshSourceArtwork(limit: number): Promise<{
@@ -184,11 +247,12 @@ async function refreshSourceArtwork(limit: number): Promise<{
 
 Deno.serve(async (request) => {
   try {
-    if (request.method !== 'POST') return new Response(null, { status: 405, headers: { allow: 'POST' } });
+    if (request.method !== 'POST') return json(405, { error: 'method_not_allowed' });
     if (!authorized(request)) return json(401, { error: 'unauthorized' });
-    const body = await request.json().catch(() => ({})) as { limit?: number; artworkLimit?: number };
+    const body = await request.json().catch(() => ({})) as { limit?: number; artworkLimit?: number; bootstrapLimit?: number };
     const limit = Math.max(1, Math.min(100, Number(body.limit ?? 50)));
     const artworkLimit = Math.max(1, Math.min(100, Number(body.artworkLimit ?? 100)));
+    const bootstrapLimit = Math.max(1, Math.min(20, Number(body.bootstrapLimit ?? 10)));
     const now = new Date();
     const nowIso = now.toISOString();
     const timeoutCutoff = new Date(now.getTime() - VERIFICATION_TIMEOUT_MS).toISOString();
@@ -232,6 +296,8 @@ Deno.serve(async (request) => {
     if (inFlightError) throw inFlightError;
     const inFlightSources = new Set((inFlightRows ?? []).map((row: Record<string, unknown>) => String(row.source_identity_id)));
 
+    const bootstrap = await bootstrapMissingSubscriptions(now, bootstrapLimit);
+
     const { data: dueRows, error: dueError } = await supabase
       .from('connector_subscriptions')
       .select('id,source_identity_id,generation,renew_after,expires_at')
@@ -266,6 +332,7 @@ Deno.serve(async (request) => {
     return json(200, {
       expired: expiredRows?.length ?? 0,
       verificationTimeouts: timedOutRows?.length ?? 0,
+      subscriptionBootstrap: bootstrap,
       renewalDue: dueRows?.length ?? 0,
       renewed,
       renewalFailures,
