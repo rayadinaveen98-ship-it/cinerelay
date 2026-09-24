@@ -13,6 +13,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.time.DayOfWeek
+import java.time.LocalDate
 
 enum class OttWindow(val apiValue: String) {
     TODAY("today"),
@@ -44,7 +46,12 @@ data class OttUiState(
     val evidence: OttEvidenceFilter = OttEvidenceFilter.ALL,
     val providers: List<OttProvider> = emptyList(),
     val items: List<OttRelease> = emptyList(),
+    val todayItems: List<OttRelease> = emptyList(),
+    val weekendItems: List<OttRelease> = emptyList(),
+    val upcomingItems: List<OttRelease> = emptyList(),
     val today: String? = null,
+    val weekendStart: String? = null,
+    val weekendEnd: String? = null,
     val windowEnd: String? = null,
     val error: String? = null,
 )
@@ -63,8 +70,8 @@ class OttViewModelV054(application: Application) : AndroidViewModel(application)
             refresh()
             return
         }
-        // Reopening OTT always asks the backend again. Source ingestion runs much
-        // more frequently than daily, so the calendar should never be a stale
+        // Reopening OTT always asks the backend again. OTT announcements can change
+        // throughout the day, so the consumer surface should never be a stale
         // process-lifetime snapshot.
         refresh()
     }
@@ -77,33 +84,65 @@ class OttViewModelV054(application: Application) : AndroidViewModel(application)
             val request = _state.value
             runCatching {
                 withContext(Dispatchers.IO) {
-                    client.ott(
-                        window = request.window.apiValue,
+                    val todayFeed = client.ott(
+                        window = OttWindow.TODAY.apiValue,
                         providerCode = request.providerCode,
                         language = request.language,
                         contentType = request.contentType.apiValue,
                         evidenceStatus = request.evidence.apiValue,
                         limit = 75,
                     )
+                    val upcomingFeed = client.ott(
+                        window = OttWindow.UPCOMING.apiValue,
+                        providerCode = request.providerCode,
+                        language = request.language,
+                        contentType = request.contentType.apiValue,
+                        evidenceStatus = request.evidence.apiValue,
+                        limit = 100,
+                    )
+                    todayFeed to upcomingFeed
                 }
-            }.onSuccess { feed ->
+            }.onSuccess { (todayFeed, upcomingFeed) ->
+                val todayIso = todayFeed.today ?: upcomingFeed.today
+                val weekend = weekendRangeV060(todayIso)
+                val weekendItems = if (weekend == null) {
+                    emptyList()
+                } else {
+                    upcomingFeed.items.filter { release ->
+                        val date = release.releaseDate?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
+                        date != null && !date.isBefore(weekend.first) && !date.isAfter(weekend.second)
+                    }
+                }
+                val upcomingItems = upcomingFeed.items.filter { release ->
+                    val date = release.releaseDate?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
+                    val todayDate = todayIso?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
+                    date != null && (todayDate == null || date.isAfter(todayDate))
+                }
+                val allItems = (todayFeed.items + weekendItems + upcomingItems).distinctBy { it.id }
+                val providers = (upcomingFeed.providers + todayFeed.providers).distinctBy { it.code }
+
                 _state.value = _state.value.copy(
                     loading = false,
                     loaded = true,
-                    providers = feed.providers,
-                    items = feed.items,
-                    today = feed.today,
-                    windowEnd = feed.windowEnd,
+                    providers = providers,
+                    items = allItems,
+                    todayItems = todayFeed.items.distinctBy { it.id },
+                    weekendItems = weekendItems.distinctBy { it.id },
+                    upcomingItems = upcomingItems.distinctBy { it.id },
+                    today = todayIso,
+                    weekendStart = weekend?.first?.toString(),
+                    weekendEnd = weekend?.second?.toString(),
+                    windowEnd = upcomingFeed.windowEnd,
                     error = null,
                 )
             }.onFailure(::handleFailure)
         }
     }
 
+    // Kept for call-site compatibility while OTT is now organized into fixed consumer sections.
     fun selectWindow(window: OttWindow) {
         if (_state.value.window == window) return
-        _state.value = _state.value.copy(window = window, loaded = false, error = null)
-        refresh()
+        _state.value = _state.value.copy(window = window, error = null)
     }
 
     fun selectProvider(providerCode: String?) {
@@ -138,5 +177,19 @@ class OttViewModelV054(application: Application) : AndroidViewModel(application)
             else -> error.message ?: "OTT releases could not be loaded"
         }
         _state.value = _state.value.copy(loading = false, loaded = true, error = message)
+    }
+}
+
+private fun weekendRangeV060(todayIso: String?): Pair<LocalDate, LocalDate>? {
+    val today = todayIso?.let { runCatching { LocalDate.parse(it) }.getOrNull() } ?: return null
+    return when (today.dayOfWeek) {
+        DayOfWeek.FRIDAY -> today to today.plusDays(2)
+        DayOfWeek.SATURDAY -> today to today.plusDays(1)
+        DayOfWeek.SUNDAY -> today to today
+        else -> {
+            val daysToFriday = (DayOfWeek.FRIDAY.value - today.dayOfWeek.value + 7) % 7
+            val friday = today.plusDays(daysToFriday.toLong())
+            friday to friday.plusDays(2)
+        }
     }
 }
