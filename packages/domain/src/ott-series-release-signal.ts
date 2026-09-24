@@ -57,6 +57,7 @@ const SERIES_MARKER = /\bseason\s*\d+\b|\bhotstar\s+specials\b|\bweb\s*series\b|
 const AVAILABILITY_LANGUAGE = /\b(now\s+streaming|streaming\s+now|available\s+now|watch\s+now|premier(?:e|es|ing)|releas(?:e|es|ing)|official\s+release\s+date|grand\s+launch)\b/i;
 const NOISE_MARKERS = /\b(episodes?|ep\.?\s*\d+|week\s*\d+|promo\s*\d*|scene|clip|highlights?|recap|sneak\s+peek|behind\s+the\s+scenes|24x7|world\s+(?:tv|television)\s+premiere|match|innings|wickets?|goals?)\b/i;
 const TRAILER_OR_TEASER = /\b(?:official\s+)?(?:trailer|teaser)\b/i;
+const GENERIC_LAUNCH_TITLE = /\bgrand\s+launch\b/i;
 const EXPLICIT_DATED_LAUNCH = new RegExp(`\\b(?:official\\s+release\\s+date\\s*[-:–—]?|releas(?:e|es|ing)(?:\\s+on)?|premier(?:e|es|ing)(?:\\s+on)?|grand\\s+launch\\s*(?:on)?|from)\\s*(?:${MONTH_PATTERN}\\s+\\d{1,2}|\\d{1,2}(?:st|nd|rd|th)?\\s+${MONTH_PATTERN})`, 'i');
 
 function compactWhitespace(value: string): string {
@@ -151,7 +152,7 @@ function cleanSeriesTitle(value: string): string | undefined {
     .replace(/\s*[|,:;\-–—]+$/g, '')
     .trim();
   if (candidate.length < 2 || candidate.length > 100) return undefined;
-  if (NOISE_MARKERS.test(candidate) || TRAILER_OR_TEASER.test(candidate)) return undefined;
+  if (NOISE_MARKERS.test(candidate) || TRAILER_OR_TEASER.test(candidate) || GENERIC_LAUNCH_TITLE.test(candidate)) return undefined;
   return candidate;
 }
 
