@@ -63,7 +63,7 @@ const MONTHS: Record<string, number> = {
 };
 
 const BAD_TITLE_MARKERS = /\b(trailer|teaser|promo|glimpse|scene|clip|highlights?|song|interview|review|episodes?|ep\.?\s*\d+|recap|behind\s+the\s+scenes|sneak\s+peek|match|innings|wickets?|goals?)\b/i;
-const RELEASE_LANGUAGE = /\b(stream(?:ing|s)?(?:\s+from|\s+on|\s+now)?|premier(?:e|es|ing)(?:\s+on)?|releas(?:e|es|ing)(?:\s+on)?|now\s+streaming|digital\s+(?:debut|premiere|release))\b/i;
+const RELEASE_LANGUAGE = /\b(stream(?:ing|s)?(?:\s+from|\s+on|\s+now)?|premier(?:e|es|ing)(?:\s+on)?|releas(?:e|es|ing)(?:\s+on)?|now\s+streaming|watch\s+now|available\s+now|digital\s+(?:debut|premiere|release))\b/i;
 
 function compactWhitespace(value: string): string {
   return value.normalize('NFKC').replace(/\s+/g, ' ').trim();
@@ -209,6 +209,12 @@ function extractMovieTitle(
   return undefined;
 }
 
+function primaryReleaseText(text: string, sourceRole: string): string {
+  if (sourceRole !== 'OTT_PLATFORM') return text;
+  const cutoff = text.search(/\b(?:stay\s+tuned(?:\s*&\s*subscribe)?|click\s+here\s+to\s+watch|original\s+shows\s+on|enjoy\s+and\s+stay\s+connected|follow\s+us\s+on|download\s*:)/i);
+  return cutoff >= 0 ? text.slice(0, cutoff).trim() : text.slice(0, 1_500).trim();
+}
+
 function isFirstParty(source: OttSignalSource): boolean {
   return source.authorityTier <= 2 && FIRST_PARTY_ROLES.has((source.role ?? '').toUpperCase());
 }
@@ -217,7 +223,7 @@ export function extractOttMovieReleaseSignal(input: OttMovieReleaseSignalInput):
   const title = compactWhitespace(decodeHeadlineEntities(input.title ?? ''));
   const text = compactWhitespace(decodeHeadlineEntities(input.text ?? ''));
   const combined = compactWhitespace(`${title} ${text}`);
-  if (!combined || !RELEASE_LANGUAGE.test(combined)) return undefined;
+  if (!combined) return undefined;
 
   const provider = providerCode(`${input.source.name ?? ''} ${combined}`);
   if (!provider) return undefined;
@@ -227,13 +233,16 @@ export function extractOttMovieReleaseSignal(input: OttMovieReleaseSignalInput):
   const sourceRole = (input.source.role ?? '').toUpperCase();
   const allowDirectOttHeadline = firstParty && sourceRole === 'OTT_PLATFORM';
   const allowTradeHeadline = !firstParty && sourceRole === 'TRADE_MEDIA' && input.source.authorityTier <= 3;
+  const releaseText = primaryReleaseText(text, sourceRole);
+  const releaseContext = compactWhitespace(`${title} ${releaseText}`);
+  if (!releaseContext || !RELEASE_LANGUAGE.test(releaseContext)) return undefined;
 
-  const movieTitle = extractMovieTitle(title, text, allowDirectOttHeadline, allowTradeHeadline);
+  const movieTitle = extractMovieTitle(title, releaseText, allowDirectOttHeadline, allowTradeHeadline);
   if (!movieTitle) return undefined;
 
   const publishedAt = parsePublishedDate(input.publishedAt);
-  const releaseDate = extractDate(combined, publishedAt);
-  const nowStreaming = /\b(now\s+streaming|streaming\s+now|watch\s+now|available\s+now)\b/i.test(combined);
+  const releaseDate = extractDate(releaseContext, publishedAt);
+  const nowStreaming = /\b(now\s+streaming|streaming\s+now|watch\s+now|available\s+now)\b/i.test(releaseContext);
   if (!releaseDate && !nowStreaming) return undefined;
 
   let state: OttMovieReleaseSignal['state'] = 'TBA';
@@ -243,11 +252,11 @@ export function extractOttMovieReleaseSignal(input: OttMovieReleaseSignalInput):
     state = releaseDate >= publishedDay ? 'UPCOMING' : 'RELEASED';
   }
 
-  const originalLanguage = /\b(original\s+(?:movie|film)|(?:movie|film)\s+original|direct\s+digital\s+debut)\b/i.test(combined);
+  const originalLanguage = /\b(original\s+(?:movie|film)|(?:movie|film)\s+original|direct\s+digital\s+debut)\b/i.test(releaseContext);
   // Trade feeds often append publication-brand footers such as "Latest Telugu cinema news".
   // Those labels describe the outlet, not the title. Restrict trade language inference to
   // the article lead; if the language is not stated there, leave it unknown rather than guess.
-  const languageContext = firstParty ? `${input.source.name ?? ''} ${combined}` : combined.slice(0, 900);
+  const languageContext = firstParty ? `${input.source.name ?? ''} ${releaseContext}` : releaseContext.slice(0, 900);
   const sourceLanguage = languageCode(languageContext);
 
   return {
