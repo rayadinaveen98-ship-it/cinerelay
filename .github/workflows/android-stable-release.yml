@@ -1,0 +1,178 @@
+name: CineRelay Android Stable Release
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: cinerelay-android-stable-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  CINERELAY_VERSION_CODE: '210001'
+  CINERELAY_VERSION_NAME: '0.2.1'
+  CINERELAY_SUPABASE_URL: https://dnqaejljfzwhsainpdxb.supabase.co
+  CINERELAY_SUPABASE_PUBLISHABLE_KEY: sb_publishable_hR65p2JkQ2x5fFLx_kkcNQ_1SxNN3QP
+
+jobs:
+  stable-release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
+
+      - name: Install Android SDK 36
+        shell: bash
+        run: |
+          set -euo pipefail
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager 'platforms;android-36' 'platform-tools'
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.6.0'
+
+      - name: Require permanent CineRelay signing
+        shell: bash
+        env:
+          KEYSTORE_B64: ${{ secrets.CINERELAY_ANDROID_KEYSTORE_B64 }}
+          STORE_PASSWORD: ${{ secrets.CINERELAY_ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.CINERELAY_ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.CINERELAY_ANDROID_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          for value in KEYSTORE_B64 STORE_PASSWORD KEY_ALIAS KEY_PASSWORD; do
+            if [[ -z "${!value:-}" ]]; then
+              echo "Missing required stable release secret: $value" >&2
+              exit 1
+            fi
+          done
+          KEYSTORE="$RUNNER_TEMP/cinerelay-update.jks"
+          printf '%s' "$KEYSTORE_B64" | base64 --decode > "$KEYSTORE"
+          test -s "$KEYSTORE"
+          keytool -list -keystore "$KEYSTORE" -storepass "$STORE_PASSWORD" -alias "$KEY_ALIAS" >/dev/null
+          echo "CINERELAY_SIGNING_STORE_FILE=$KEYSTORE" >> "$GITHUB_ENV"
+          echo "CINERELAY_SIGNING_STORE_PASSWORD=$STORE_PASSWORD" >> "$GITHUB_ENV"
+          echo "CINERELAY_SIGNING_KEY_ALIAS=$KEY_ALIAS" >> "$GITHUB_ENV"
+          echo "CINERELAY_SIGNING_KEY_PASSWORD=$KEY_PASSWORD" >> "$GITHUB_ENV"
+
+      - name: Require Firebase Android configuration
+        shell: bash
+        env:
+          FIREBASE_JSON_B64: ${{ secrets.CINERELAY_FIREBASE_GOOGLE_SERVICES_JSON_B64 }}
+        run: |
+          set -euo pipefail
+          if [[ -z "${FIREBASE_JSON_B64:-}" ]]; then
+            echo 'Firebase Android configuration is required for a stable release.' >&2
+            exit 1
+          fi
+          TARGET='apps/android/app/google-services.json'
+          printf '%s' "$FIREBASE_JSON_B64" | base64 --decode > "$TARGET"
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          path = Path('apps/android/app/google-services.json')
+          data = json.loads(path.read_text())
+          if not (data.get('project_info') or {}).get('project_number'):
+              raise SystemExit('Firebase project_number missing')
+          clients = [
+              client for client in (data.get('client') or [])
+              if (((client.get('client_info') or {}).get('android_client_info') or {}).get('package_name') == 'com.cinerelay.app')
+          ]
+          if not clients:
+              raise SystemExit('Firebase config missing com.cinerelay.app client')
+          if not (clients[0].get('client_info') or {}).get('mobilesdk_app_id'):
+              raise SystemExit('Firebase mobilesdk_app_id missing')
+          if not any((item or {}).get('current_key') for item in (clients[0].get('api_key') or [])):
+              raise SystemExit('Firebase API key missing')
+          PY
+          if grep -E '"private_key"|"private_key_id"|"client_email"' "$TARGET"; then
+            echo 'Server credential material must never be supplied as google-services.json' >&2
+            exit 1
+          fi
+
+      - name: Verify Android source contains no privileged secret material
+        shell: bash
+        run: |
+          set -euo pipefail
+          if grep -R -E 'SUPABASE_SERVICE_ROLE_KEY|CINERELAY_INTERNAL_ADMIN_SECRET|CINERELAY_FCM_SERVICE_ACCOUNT|BEGIN PRIVATE KEY' \
+            apps/android/app/src apps/android/*.kts apps/android/app/*.kts; then
+            echo 'Privileged server credential marker found in Android source' >&2
+            exit 1
+          fi
+
+      - name: Build CineRelay v0.2.1 stable APK
+        run: gradle -p apps/android --no-daemon --stacktrace :app:assembleRelease
+
+      - name: Verify stable APK contract and signer
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK='apps/android/app/build/outputs/apk/release/app-release.apk'
+          OUT='stable-release'
+          mkdir -p "$OUT"
+          test -s "$APK"
+
+          unzip -p "$APK" classes.dex > /tmp/cinerelay-release-classes.dex || true
+          if grep -a -E 'SUPABASE_SERVICE_ROLE_KEY|CINERELAY_INTERNAL_ADMIN_SECRET|CINERELAY_FCM_SERVICE_ACCOUNT|BEGIN PRIVATE KEY' "$APK" /tmp/cinerelay-release-classes.dex; then
+            echo 'Privileged credential marker found in release APK' >&2
+            exit 1
+          fi
+
+          APKSIGNER="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -n 1)"
+          test -x "$APKSIGNER"
+          "$APKSIGNER" verify --print-certs "$APK" | tee "$OUT/CineRelay-v0.2.1.signing-certificate.txt"
+          EXPECTED="$(tr -d '[:space:]' < apps/android/signing/cinerelay-update-cert.sha256 | tr '[:lower:]' '[:upper:]')"
+          ACTUAL="$(awk -F': ' '/certificate SHA-256 digest/{print toupper($NF); exit}' "$OUT/CineRelay-v0.2.1.signing-certificate.txt" | tr -d ':[:space:]')"
+          if [[ -z "$ACTUAL" || "$ACTUAL" != "$EXPECTED" ]]; then
+            echo "CineRelay stable signer mismatch. Expected $EXPECTED, got ${ACTUAL:-missing}." >&2
+            exit 1
+          fi
+
+          cp "$APK" "$OUT/CineRelay-v0.2.1.apk"
+          sha256sum "$OUT/CineRelay-v0.2.1.apk" | tee "$OUT/CineRelay-v0.2.1.sha256"
+          printf '%s\n' "$CINERELAY_VERSION_CODE" > "$OUT/CineRelay-v0.2.1.version-code.txt"
+          printf '%s\n' "$CINERELAY_VERSION_NAME" > "$OUT/CineRelay-v0.2.1.version-name.txt"
+          printf '%s\n' 'true' > "$OUT/CineRelay-v0.2.1.firebase-configured.txt"
+          printf '%s\n' 'true' > "$OUT/CineRelay-v0.2.1.update-signing-configured.txt"
+
+      - name: Upload stable APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: cinerelay-android-v0.2.1-stable
+          path: stable-release
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Publish GitHub v0.2.1 release
+        if: github.ref == 'refs/heads/main'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if gh release view v0.2.1 >/dev/null 2>&1; then
+            echo 'GitHub release v0.2.1 already exists; leaving the immutable release untouched.'
+            exit 0
+          fi
+          gh release create v0.2.1 \
+            stable-release/CineRelay-v0.2.1.apk \
+            stable-release/CineRelay-v0.2.1.sha256 \
+            stable-release/CineRelay-v0.2.1.signing-certificate.txt \
+            --target "$GITHUB_SHA" \
+            --title 'CineRelay v0.2.1' \
+            --notes-file docs/releases/V0.2.1.md
