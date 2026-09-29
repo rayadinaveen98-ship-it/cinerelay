@@ -82,6 +82,32 @@ assert.equal(accessibleAnchors.items[0].title, 'Orbit Trailer Released');
 assert.equal(accessibleAnchors.items[1].canonicalUrl, 'https://studio.example.com/news/entertainment/orbit-first-look');
 assert.equal(accessibleAnchors.items[1].title, 'Orbit First Look');
 
+const ottNewsHtml = `
+  <main>
+    <a href="/news/thudakkam-stream-jiohotstar">Vismaya Mohanlal's Thudakkam to Stream on JioHotstar from September 18</a>
+    <a href="/news/bigg-boss-record">Bigg Boss Sets a New Platform Benchmark on JioHotstar</a>
+    <a href="/news/festival-tv-premieres">Festive Season World Television Premieres Announced</a>
+    <a href="/news/movie-premieres-jiohotstar">New Movie Premieres on JioHotstar September 25</a>
+  </main>`;
+const ottReleaseOnly = parseWebPage(ottNewsHtml, 'https://www.jiostar.com/news-category/entertainment/', {
+  profileVersion: 'jiostar-ott-release-only-v1',
+  itemSelector: 'a[href]',
+  linkSelector: SELF_SELECTOR,
+  titleSelector: SELF_SELECTOR,
+  includeUrlPattern: '^https://www\\.jiostar\\.com/news/[^/?#]+/?$',
+  includeTitlePattern: '\\b(?:stream|streaming|premiere|premieres|release|releases)\\b.*\\b(?:JioHotstar|OTT)\\b|\\b(?:JioHotstar|OTT)\\b.*\\b(?:stream|streaming|premiere|premieres|release|releases)\\b',
+  excludeTitlePattern: '\\b(?:television|TV premiere|ratings?|benchmark|sponsor)\\b',
+  minItems: 1,
+});
+assert.deepEqual(
+  ottReleaseOnly.items.map((item) => item.title),
+  [
+    "Vismaya Mohanlal's Thudakkam to Stream on JioHotstar from September 18",
+    'New Movie Premieres on JioHotstar September 25',
+  ],
+  'title filters should retain OTT release announcements without ingesting general platform/editorial noise',
+);
+
 assert.equal(canonicalizePageUrl('/news/test?utm_medium=social&x=1#section', 'https://studio.example.com/news/'), 'https://studio.example.com/news/test?x=1');
 
 const baseline = planPageDelta(parsed.items, null);
@@ -122,5 +148,6 @@ assert.equal(WEB_PAGE_PARSER_VERSION, 'first-party-html-v2');
 
 assert.throws(() => parseWebPage('', 'https://studio.example.com/news/', profile), /empty_page/);
 assert.throws(() => parseWebPage(html, 'https://studio.example.com/news/', { ...profile, itemSelector: '[' }), /page_profile_invalid_item_selector/);
+assert.throws(() => parseWebPage(html, 'https://studio.example.com/news/', { ...profile, includeTitlePattern: '[' }), /include_title_pattern_invalid/);
 
 console.log('web page connector canaries: PASS');
