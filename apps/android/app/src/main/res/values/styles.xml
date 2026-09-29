@@ -2,9 +2,13 @@
 <resources>
     <style name="Theme.CineRelay" parent="android:style/Theme.Material.NoActionBar">
         <item name="android:windowLightStatusBar">false</item>
-        <item name="android:statusBarColor">#111318</item>
-        <item name="android:navigationBarColor">#111318</item>
-        <item name="android:windowBackground">#111318</item>
+        <item name="android:statusBarColor">@color/cinerelay_ink</item>
+        <item name="android:navigationBarColor">@color/cinerelay_ink</item>
+        <item name="android:windowBackground">@color/cinerelay_ink</item>
         <item name="android:fontFamily">sans</item>
+    </style>
+
+    <style name="Theme.CineRelay.Starting" parent="Theme.CineRelay">
+        <item name="android:windowBackground">@color/cinerelay_ink</item>
     </style>
 </resources>

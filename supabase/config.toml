@@ -104,10 +104,28 @@ verify_jwt = false
 [functions.cinerelay-device-registration-api]
 verify_jwt = false
 
+# Source notification preferences use the same authenticated-user boundary as
+# device registration. The function validates the bearer session itself and binds
+# every read/write to that verified user id.
+[functions.cinerelay-notification-preferences-api]
+verify_jwt = false
+
 # Mobile reads/follow mutations use the same user-auth boundary. The function
 # validates the bearer token itself and exposes shaped data only; service-owned
 # internal tables remain unavailable directly to Android clients.
 [functions.cinerelay-mobile-api]
+verify_jwt = false
+
+# Newsroom reads are intentionally guest-aware. The Android client sends a
+# publishable key and optionally a user bearer session; the function validates a
+# supplied user token itself before any user-specific follow state is returned.
+[functions.cinerelay-newsroom-api]
+verify_jwt = false
+
+# The source directory is a shaped, read-only guest API. Service-role access stays
+# exclusively inside the Edge function; Android receives only public source metadata
+# plus bounded 24-hour activity counts.
+[functions.cinerelay-sources-api]
 verify_jwt = false
 
 # Push delivery is an internal server-only worker. It requires the independent

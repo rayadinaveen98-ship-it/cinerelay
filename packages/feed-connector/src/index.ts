@@ -1,6 +1,6 @@
 import { XMLParser } from 'fast-xml-parser';
 
-export const FEED_PARSER_VERSION = 'feed-parser-v1';
+export const FEED_PARSER_VERSION = 'feed-parser-v2';
 
 export type FeedFormat = 'RSS' | 'ATOM';
 export type FeedPollClass = 'HOT_5M' | 'ACTIVE_15M' | 'NORMAL_60M' | 'COLD_6H' | 'DAILY';
@@ -32,7 +32,11 @@ const parser = new XMLParser({
   parseTagValue: false,
   parseAttributeValue: false,
   allowBooleanAttributes: true,
+  updateTag: (tagName: string) => tagName,
 });
+
+const FEED_SCHEDULER_GRID_MS = 5 * 60_000;
+const HEALTHY_SCHEDULER_ALIGNMENT_WINDOW_MS = 90_000;
 
 function arrayify<T>(value: T | T[] | undefined | null): T[] {
   if (value === undefined || value === null) return [];
@@ -206,6 +210,15 @@ export function pollIntervalMs(pollClass: FeedPollClass): number {
   }
 }
 
+function healthySchedulerBase(now: Date): Date {
+  const timestamp = now.getTime();
+  const remainder = ((timestamp % FEED_SCHEDULER_GRID_MS) + FEED_SCHEDULER_GRID_MS) % FEED_SCHEDULER_GRID_MS;
+  if (remainder <= HEALTHY_SCHEDULER_ALIGNMENT_WINDOW_MS) {
+    return new Date(timestamp - remainder);
+  }
+  return now;
+}
+
 export function nextFeedCheckAt(input: {
   now: Date;
   pollClass: FeedPollClass;
@@ -219,7 +232,8 @@ export function nextFeedCheckAt(input: {
   const failures = Math.max(0, Math.min(6, input.consecutiveFailures ?? 0));
   const multiplier = failures > 0 ? 2 ** failures : 1;
   const interval = Math.min(pollIntervalMs(pollClass) * multiplier, 24 * 60 * 60_000);
-  return new Date(now.getTime() + interval).toISOString();
+  const base = failures === 0 ? healthySchedulerBase(now) : now;
+  return new Date(base.getTime() + interval).toISOString();
 }
 
 export function parseRetryAfterSeconds(value: string | null, now = new Date()): number | null {

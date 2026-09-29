@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { getPushReadiness } from './push-readiness.ts';
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL');
 const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
@@ -272,6 +273,7 @@ async function operations() {
     if (result.error) throw result.error;
   }
 
+  const pushReadiness = await getPushReadiness(admin);
   const sourceMap = new Map((sourcesResult.data ?? []).map((row) => [row.id, row]));
   const healthMap = new Map((healthResult.data ?? []).map((row) => [row.source_identity_id, row]));
   const channelMap = new Map((channelResult.data ?? []).map((row) => [row.source_identity_id, row]));
@@ -308,6 +310,7 @@ async function operations() {
 
   return {
     generatedAt: new Date().toISOString(),
+    pushReadiness,
     registry,
     scheduler: schedulerResult.data ?? [],
     quota: { usageDay: latestQuotaDay, methods: [...quotaMap.values()] },

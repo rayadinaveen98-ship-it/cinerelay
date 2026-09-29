@@ -7,9 +7,18 @@
     <application
         android:name=".CineRelayApplication"
         android:allowBackup="false"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher_round"
         android:label="CineRelay"
         android:supportsRtl="true"
-        android:theme="@style/Theme.CineRelay">
+        android:theme="@style/Theme.CineRelay.Starting">
+
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_icon"
+            android:resource="@drawable/ic_cinerelay_notification" />
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_color"
+            android:resource="@color/cinerelay_gold" />
 
         <activity
             android:name=".MainActivity"

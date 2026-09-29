@@ -1,5 +1,9 @@
 import assert from 'node:assert/strict';
 import {
+  HUB_RETRY_POLICY,
+  decideHubRetry,
+  decideHubTransportRetry,
+  failedRenewalRetryAt,
   planSubscription,
   planUnsubscription,
 } from '../../packages/youtube-connector/dist/subscription.js';
@@ -44,6 +48,31 @@ await test('unsubscription plan reconstructs the exact active generation callbac
   assert.equal(unsubscribe.callbackTokenHash, active.callbackTokenHash);
   assert.equal(unsubscribe.hubSecret, active.hubSecret);
   assert.equal(unsubscribe.state, 'UNSUBSCRIBING');
+});
+
+await test('transient hub 503 retries with bounded backoff', async () => {
+  assert.deepEqual(decideHubRetry({ attempt: 1, status: 503 }), { retry: true, delayMs: 250 });
+  assert.deepEqual(decideHubRetry({ attempt: 2, status: 503 }), { retry: true, delayMs: 750 });
+  assert.deepEqual(decideHubRetry({ attempt: 3, status: 503 }), { retry: false, delayMs: 0 });
+  assert.equal(HUB_RETRY_POLICY.maxAttempts, 3);
+});
+
+await test('transport failures use the same bounded retry clock', async () => {
+  assert.deepEqual(decideHubTransportRetry(1), { retry: true, delayMs: 250 });
+  assert.deepEqual(decideHubTransportRetry(2), { retry: true, delayMs: 750 });
+  assert.deepEqual(decideHubTransportRetry(3), { retry: false, delayMs: 0 });
+});
+
+await test('hub rate limits are retryable but permanent client errors are not', async () => {
+  assert.equal(decideHubRetry({ attempt: 1, status: 429 }).retry, true);
+  assert.equal(decideHubRetry({ attempt: 1, status: 400 }).retry, false);
+  assert.equal(decideHubRetry({ attempt: 1, status: 404 }).retry, false);
+});
+
+await test('failed renewal defers the next generation attempt by thirty minutes', async () => {
+  const now = new Date('2026-09-16T16:00:00.000Z');
+  assert.equal(failedRenewalRetryAt(now), '2026-09-16T16:30:00.000Z');
+  assert.equal(HUB_RETRY_POLICY.failedRenewalBackoffMs, 30 * 60 * 1000);
 });
 
 await test('video snapshot fingerprint is stable and changes with meaningful metadata', async () => {
@@ -93,19 +122,19 @@ await test('quiet source is not marked stale merely because no WebSub delivery h
   assert.deepEqual(decideFallbackHealth({ gapExceededWindow: false, recoveredUploadCount: 0, existingErrorCode: null }), { degraded: false });
 });
 
-await test('authoritative polling proves a missed WebSub accelerator delivery', async () => {
+await test('authoritative polling recovers a missed WebSub delivery without degrading source health', async () => {
   assert.deepEqual(decideFallbackHealth({ gapExceededWindow: false, recoveredUploadCount: 1, existingErrorCode: null }), {
-    degraded: true,
+    degraded: false,
     errorCode: 'WEBSUB_MISSED_DELIVERY',
-    errorMessage: 'Authoritative uploads polling found 1 upload(s) that were not observed via WebSub',
+    errorMessage: 'Authoritative uploads polling recovered 1 upload(s) not observed via WebSub; ingestion remains healthy while the accelerator is monitored',
   });
 });
 
-await test('missed WebSub delivery stays degraded while authoritative polling remains healthy', async () => {
+await test('WebSub accelerator warning persists while authoritative polling remains healthy', async () => {
   assert.deepEqual(decideFallbackHealth({ gapExceededWindow: false, recoveredUploadCount: 0, existingErrorCode: 'WEBSUB_MISSED_DELIVERY' }), {
-    degraded: true,
+    degraded: false,
     errorCode: 'WEBSUB_MISSED_DELIVERY',
-    errorMessage: 'Authoritative uploads polling is healthy; awaiting a successful WebSub delivery to restore accelerator health',
+    errorMessage: 'Authoritative uploads polling remains healthy; WebSub accelerator recovery is still being monitored',
   });
 });
 
@@ -117,19 +146,28 @@ await test('bounded-window gap takes precedence over WebSub miss health', async 
   });
 });
 
-await test('normal authoritative discovery cadence is fifteen minutes', async () => {
-  assert.equal(decideDiscoveryIntervalMs({ existingErrorCode: null }), YOUTUBE_DISCOVERY_INTERVAL_MS.normal);
+await test('normal authoritative discovery cadence stays fifteen minutes', async () => {
+  assert.equal(decideDiscoveryIntervalMs({ existingErrorCode: null, priority: 'NORMAL' }), YOUTUBE_DISCOVERY_INTERVAL_MS.normal);
   assert.equal(YOUTUBE_DISCOVERY_INTERVAL_MS.normal, 15 * 60 * 1000);
 });
 
-await test('WebSub delivery degradation accelerates authoritative discovery to five minutes', async () => {
-  assert.equal(decideDiscoveryIntervalMs({ existingErrorCode: 'WEBSUB_MISSED_DELIVERY' }), YOUTUBE_DISCOVERY_INTERVAL_MS.hot);
+await test('high-priority authoritative discovery cadence is five minutes even while healthy', async () => {
+  assert.equal(decideDiscoveryIntervalMs({ existingErrorCode: null, priority: 'HIGH' }), YOUTUBE_DISCOVERY_INTERVAL_MS.hot);
   assert.equal(YOUTUBE_DISCOVERY_INTERVAL_MS.hot, 5 * 60 * 1000);
 });
 
-await test('provider failures back off discovery to protect quota and upstreams', async () => {
-  assert.equal(decideDiscoveryIntervalMs({ existingErrorCode: 'WEBSUB_MISSED_DELIVERY', providerFailure: true }), YOUTUBE_DISCOVERY_INTERVAL_MS.backoff);
+await test('unspecified priority remains backward-compatible with normal fifteen-minute discovery', async () => {
+  assert.equal(decideDiscoveryIntervalMs({ existingErrorCode: null }), YOUTUBE_DISCOVERY_INTERVAL_MS.normal);
+});
+
+await test('WebSub delivery warning accelerates authoritative discovery to five minutes', async () => {
+  assert.equal(decideDiscoveryIntervalMs({ existingErrorCode: 'WEBSUB_MISSED_DELIVERY', priority: 'NORMAL' }), YOUTUBE_DISCOVERY_INTERVAL_MS.hot);
+  assert.equal(YOUTUBE_DISCOVERY_INTERVAL_MS.hot, 5 * 60 * 1000);
+});
+
+await test('provider failures override high priority and back off discovery to protect quota and upstreams', async () => {
+  assert.equal(decideDiscoveryIntervalMs({ existingErrorCode: 'WEBSUB_MISSED_DELIVERY', providerFailure: true, priority: 'HIGH' }), YOUTUBE_DISCOVERY_INTERVAL_MS.backoff);
   assert.equal(YOUTUBE_DISCOVERY_INTERVAL_MS.backoff, 30 * 60 * 1000);
 });
 
-console.log(`\nYouTube planning/enrichment/discovery canaries: ${passed}/15 passed.`);
+console.log(`\nYouTube planning/enrichment/discovery canaries: ${passed}/21 passed.`);

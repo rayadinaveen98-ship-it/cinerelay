@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.CineRelay.Starting" parent="Theme.CineRelay">
+        <item name="android:windowSplashScreenBackground">@color/cinerelay_ink</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/ic_cinerelay_mark</item>
+        <item name="android:windowSplashScreenIconBackgroundColor">@color/cinerelay_ink</item>
+        <item name="android:windowBackground">@color/cinerelay_ink</item>
+    </style>
+</resources>
