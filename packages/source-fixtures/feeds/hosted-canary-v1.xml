@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>CineRelay Hosted Feed Canary</title>
+    <link>https://github.com/rayadinaveen98-ship-it/cinerelay</link>
+    <description>Synthetic hosted connector transport fixture. Not an authority source.</description>
+    <item>
+      <guid isPermaLink="false">cinerelay-hosted-canary-a</guid>
+      <title>Connector canary baseline A</title>
+      <link>https://github.com/rayadinaveen98-ship-it/cinerelay/blob/phase-4/free-source-expansion/packages/source-fixtures/feeds/hosted-canary-v1.xml</link>
+      <description>Synthetic transport verification baseline record.</description>
+      <pubDate>Wed, 16 Sep 2026 05:00:00 GMT</pubDate>
+    </item>
+  </channel>
+</rss>

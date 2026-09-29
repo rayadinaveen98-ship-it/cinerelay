@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <channel>
+    <title>Example Studio News</title>
+    <link>https://studio.example.com/news</link>
+    <description>Official studio updates</description>
+    <item>
+      <guid isPermaLink="false">studio-news-001</guid>
+      <title><![CDATA[Project Astra trailer launches tomorrow]]></title>
+      <link>https://studio.example.com/news/astra-trailer</link>
+      <pubDate>Tue, 15 Sep 2026 08:30:00 GMT</pubDate>
+      <dc:creator>Example Studio</dc:creator>
+      <category>Trailers</category>
+      <description><![CDATA[<p>The official trailer for <strong>Project Astra</strong> arrives tomorrow at 6 PM.</p>]]></description>
+    </item>
+    <item>
+      <guid>https://studio.example.com/news/astra-first-look</guid>
+      <title>Project Astra first look</title>
+      <link>https://studio.example.com/news/astra-first-look</link>
+      <pubDate>Mon, 14 Sep 2026 05:00:00 GMT</pubDate>
+      <content:encoded><![CDATA[<p>First look poster released.</p>]]></content:encoded>
+    </item>
+  </channel>
+</rss>

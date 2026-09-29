@@ -1,111 +1,99 @@
-# Phase Status
+# CineRelay Phase Status
 
-Date: 2026-09-16
+Date: 2026-09-29
 
 ## Current status
 
 **Phase 0 — Product Foundation: COMPLETE**  
-**Phase 1 — Intelligence Core Skeleton: COMPLETE + merged to `main`**  
-**Phase 2 — YouTube Production Connector: COMPLETE / PRODUCTION-VERIFIED / merged to `main`**  
-**Phase 3 — Internal Web Intelligence Console: COMPLETE / HOSTED / BROWSER-VERIFIED / merged to `main`**
+**Phase 1 — Intelligence Core Skeleton: COMPLETE**  
+**Phase 2 — YouTube Production Connector: COMPLETE / PRODUCTION-VERIFIED**  
+**Phase 3 — Internal Web Intelligence Console: COMPLETE / HOSTED / BROWSER-VERIFIED**  
+**Phase 4 — Free Source Expansion: COMPLETE / INTEGRATED**  
+**Phase 5 — Alert & Creator Intelligence: COMPLETE / INTEGRATED**  
+**Phase 6 — Android V1: STABLE PROMOTION — CineRelay v0.2.1**  
+**Phase 7 — Source Discovery & Self-Maintenance: NEXT**
 
-Phase 2 merged through PR #2 at:
+The active Phase 6 release PR promotes the Android consumer-intelligence line to CineRelay `v0.2.1` with a dedicated signed stable-release pipeline, Firebase-required publication, immutable GitHub release creation and versionCode `210001`.
 
-`e757afef33b18572c1438462621d98298d388cb5`
+## Stable Android baseline
 
-Phase 3 merged through PR #3 at:
+The v0.2.1 product baseline includes:
 
-`41c40c82b3bde93d8772095b15ad4ede7e170537`
+- native Kotlin/Compose Android client;
+- auth/session and personalization onboarding;
+- language-first setup with five recommended official channels plus full source directory;
+- evidence-first Home feed with single-story hero and evolving-story grouping;
+- canonical Story Intelligence with `What Changed Now` and evidence timeline;
+- Radar v2.1 with freshness, authority, verification, corroboration and WHY NOW scoring;
+- consumer-first OTT intelligence: This Weekend, Today and Next 30 Days;
+- Today in Cinema / On This Day;
+- Universal Search and Intelligence Search;
+- source-level notification preferences and global notification master;
+- Firebase push delivery;
+- notification detail, Sources Directory, Control Room and Settings;
+- permanent Android signer and monotonic update-safe versioning.
 
-## Production ingestion baseline
+## Reliability baseline
 
-`official uploads playlist -> authoritative discovery -> targeted videos.list enrichment -> raw/revision persistence -> intelligence processing`
+- Raw-first ingestion and revision persistence remain the source of truth.
+- Canonical events preserve evidence and source traceability.
+- YouTube authoritative discovery remains the correctness path; WebSub is an accelerator, not a dependency.
+- Official/direct sources remain preferred over secondary sources.
+- Source/platform isolation is maintained.
+- X remains deliberately dormant after the provider `HTTP 402 Payment Required` gate; no active X identities or X cron jobs should exist until Phase 8 preconditions are explicitly met.
+- High-authority trust changes remain policy-gated and must never be silently promoted by automation.
 
-WebSub remains a best-effort accelerator, not a correctness dependency.
+## Phase 7 — immediate next work
 
-## Phase 3 delivered surface
+### P7.1 Source health and drift detection
 
-- secure React/TypeScript/Vite internal console;
-- Supabase magic-link Auth + server-side `operator_users` allowlist;
-- live canonical intelligence feed;
-- event/evidence detail, raw revisions and entity timeline;
-- source registry, health, authoritative discovery, WebSub, quota, worker and scheduler diagnostics;
-- latest unresolved/ambiguous review queue;
-- durable operator resolution overrides;
-- bind existing entity or create missing MOVIE/SERIES/SEASON;
-- source candidate learning with `OPERATOR_REVIEW`;
-- normal reprocessing after correction;
-- audited clear/suppress/reclassify/merge operations;
-- separate authenticated review API;
-- direct mutation RPCs restricted to `service_role`.
+- parser-version health and drift signals;
+- stale/dead source detection;
+- expected-vs-observed activity baselines;
+- source outage vs genuine silence classification;
+- operator-visible health reasons and recovery state.
 
-Hosted runtime includes:
+### P7.2 Candidate discovery and identity matching
 
-- `cinerelay-console-api` v5 ACTIVE;
-- `process-raw-item-worker` v10 ACTIVE;
-- `cinerelay-review-api` v1 ACTIVE.
+- discover candidates from Tier-A links/mentions and first-party relationships;
+- normalize and match candidate identities against the existing source graph;
+- dedupe aliases before proposing new identities;
+- retain evidence for every officiality proposal.
 
-Production correction state remains clean:
+### P7.3 Safe self-maintenance
 
-- active operator overrides `0`;
-- ADMIN audit actions `0`.
+- WebSub lease visibility and automatic renewal/self-heal;
+- activity-based poll-class tuning;
+- retry/backoff tuning from observed source behavior;
+- stale registration cleanup proposals;
+- title/source relationship suggestions.
 
-## Final CI / engineering proof
+### P7.4 Trust proposal workflow
 
-CI #185 / run `35058385449` passed on the final completion head `b9c6cdb35adea213093f244c9f3ec2845214e566`:
+- automation may propose trust/authority changes;
+- evidence and reason must be visible;
+- high-authority promotion remains policy/operator gated;
+- every accepted/rejected proposal is auditable.
 
-- intelligence/connectors PASS;
-- web-console PASS;
-- all ten Edge Functions PASS;
-- fresh migrations PASS;
-- 53 pgTAP tests PASS;
-- DB lint PASS;
-- Cloudflare static-host/browser-config/secret checks PASS.
+### P7.5 Android maintenance surface
 
-## Cloudflare + real operator proof
+Expose Phase 7 value inside the app without turning CineRelay into an admin console:
 
-Cloudflare Pages is live at:
+- source-health warnings only when relevant to user confidence;
+- clear freshness/coverage indicators;
+- graceful degraded-source states;
+- developer/operator diagnostics kept behind Control Room.
 
-`https://cinerelay-console.pages.dev`
+## Parallel v0.2.x patch line
 
-Real hosted flow is verified:
+Real-device visual QA continues as normal maintenance after v0.2.1. UI defects, layout polish, accessibility issues and device-specific problems should ship as `v0.2.2+` patches rather than mutating the immutable v0.2.1 release.
 
-1. genuine Supabase magic-link login succeeded from Cloudflare;
-2. authenticated non-operator was denied console access before allowlisting;
-3. that exact real Auth user was activated in `operator_users`;
-4. the signed-in browser then loaded the production console successfully;
-5. `/feed` deep-link and refresh preserve session state;
-6. Overview, Live feed, event detail/timeline, Sources & ops, System health and review surfaces were checked in the real browser.
+## Later roadmap
 
-Hosted operator count is now `1`.
+**Phase 8 — Optional X Connector:** only after budget approval, spend controls and proof that X adds unique/earlier useful events.  
+**Phase 9 — Advanced Intelligence:** transcript/press-meet extraction where lawful, cross-source clustering, semantic entity matching, campaign calendar, source-performance analysis and richer creator suggestions.  
+**Phase 10 — Multi-user/Public Product:** public onboarding, team/newsroom accounts, shared collections, subscriptions/business model, API access and broader knowledge-database integration.
 
-No production correction was fabricated to satisfy QA.
+The frozen ordering remains:
 
-## Migration parity
-
-Git and hosted production use the same sequence:
-
-1. `20260915115439_operator_review_workflow`
-2. `20260915115543_noop_verify_operator_review_workflow`
-3. `20260915115553_operator_review_workflow_verify_cleanup`
-
-## Phase-3 exit result
-
-Phase 3 exit criteria are satisfied and PR #3 is merged to `main`.
-
-Cloudflare Pages production branch has now been switched from `phase-3/internal-web-console` to `main`. This commit intentionally provides a fresh `main` change so the Git integration performs a production deployment from the permanent branch.
-
-Phase 3 is release-closed once that automatic Cloudflare deployment reports success.
-
-## Guardrails
-
-Do not expand the completed Phase-3 scope into mass source onboarding, X/Instagram ingestion, broad scraping, public accounts, community features, or paid infrastructure as part of the merge-close step.
-
-## Authoritative execution docs
-
-- `docs/07-execution/PHASE3_STATUS.md`
-- `docs/07-execution/PHASE2_STATUS.md`
-- `docs/07-execution/PHASE2_AUTHORITATIVE_DISCOVERY_PROOF_2026-09-15.md`
-- `docs/07-execution/PHASE2_YOUTUBE_OPERATIONS.md`
-
-_Last updated: 2026-09-16_
+`sources → evidence → intelligence → reliability → web console → alerts → Android → self-maintenance → optional X → advanced intelligence → multi-user scale`

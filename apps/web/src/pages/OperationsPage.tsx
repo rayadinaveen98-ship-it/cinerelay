@@ -1,6 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
 import { fetchConsoleOperations } from '../lib/console-api';
+import { PushReadinessPanel } from './PushReadinessPanel';
 import { ReviewWorkflow } from './ReviewWorkflow';
+import { SourceDiscoveryWorkflow } from './SourceDiscoveryWorkflow';
 
 function fmt(value: string | null | undefined) {
   return value ? new Date(value).toLocaleString() : '—';
@@ -33,6 +35,8 @@ export function OperationsPage() {
           <Metric label="Scheduler jobs" value={data.scheduler.length} />
         </div>
       </section>
+
+      <PushReadinessPanel />
 
       <section className="rounded-3xl border border-zinc-800 bg-zinc-900/50 p-6">
         <h2 className="text-lg font-semibold">Official source registry</h2>
@@ -86,6 +90,7 @@ export function OperationsPage() {
         </div>
       </section>
 
+      <SourceDiscoveryWorkflow />
       <ReviewWorkflow />
     </div>
   );

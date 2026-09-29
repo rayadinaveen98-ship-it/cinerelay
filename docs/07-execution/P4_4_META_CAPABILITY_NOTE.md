@@ -1,0 +1,1 @@
+Verified 2026-09-16 against Meta's current Threads API materials: public profile lookup and public profile post retrieval are OAuth-protected official API capabilities, with `threads_profile_discovery` included in the current permission set. CineRelay therefore treats Threads as an official API connector, not a scraping target.
