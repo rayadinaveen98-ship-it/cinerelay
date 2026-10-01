@@ -18,6 +18,11 @@ Status: implementation in progress on Phase 7 branch.
 - fixed search path for `record_youtube_websub_delivery`;
 - pgTAP coverage for the P7.1 trust and health contract.
 
-## Not yet claimed
+## Gates
 
-This file does not claim hosted deployment, CI green status, Android release completion, or production automation until those gates are actually verified.
+- Repository CI: pending.
+- Hosted Supabase deployment: pending CI.
+- Hosted verification/advisors: pending deployment.
+- Android v0.2.2 release: pending all prior gates.
+
+This status file intentionally does not claim a gate until it has been observed passing.
