@@ -103,6 +103,13 @@ function languageList(value: unknown): string[] {
     .slice(0, 12);
 }
 
+function requireCandidateAndReason(body: Record<string, unknown>) {
+  if (typeof body.candidateId !== 'string' || !UUID_PATTERN.test(body.candidateId)) throw new Error('invalid_candidate_id');
+  const reason = reasonOf(body.reason);
+  if (!reason) throw new Error('valid_reason_required');
+  return { candidateId: body.candidateId, reason };
+}
+
 async function bootstrap(limit: number, status?: string) {
   const bounded = Math.max(1, Math.min(200, Number(limit || 100)));
   let candidateQuery = admin.from('source_discovery_candidates')
@@ -175,13 +182,7 @@ async function bootstrap(limit: number, status?: string) {
     evidenceByCandidate.set(item.candidate_id, list);
   }
 
-  const proposalSummary = {
-    open: 0,
-    exactIdentity: 0,
-    addIdentity: 0,
-    reviewOwnership: 0,
-    reviewNewSource: 0,
-  };
+  const proposalSummary = { open: 0, exactIdentity: 0, addIdentity: 0, reviewOwnership: 0, reviewNewSource: 0 };
   for (const proposal of openProposalRows ?? []) {
     proposalSummary.open += 1;
     if (proposal.proposal_type === 'EXACT_IDENTITY') proposalSummary.exactIdentity += 1;
@@ -314,6 +315,28 @@ async function review(actorId: string, body: Record<string, unknown>) {
   return data as Record<string, unknown>;
 }
 
+async function attachDiscoveredIdentity(actorId: string, body: Record<string, unknown>) {
+  const { candidateId, reason } = requireCandidateAndReason(body);
+  const { data, error } = await admin.rpc('operator_attach_discovered_identity', {
+    p_actor_id: actorId,
+    p_candidate_id: candidateId,
+    p_reason: reason,
+  });
+  if (error) throw new Error(error.message);
+  return data as Record<string, unknown>;
+}
+
+async function activateDiscoveredIdentity(actorId: string, body: Record<string, unknown>) {
+  const { candidateId, reason } = requireCandidateAndReason(body);
+  const { data, error } = await admin.rpc('operator_activate_discovered_identity', {
+    p_actor_id: actorId,
+    p_candidate_id: candidateId,
+    p_reason: reason,
+  });
+  if (error) throw new Error(error.message);
+  return data as Record<string, unknown>;
+}
+
 async function promoteMediaFeed(actorId: string, body: Record<string, unknown>) {
   if (typeof body.candidateId !== 'string' || !UUID_PATTERN.test(body.candidateId)) throw new Error('invalid_candidate_id');
   const authorityTier = Number(body.authorityTier);
@@ -346,11 +369,11 @@ Deno.serve(async (request): Promise<Response> => {
       const status = typeof body.status === 'string' ? body.status.toUpperCase() : undefined;
       return json(200, await bootstrap(Number(body.limit ?? 100), status));
     }
-    if (action === 'sourceSearch') {
-      return json(200, await sourceSearch(typeof body.query === 'string' ? body.query : ''));
-    }
+    if (action === 'sourceSearch') return json(200, await sourceSearch(typeof body.query === 'string' ? body.query : ''));
     if (action === 'submit') return json(200, { ok: true, result: await submit(body) });
     if (action === 'review') return json(200, { ok: true, result: await review(auth.user.id, body) });
+    if (action === 'attachDiscoveredIdentity') return json(200, { ok: true, result: await attachDiscoveredIdentity(auth.user.id, body) });
+    if (action === 'activateDiscoveredIdentity') return json(200, { ok: true, result: await activateDiscoveredIdentity(auth.user.id, body) });
     if (action === 'promoteMediaFeed') return json(200, { ok: true, result: await promoteMediaFeed(auth.user.id, body) });
     return json(400, { error: 'unsupported_action' });
   } catch (error) {
