@@ -40,47 +40,25 @@ alter table public.source_officiality_proposals enable row level security;
 revoke all on table public.source_officiality_proposals from public, anon, authenticated;
 grant select, insert, update, delete on table public.source_officiality_proposals to service_role;
 
-create or replace function public.refresh_source_officiality_proposals(
-  p_now timestamptz default now()
+create or replace function public.source_officiality_proposal_candidates()
+returns table (
+  candidate_id uuid,
+  proposal_type text,
+  matched_source_id uuid,
+  matched_source_identity_id uuid,
+  proposed_authority_tier smallint,
+  proposed_source_role text,
+  officiality_score numeric(5,4),
+  support_count integer,
+  distinct_origin_sources integer,
+  recommended_action text,
+  rationale jsonb
 )
-returns jsonb
-language plpgsql
+language sql
+stable
 security invoker
 set search_path = pg_catalog, public
 as $$
-declare
-  v_upserted integer := 0;
-  v_resolved integer := 0;
-  v_open integer := 0;
-begin
-  create temporary table if not exists pg_temp.cinerelay_p7_2_proposals (
-    candidate_id uuid primary key,
-    proposal_type text not null,
-    matched_source_id uuid,
-    matched_source_identity_id uuid,
-    proposed_authority_tier smallint,
-    proposed_source_role text,
-    officiality_score numeric(5,4) not null,
-    support_count integer not null,
-    distinct_origin_sources integer not null,
-    recommended_action text not null,
-    rationale jsonb not null
-  ) on commit drop;
-  truncate pg_temp.cinerelay_p7_2_proposals;
-
-  insert into pg_temp.cinerelay_p7_2_proposals (
-    candidate_id,
-    proposal_type,
-    matched_source_id,
-    matched_source_identity_id,
-    proposed_authority_tier,
-    proposed_source_role,
-    officiality_score,
-    support_count,
-    distinct_origin_sources,
-    recommended_action,
-    rationale
-  )
   with eligible as (
     select c.*
     from public.source_discovery_candidates c
@@ -142,9 +120,9 @@ begin
     end,
     d.exact_identity_id,
     case
-      when d.exact_identity_id is not null then d.exact_authority_tier
-      when d.distinct_origin_sources = 1 then d.origin_authority_tier
-      else null
+      when d.exact_identity_id is not null then d.exact_authority_tier::smallint
+      when d.distinct_origin_sources = 1 then d.origin_authority_tier::smallint
+      else null::smallint
     end,
     coalesce(
       d.proposed_source_role,
@@ -188,7 +166,26 @@ begin
       'proposalVersion', 'p7.2-official-link-v1'
     )
   from derived d;
+$$;
 
+revoke all on function public.source_officiality_proposal_candidates()
+  from public, anon, authenticated;
+grant execute on function public.source_officiality_proposal_candidates()
+  to service_role;
+
+create or replace function public.refresh_source_officiality_proposals(
+  p_now timestamptz default now()
+)
+returns jsonb
+language plpgsql
+security invoker
+set search_path = pg_catalog, public
+as $$
+declare
+  v_upserted integer := 0;
+  v_resolved integer := 0;
+  v_open integer := 0;
+begin
   insert into public.source_officiality_proposals (
     candidate_id,
     proposal_type,
@@ -222,7 +219,7 @@ begin
     p_now,
     p_now,
     null
-  from pg_temp.cinerelay_p7_2_proposals p
+  from public.source_officiality_proposal_candidates() p
   on conflict (candidate_id) do update
     set proposal_type = excluded.proposal_type,
         matched_source_id = excluded.matched_source_id,
@@ -247,7 +244,7 @@ begin
   where existing.status = 'OPEN'
     and not exists (
       select 1
-      from pg_temp.cinerelay_p7_2_proposals current
+      from public.source_officiality_proposal_candidates() current
       where current.candidate_id = existing.candidate_id
     );
   get diagnostics v_resolved = row_count;
