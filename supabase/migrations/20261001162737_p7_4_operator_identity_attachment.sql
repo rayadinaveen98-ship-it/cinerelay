@@ -238,6 +238,9 @@ begin
   if v_candidate.status <> 'PROMOTED' or v_candidate.promoted_source_identity_id is null then
     raise exception 'candidate_identity_not_attached';
   end if;
+  if nullif(v_candidate.metadata->>'p7AttachmentActionId', '') is null then
+    raise exception 'candidate_identity_not_p7_attached';
+  end if;
 
   select * into v_before
   from public.source_identities
