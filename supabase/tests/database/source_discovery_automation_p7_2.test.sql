@@ -1,7 +1,7 @@
 begin;
 
 create extension if not exists pgtap with schema extensions;
-select plan(23);
+select plan(27);
 
 insert into public.sources (id,display_name,authority_tier,source_role,territory,languages,active) values
 ('74100000-0000-4000-8000-000000000001','P7.2 Origin A',1,'PRODUCTION_HOUSE','IN',array['te','en'],true),
@@ -36,19 +36,19 @@ select lives_ok(
     'https://www.instagram.com/p72origin',
     'INSTAGRAM_PROFILE',
     'OFFICIAL_LINK',
-    'P7.2 Origin A · @p72origin',
+    '@p72origin',
     '74200000-0000-4000-8000-000000000001'::uuid,
     'PRODUCTION_HOUSE',
     'IN',
     array['te','en']::text[],
     0.92,
-    '{"trustMutation":"PROPOSAL_ONLY"}'::jsonb,
+    '{"platformIdentityKey":"p72origin","originLinkOnly":true,"trustMutation":"PROPOSAL_ONLY","discoveryVersion":"p7.2-direct-link-v2"}'::jsonb,
     'OFFICIAL_LINK',
     'https://origin-a.example/news/item-1',
     'Tier-A source linked this profile',
     '{"originSourceId":"74100000-0000-4000-8000-000000000001","originSourceIdentityId":"74200000-0000-4000-8000-000000000001","originAuthorityTier":1}'::jsonb
   )$$,
-  'Tier-A official link can submit a candidate without activating it'
+  'Tier-A official self-link can submit a candidate without activating it'
 );
 
 select lives_ok(
@@ -59,24 +59,27 @@ select lives_ok(
 select results_eq(
   $$select proposal_type from public.source_officiality_proposals p join public.source_discovery_candidates c on c.id=p.candidate_id where c.normalized_url='https://www.instagram.com/p72origin'$$,
   array['ADD_IDENTITY_TO_EXISTING_SOURCE'::text],
-  'one Tier-A origin proposes another identity for that existing source'
+  'one Tier-A self-matching origin proposes another identity for that existing source'
 );
 
 select results_eq(
   $$select matched_source_id from public.source_officiality_proposals p join public.source_discovery_candidates c on c.id=p.candidate_id where c.normalized_url='https://www.instagram.com/p72origin'$$,
   array['74100000-0000-4000-8000-000000000001'::uuid],
-  'proposal points to the Tier-A owner source'
+  'self-matching proposal points to the Tier-A owner source'
 );
 
 select results_eq(
   $$select proposed_authority_tier from public.source_officiality_proposals p join public.source_discovery_candidates c on c.id=p.candidate_id where c.normalized_url='https://www.instagram.com/p72origin'$$,
   array[1::smallint],
-  'proposal inherits authority only as an operator-reviewed suggestion'
+  'self-matching proposal inherits authority only as an operator-reviewed suggestion'
 );
 
 select ok(
-  (select officiality_score >= 0.9000 from public.source_officiality_proposals p join public.source_discovery_candidates c on c.id=p.candidate_id where c.normalized_url='https://www.instagram.com/p72origin'),
-  'direct Tier-A cross-link receives high proposal confidence'
+  (select officiality_score >= 0.9000 and coalesce((rationale->>'ownershipSelfMatch')::boolean,false)
+   from public.source_officiality_proposals p
+   join public.source_discovery_candidates c on c.id=p.candidate_id
+   where c.normalized_url='https://www.instagram.com/p72origin'),
+  'direct Tier-A self-link receives high proposal confidence and explicit self-match evidence'
 );
 
 select results_eq(
@@ -87,20 +90,65 @@ select results_eq(
 
 select lives_ok(
   $$select public.submit_source_discovery_candidate(
+    'https://www.instagram.com/unrelatedpartner',
+    'https://www.instagram.com/unrelatedpartner',
+    'INSTAGRAM_PROFILE',
+    'OFFICIAL_LINK',
+    '@unrelatedpartner',
+    '74200000-0000-4000-8000-000000000001'::uuid,
+    'PRODUCTION_HOUSE',
+    'IN',
+    array['te','en']::text[],
+    0.92,
+    '{"platformIdentityKey":"unrelatedpartner","originLinkOnly":true,"trustMutation":"PROPOSAL_ONLY","discoveryVersion":"p7.2-direct-link-v2"}'::jsonb,
+    'OFFICIAL_LINK',
+    'https://origin-a.example/news/item-partner',
+    'Tier-A source linked a partner profile',
+    '{"originSourceId":"74100000-0000-4000-8000-000000000001","originSourceIdentityId":"74200000-0000-4000-8000-000000000001","originAuthorityTier":1}'::jsonb
+  )$$,
+  'Tier-A cross-link can be retained as relevance evidence'
+);
+
+select lives_ok(
+  $$select public.refresh_source_officiality_proposals('2026-10-01 14:02+00')$$,
+  'officiality refresh safely handles a single-origin partner cross-link'
+);
+
+select ok(
+  (select proposal_type='REVIEW_OWNERSHIP'
+      and matched_source_id is null
+      and proposed_authority_tier is null
+      and not coalesce((rationale->>'ownershipSelfMatch')::boolean,false)
+   from public.source_officiality_proposals p
+   join public.source_discovery_candidates c on c.id=p.candidate_id
+   where c.normalized_url='https://www.instagram.com/unrelatedpartner'),
+  'one Tier-A link never assigns ownership or authority without a self-match'
+);
+
+select ok(
+  (select officiality_score <= 0.8000
+   from public.source_officiality_proposals p
+   join public.source_discovery_candidates c on c.id=p.candidate_id
+   where c.normalized_url='https://www.instagram.com/unrelatedpartner'),
+  'partner cross-link confidence is capped below self-link confidence'
+);
+
+select lives_ok(
+  $$select public.submit_source_discovery_candidate(
     'https://www.instagram.com/p72origin',
     'https://www.instagram.com/p72origin',
     'INSTAGRAM_PROFILE',
     'OFFICIAL_LINK',
-    'P7.2 Shared Profile',
+    '@p72origin',
     '74200000-0000-4000-8000-000000000002'::uuid,
     'MUSIC_LABEL',
     'IN',
     array['te','en']::text[],
     0.92,
-    '{}'::jsonb,
+    '{"platformIdentityKey":"p72origin","originLinkOnly":true}'::jsonb,
     'OFFICIAL_LINK',
     'https://origin-b.example/news/item-2',
-    'A second independent Tier-A source linked the same profile',
+    'A second Tier-A source linked the same profile',
     '{"originSourceId":"74100000-0000-4000-8000-000000000002","originSourceIdentityId":"74200000-0000-4000-8000-000000000002","originAuthorityTier":1}'::jsonb
   )$$,
   'a second independent Tier-A observation is retained as evidence'
@@ -116,7 +164,7 @@ select ok(
    from public.source_officiality_proposals p
    join public.source_discovery_candidates c on c.id=p.candidate_id
    where c.normalized_url='https://www.instagram.com/p72origin'),
-  'multiple Tier-A owners downgrade the candidate to explicit ownership review'
+  'multiple Tier-A origins downgrade the candidate to explicit ownership review'
 );
 
 select lives_ok(
@@ -125,13 +173,13 @@ select lives_ok(
     'https://x.com/existinghandle',
     'X_PROFILE',
     'OFFICIAL_LINK',
-    'Known registry identity',
+    '@existinghandle',
     '74200000-0000-4000-8000-000000000001'::uuid,
     'TRADE_MEDIA',
     'IN',
     array['en']::text[],
     0.92,
-    '{}'::jsonb,
+    '{"platformIdentityKey":"existinghandle","originLinkOnly":true}'::jsonb,
     'OFFICIAL_LINK',
     'https://origin-a.example/news/item-3',
     'Tier-A source linked an identity already in the registry',
