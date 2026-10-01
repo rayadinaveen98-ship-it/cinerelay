@@ -165,6 +165,22 @@ select throws_ok(
   'ownership-review proposals cannot use the fast attachment lane'
 );
 
+insert into public.source_discovery_candidates (
+  candidate_url, normalized_url, candidate_kind, discovery_method,
+  status, promoted_source_identity_id, metadata
+) values (
+  'https://legacy-promotion.example.test/profile',
+  'https://legacy-promotion.example.test/profile',
+  'PUBLIC_WEB', 'OPERATOR', 'PROMOTED',
+  '75200000-0000-4000-8000-000000000002'::uuid,
+  '{}'::jsonb
+);
+select throws_ok(
+  $$select public.operator_activate_discovered_identity('75300000-0000-4000-8000-000000000001', (select id from public.source_discovery_candidates where normalized_url='https://legacy-promotion.example.test/profile'), 'Attempt legacy activation')$$,
+  'candidate_identity_not_p7_attached',
+  'legacy promoted candidates cannot enter the P7.4 activation lane'
+);
+
 select results_eq(
   $$select count(*) from public.sources where id in ('75100000-0000-4000-8000-000000000001'::uuid,'75100000-0000-4000-8000-000000000002'::uuid)$$,
   array[2::bigint],
