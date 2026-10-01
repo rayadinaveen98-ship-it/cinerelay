@@ -15,7 +15,7 @@ insert into public.sources (id,display_name,authority_tier,source_role,territory
 ('71000000-0000-4000-8000-000000000003','P7 Quiet Feed',3,'TRADE_MEDIA','IN',array['en'],true);
 
 insert into public.source_identities (id,source_id,platform,platform_identity_id,handle,canonical_url,connector_type,poll_class,access_mode,connector_config,active) values
-('71100000-0000-4000-8000-000000000001','71000000-0000-4000-8000-000000000001','YOUTUBE','UCp7health01','@p7health','https://www.youtube.com/@p7health','YOUTUBE_WEBSUB','PUSH','WEBHOOK','{}',true),
+('71100000-0000-4000-8000-000000000001','71000000-0000-4000-8000-000000000001','YOUTUBE','UC1234567890123456789012','@p7health','https://www.youtube.com/@p7health','YOUTUBE_WEBSUB','PUSH','WEBHOOK','{}',true),
 ('71100000-0000-4000-8000-000000000002','71000000-0000-4000-8000-000000000002','WEB',null,null,'https://example.com/p7-feed.xml','RSS_ATOM','HOT_5M','FEED','{}',true),
 ('71100000-0000-4000-8000-000000000003','71000000-0000-4000-8000-000000000003','WEB',null,null,'https://example.com/p7-quiet.xml','RSS_ATOM','HOT_5M','FEED','{}',true);
 
@@ -25,7 +25,7 @@ insert into public.source_health (source_identity_id,health_state,last_attempt_a
 ('71100000-0000-4000-8000-000000000003','HEALTHY','2026-10-01 12:50+00','2026-10-01 12:50+00',null,'2026-10-01 13:30+00',0,200,null,null,null,'p7-test-v1','2026-10-01 12:50+00');
 
 insert into public.youtube_channel_state (source_identity_id,channel_id,uploads_playlist_id,latest_known_video_id,last_websub_at,last_enriched_at,last_fallback_check_at,next_fallback_check_at,fallback_gap_count,consecutive_websub_events,created_at,updated_at) values
-('71100000-0000-4000-8000-000000000001','UCp7health01','UUp7health01','abcDEF12345','2026-09-30 10:00+00','2026-10-01 12:40+00','2026-10-01 12:55+00','2026-09-30 12:00+00',0,0,'2026-10-01 12:00+00','2026-10-01 12:55+00');
+('71100000-0000-4000-8000-000000000001','UC1234567890123456789012','UU1234567890123456789012','abcDEF12345','2026-09-30 10:00+00','2026-10-01 12:40+00','2026-10-01 12:55+00','2026-09-30 12:00+00',0,0,'2026-10-01 12:00+00','2026-10-01 12:55+00');
 
 insert into public.jobs (id,job_type,idempotency_key,payload,state,attempt_count,max_attempts,run_after,last_error) values
 ('71200000-0000-4000-8000-000000000001','PROCESS_RAW_ITEM','p7-poison-job','{}','RETRY_WAIT',5,5,'2026-09-20 12:00+00','legacy type error');
