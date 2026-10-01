@@ -222,24 +222,23 @@ function classifyCandidate(rawValue: string): Candidate | null {
 
 async function submitProposal(item: Proposal): Promise<boolean> {
   const { candidate, rawItem, originIdentity, originSource } = item;
-  const note = `P7.2 officiality proposal: ${originSource.display_name} (Tier A) linked this destination from an official ${originIdentity.platform} item. Suggested owner: ${originSource.display_name}. Proposal only; operator approval is required.`;
+  const note = `P7.2 discovery evidence: ${originSource.display_name} (Tier A) linked this destination from an official ${originIdentity.platform} item. The link proves relevance, but ownership is not inferred unless the identity/domain also matches the source.`;
   const { error } = await supabase.rpc('submit_source_discovery_candidate', {
     p_candidate_url: candidate.url,
     p_normalized_url: candidate.url,
     p_candidate_kind: candidate.kind,
     p_discovery_method: 'OFFICIAL_LINK',
-    p_display_name: `${originSource.display_name} · ${candidate.displayName}`.slice(0, 200),
+    p_display_name: candidate.displayName.slice(0, 200),
     p_discovered_from_source_identity_id: originIdentity.id,
     p_proposed_source_role: originSource.source_role,
     p_territory: originSource.territory,
     p_languages: originSource.languages ?? [],
     p_confidence: candidate.confidence,
     p_metadata: {
-      discoveryVersion: 'p7.2-direct-link-v1',
+      discoveryVersion: 'p7.2-direct-link-v2',
       platform: candidate.platform,
       platformIdentityKey: candidate.identityKey,
-      suggestedOwnerSourceId: originSource.id,
-      suggestedOwnerSourceName: originSource.display_name,
+      originLinkOnly: true,
       trustMutation: 'PROPOSAL_ONLY',
     },
     p_evidence_type: 'OFFICIAL_LINK',
@@ -254,7 +253,7 @@ async function submitProposal(item: Proposal): Promise<boolean> {
       originAuthorityTier: originSource.authority_tier,
       originPlatform: originIdentity.platform,
       discoveredUrl: candidate.url,
-      proposalVersion: 'p7.2-official-link-v1',
+      proposalVersion: 'p7.2-official-link-v2',
     },
   });
   if (error) throw error;
