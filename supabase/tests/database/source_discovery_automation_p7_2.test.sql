@@ -13,7 +13,7 @@ insert into public.source_identities (
 ) values
 ('74200000-0000-4000-8000-000000000001','74100000-0000-4000-8000-000000000001','WEB',null,'https://origin-a.example/news','FIRST_PARTY_HTML','NORMAL_60M','PUBLIC_WEB',true),
 ('74200000-0000-4000-8000-000000000002','74100000-0000-4000-8000-000000000002','WEB',null,'https://origin-b.example/news','FIRST_PARTY_HTML','NORMAL_60M','PUBLIC_WEB',true),
-('74200000-0000-4000-8000-000000000003','74100000-0000-4000-8000-000000000003','X','existinghandle','https://x.com/existinghandle','X_PROFILE','MANUAL','PUBLIC_PROFILE',true);
+('74200000-0000-4000-8000-000000000003','74100000-0000-4000-8000-000000000003','X','existinghandle','https://x.com/existinghandle','X_PROFILE','MANUAL','MANUAL',true);
 
 select ok(
   (select relrowsecurity from pg_class where oid='public.source_officiality_proposals'::regclass),
