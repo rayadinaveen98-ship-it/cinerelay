@@ -1,7 +1,7 @@
 begin;
 
 create extension if not exists pgtap with schema extensions;
-select plan(22);
+select plan(23);
 
 insert into public.sources (id,display_name,authority_tier,source_role,territory,languages,active) values
 ('74100000-0000-4000-8000-000000000001','P7.2 Origin A',1,'PRODUCTION_HOUSE','IN',array['te','en'],true),
