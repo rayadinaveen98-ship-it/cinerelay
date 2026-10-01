@@ -100,7 +100,7 @@ select lives_ok(
     '{}'::jsonb,
     'OFFICIAL_LINK',
     'https://origin-b.example/news/item-2',
-    'A second Tier-A source linked the same profile',
+    'A second independent Tier-A source linked the same profile',
     '{"originSourceId":"74100000-0000-4000-8000-000000000002","originSourceIdentityId":"74200000-0000-4000-8000-000000000002","originAuthorityTier":1}'::jsonb
   )$$,
   'a second independent Tier-A observation is retained as evidence'
@@ -205,7 +205,7 @@ select lives_ok(
 );
 
 select results_eq(
-  $$select status from public.source_officiality_proposals p join public.source_discovery_candidates c on c.id=p.candidate_id where c.normalized_url='https://www.instagram.com/p72origin'$$,
+  $$select p.status from public.source_officiality_proposals p join public.source_discovery_candidates c on c.id=p.candidate_id where c.normalized_url='https://www.instagram.com/p72origin'$$,
   array['RESOLVED'::text],
   'rejected candidates resolve rather than being re-opened by automation'
 );
