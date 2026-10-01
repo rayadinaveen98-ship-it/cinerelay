@@ -10,6 +10,7 @@ import {
   type CandidateReviewStatus,
   type MediaAuthorityTier,
   type MediaPollClass,
+  type OfficialityProposalType,
   type PublicPageAuthorityTier,
   type PublicPageParserProfile,
   type PublicPagePollClass,
@@ -19,6 +20,13 @@ import {
 const KINDS: CandidateKind[] = ['PUBLIC_WEB', 'RSS_ATOM', 'YOUTUBE_CHANNEL', 'INSTAGRAM_PROFILE', 'THREADS_PROFILE', 'X_PROFILE', 'OTHER'];
 const MEDIA_POLL_CLASSES: MediaPollClass[] = ['ACTIVE_15M', 'NORMAL_60M', 'COLD_6H', 'DAILY'];
 const PUBLIC_PAGE_POLL_CLASSES: PublicPagePollClass[] = ['NORMAL_60M', 'COLD_6H', 'DAILY'];
+const PROPOSAL_FILTERS: Array<{ value: 'ALL' | OfficialityProposalType; label: string }> = [
+  { value: 'ALL', label: 'All proposals' },
+  { value: 'REVIEW_OWNERSHIP', label: 'Ownership review' },
+  { value: 'ADD_IDENTITY_TO_EXISTING_SOURCE', label: 'Possible self-link' },
+  { value: 'EXACT_IDENTITY', label: 'Exact identity' },
+  { value: 'REVIEW_NEW_SOURCE', label: 'Possible new source' },
+];
 const DEFAULT_PUBLIC_PAGE_PROFILE = JSON.stringify({
   profileVersion: 'selected-public-v1',
   itemSelector: 'article',
@@ -34,6 +42,20 @@ function statusClass(status: string) {
   if (status === 'REJECTED' || status === 'DUPLICATE') return 'border-red-900 bg-red-950/30 text-red-300';
   if (status === 'REVIEWING') return 'border-amber-900 bg-amber-950/30 text-amber-300';
   return 'border-zinc-700 bg-zinc-900 text-zinc-300';
+}
+
+function proposalClass(type: OfficialityProposalType) {
+  if (type === 'EXACT_IDENTITY') return 'border-red-900/60 bg-red-950/20 text-red-200';
+  if (type === 'ADD_IDENTITY_TO_EXISTING_SOURCE') return 'border-emerald-900/60 bg-emerald-950/20 text-emerald-200';
+  if (type === 'REVIEW_OWNERSHIP') return 'border-amber-900/60 bg-amber-950/20 text-amber-200';
+  return 'border-sky-900/60 bg-sky-950/20 text-sky-200';
+}
+
+function proposalLabel(type: OfficialityProposalType) {
+  if (type === 'EXACT_IDENTITY') return 'Exact registry identity';
+  if (type === 'ADD_IDENTITY_TO_EXISTING_SOURCE') return 'Possible self-linked identity';
+  if (type === 'REVIEW_OWNERSHIP') return 'Ownership verification required';
+  return 'Possible new source';
 }
 
 function CandidateCard({ item, onReview, onPromote, onPromotePage, busy }: {
@@ -54,6 +76,7 @@ function CandidateCard({ item, onReview, onPromote, onPromotePage, busy }: {
   const [pageProfileError, setPageProfileError] = useState<string | null>(null);
   const candidate = item.candidate;
   const exact = item.exactRegistryMatches[0];
+  const officiality = item.officialityProposal;
   const reviewed = ['APPROVED', 'REJECTED', 'DUPLICATE', 'PROMOTED'].includes(candidate.status);
   const promotableFeed = candidate.status === 'APPROVED' && candidate.candidate_kind === 'RSS_ATOM' && !exact;
   const promotablePage = candidate.status === 'APPROVED' && candidate.candidate_kind === 'PUBLIC_WEB' && !exact;
@@ -88,6 +111,28 @@ function CandidateCard({ item, onReview, onPromote, onPromotePage, busy }: {
         <Info label="Languages" value={candidate.languages.join(', ') || '—'} />
       </div>
 
+      {officiality && <div className={`mt-4 rounded-xl border p-4 ${proposalClass(officiality.proposal.proposal_type)}`}>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wider opacity-70">P7.3 officiality proposal · proposal only</p>
+            <p className="mt-1 text-sm font-semibold">{proposalLabel(officiality.proposal.proposal_type)}</p>
+          </div>
+          <span className="rounded-full border border-current/30 px-2.5 py-1 text-xs font-semibold">score {(officiality.proposal.officiality_score * 100).toFixed(0)}%</span>
+        </div>
+        <p className="mt-3 text-sm leading-6 text-zinc-300">{officiality.proposal.recommended_action}</p>
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <Info label="Evidence links" value={String(officiality.proposal.support_count)} />
+          <Info label="Tier-A origins" value={String(officiality.proposal.distinct_origin_sources)} />
+          <Info label="Ownership self-match" value={officiality.proposal.rationale.ownershipSelfMatch === true ? 'Yes' : 'No'} />
+          <Info label="Suggested tier" value={officiality.proposal.proposed_authority_tier ? `Tier ${officiality.proposal.proposed_authority_tier}` : 'Not assigned'} />
+        </div>
+        {(officiality.matchedSource || officiality.matchedIdentity) && <div className="mt-4 rounded-lg border border-current/20 bg-black/10 p-3 text-xs leading-5 text-zinc-300">
+          {officiality.matchedSource && <p><span className="text-zinc-500">Matched source:</span> {officiality.matchedSource.display_name} · Tier {officiality.matchedSource.authority_tier} · {officiality.matchedSource.source_role ?? 'role unknown'}</p>}
+          {officiality.matchedIdentity && <p className="mt-1 break-all"><span className="text-zinc-500">Matched identity:</span> {officiality.matchedIdentity.platform} · {officiality.matchedIdentity.canonical_url}</p>}
+        </div>}
+        <p className="mt-3 text-xs leading-5 text-zinc-400"><strong className="text-zinc-200">Trust boundary:</strong> this score never approves, promotes, or changes authority. Verify the destination and evidence yourself before recording an operator decision.</p>
+      </div>}
+
       {item.evidence.length > 0 && <div className="mt-4 rounded-xl border border-zinc-800 bg-zinc-900/60 p-4"><p className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Evidence</p><div className="mt-2 space-y-2">{item.evidence.map((evidence) => <div key={evidence.id} className="text-sm text-zinc-300"><span className="text-zinc-500">{evidence.evidence_type}: </span>{evidence.evidence_url ? <a href={evidence.evidence_url} target="_blank" rel="noreferrer" className="text-amber-400 hover:text-amber-300">{evidence.evidence_url}</a> : evidence.note ?? '—'}{evidence.note && evidence.evidence_url ? <p className="mt-1 text-xs text-zinc-500">{evidence.note}</p> : null}</div>)}</div></div>}
 
       {exact && <div className="mt-4 rounded-xl border border-red-900/50 bg-red-950/20 p-4"><p className="text-sm font-medium text-red-200">Exact existing registry URL match</p><p className="mt-1 text-xs text-red-300/80">{exact.source?.display_name ?? exact.identity.id} · Tier {exact.source?.authority_tier ?? '—'} · {exact.identity.platform} / {exact.identity.connector_type}</p></div>}
@@ -98,7 +143,7 @@ function CandidateCard({ item, onReview, onPromote, onPromotePage, busy }: {
 
       {!reviewed && <div className="mt-5 border-t border-zinc-800 pt-4">
         <label className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Operator review reason</label>
-        <textarea value={reason} onChange={(event) => setReason(event.target.value)} rows={2} className="mt-2 w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm outline-none focus:border-amber-500" placeholder="Why should this candidate be approved, rejected, or marked duplicate?" />
+        <textarea value={reason} onChange={(event) => setReason(event.target.value)} rows={2} className="mt-2 w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm outline-none focus:border-amber-500" placeholder="Record your independent verification and why this candidate should be approved, rejected, or marked duplicate." />
         <div className="mt-3 flex flex-wrap gap-2">
           <button disabled={busy || reason.trim().length < 3} onClick={() => onReview(item, 'REVIEWING', reason)} className="rounded-lg border border-zinc-700 px-3 py-2 text-xs text-zinc-300 disabled:opacity-40">Mark reviewing</button>
           <button disabled={busy || reason.trim().length < 3} onClick={() => onReview(item, 'APPROVED', reason)} className="rounded-lg border border-emerald-800 bg-emerald-950/30 px-3 py-2 text-xs text-emerald-300 disabled:opacity-40">Approve candidate</button>
@@ -150,6 +195,7 @@ export function SourceDiscoveryWorkflow() {
   const [evidenceUrl, setEvidenceUrl] = useState('');
   const [evidenceNote, setEvidenceNote] = useState('');
   const [formError, setFormError] = useState<string | null>(null);
+  const [proposalFilter, setProposalFilter] = useState<'ALL' | OfficialityProposalType>('ALL');
 
   const submitMutation = useMutation({
     mutationFn: submitSourceCandidate,
@@ -186,6 +232,22 @@ export function SourceDiscoveryWorkflow() {
     }
     return result;
   }, [query.data]);
+
+  const visibleItems = useMemo(() => {
+    const items = query.data?.items ?? [];
+    if (proposalFilter === 'ALL') return items;
+    return items.filter((item) => item.officialityProposal?.proposal.proposal_type === proposalFilter);
+  }, [proposalFilter, query.data]);
+
+  function proposalCount(type: 'ALL' | OfficialityProposalType) {
+    const summary = query.data?.proposalSummary;
+    if (!summary) return 0;
+    if (type === 'ALL') return summary.open;
+    if (type === 'EXACT_IDENTITY') return summary.exactIdentity;
+    if (type === 'ADD_IDENTITY_TO_EXISTING_SOURCE') return summary.addIdentity;
+    if (type === 'REVIEW_OWNERSHIP') return summary.reviewOwnership;
+    return summary.reviewNewSource;
+  }
 
   function submit(event: FormEvent) {
     event.preventDefault();
@@ -226,7 +288,7 @@ export function SourceDiscoveryWorkflow() {
   return (
     <section className="rounded-3xl border border-zinc-800 bg-zinc-900/50 p-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
-        <div><p className="text-xs font-semibold uppercase tracking-[0.25em] text-amber-400">Source trust workflow</p><h2 className="mt-2 text-xl font-semibold">Candidate review + explicit trust promotion</h2><p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-400">Candidates are untrusted until reviewed. <strong className="text-zinc-200">Approve still does not promote.</strong> RSS media and selected public pages each require a separate audited promotion action with capped authority.</p></div>
+        <div><p className="text-xs font-semibold uppercase tracking-[0.25em] text-amber-400">Source trust workflow</p><h2 className="mt-2 text-xl font-semibold">Candidate review + explicit trust promotion</h2><p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-400">Candidates are untrusted until reviewed. <strong className="text-zinc-200">Approve still does not promote.</strong> Automated officiality scores are evidence summaries, never decisions. RSS media and selected public pages each require a separate audited promotion action with capped authority.</p></div>
         {query.data && <p className="text-xs text-zinc-500">Updated {new Date(query.data.generatedAt).toLocaleString()}</p>}
       </div>
 
@@ -237,6 +299,14 @@ export function SourceDiscoveryWorkflow() {
         <Metric label="Rejected" value={counts.rejected} />
         <Metric label="Duplicates" value={counts.duplicate} />
       </div>
+
+      {query.data && <div className="mt-5 rounded-2xl border border-amber-900/40 bg-amber-950/10 p-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div><p className="text-xs font-semibold uppercase tracking-wider text-amber-400">P7.3 officiality proposals</p><p className="mt-1 text-xs text-zinc-500">Filter review queue by evidence state. Counts cover all open proposals, not trust decisions.</p></div>
+          <p className="text-sm font-semibold text-zinc-200">{query.data.proposalSummary.open} open</p>
+        </div>
+        <div className="mt-3 flex flex-wrap gap-2">{PROPOSAL_FILTERS.map((filter) => <button key={filter.value} type="button" onClick={() => setProposalFilter(filter.value)} className={`rounded-lg border px-3 py-2 text-xs ${proposalFilter === filter.value ? 'border-amber-500 bg-amber-950/40 text-amber-200' : 'border-zinc-700 text-zinc-400 hover:text-zinc-200'}`}>{filter.label} · {proposalCount(filter.value)}</button>)}</div>
+      </div>}
 
       <details className="mt-6 rounded-2xl border border-zinc-800 bg-zinc-950/50 p-5">
         <summary className="cursor-pointer font-medium text-zinc-200">Add candidate manually</summary>
@@ -259,7 +329,7 @@ export function SourceDiscoveryWorkflow() {
       {reviewMutation.isError && <p className="mt-4 text-sm text-red-300">{reviewMutation.error.message}</p>}
       {promoteMutation.isError && <p className="mt-4 text-sm text-red-300">{promoteMutation.error.message}</p>}
       {promotePageMutation.isError && <p className="mt-4 text-sm text-red-300">{promotePageMutation.error.message}</p>}
-      {query.data && <div className="mt-6 space-y-4">{query.data.items.length === 0 ? <p className="text-sm text-zinc-500">No candidates yet.</p> : query.data.items.map((item) => <CandidateCard key={item.candidate.id} item={item} onReview={review} onPromote={promote} onPromotePage={promotePage} busy={busy} />)}</div>}
+      {query.data && <div className="mt-6 space-y-4">{visibleItems.length === 0 ? <p className="text-sm text-zinc-500">No candidates match this proposal filter.</p> : visibleItems.map((item) => <CandidateCard key={item.candidate.id} item={item} onReview={review} onPromote={promote} onPromotePage={promotePage} busy={busy} />)}</div>}
     </section>
   );
 }
