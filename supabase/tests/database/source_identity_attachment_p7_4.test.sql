@@ -66,7 +66,7 @@ select results_eq(
   'attached candidate becomes promoted only after explicit operator attachment'
 );
 select results_eq(
-  $$select status from public.source_officiality_proposals p join public.source_discovery_candidates c on c.id=p.candidate_id where c.normalized_url='https://www.instagram.com/p74studio'$$,
+  $$select p.status from public.source_officiality_proposals p join public.source_discovery_candidates c on c.id=p.candidate_id where c.normalized_url='https://www.instagram.com/p74studio'$$,
   array['RESOLVED'::text],
   'attachment resolves the officiality proposal'
 );
