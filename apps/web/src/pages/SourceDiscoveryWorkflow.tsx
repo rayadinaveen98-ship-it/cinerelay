@@ -1,6 +1,8 @@
 import { useMemo, useState, type FormEvent } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
+  activateDiscoveredIdentity,
+  attachDiscoveredIdentity,
   fetchSourceDiscoveryBootstrap,
   promoteMediaFeedCandidate,
   promoteSelectedPublicPageCandidate,
@@ -58,14 +60,18 @@ function proposalLabel(type: OfficialityProposalType) {
   return 'Possible new source';
 }
 
-function CandidateCard({ item, onReview, onPromote, onPromotePage, busy }: {
+function CandidateCard({ item, onReview, onAttach, onActivate, onPromote, onPromotePage, busy }: {
   item: SourceDiscoveryItem;
   onReview: (item: SourceDiscoveryItem, status: CandidateReviewStatus, reason: string) => void;
+  onAttach: (item: SourceDiscoveryItem, reason: string) => void;
+  onActivate: (item: SourceDiscoveryItem, reason: string) => void;
   onPromote: (item: SourceDiscoveryItem, authorityTier: MediaAuthorityTier, pollClass: MediaPollClass, reason: string) => void;
   onPromotePage: (item: SourceDiscoveryItem, authorityTier: PublicPageAuthorityTier, pollClass: PublicPagePollClass, parserProfile: PublicPageParserProfile, reason: string) => void;
   busy: boolean;
 }) {
   const [reason, setReason] = useState('');
+  const [attachmentReason, setAttachmentReason] = useState('');
+  const [activationReason, setActivationReason] = useState('');
   const [promotionReason, setPromotionReason] = useState('');
   const [authorityTier, setAuthorityTier] = useState<MediaAuthorityTier>(3);
   const [pollClass, setPollClass] = useState<MediaPollClass>('NORMAL_60M');
@@ -77,9 +83,25 @@ function CandidateCard({ item, onReview, onPromote, onPromotePage, busy }: {
   const candidate = item.candidate;
   const exact = item.exactRegistryMatches[0];
   const officiality = item.officialityProposal;
+  const promotedMatch = candidate.promoted_source_identity_id
+    ? item.exactRegistryMatches.find((match) => match.identity.id === candidate.promoted_source_identity_id)
+    : undefined;
   const reviewed = ['APPROVED', 'REJECTED', 'DUPLICATE', 'PROMOTED'].includes(candidate.status);
+  const selfLinkProposal = officiality?.proposal.proposal_type === 'ADD_IDENTITY_TO_EXISTING_SOURCE';
+  const attachable = candidate.status === 'APPROVED' && officiality?.proposal.status === 'OPEN' && selfLinkProposal;
+  const youtubeIdentityKey = String(candidate.metadata.platformIdentityKey ?? '');
+  const attachmentBlock = candidate.candidate_kind === 'YOUTUBE_CHANNEL' && !/^UC[A-Za-z0-9_-]{22}$/.test(youtubeIdentityKey)
+    ? 'Resolve this YouTube handle/alias to its canonical UC channel ID before attaching it to the trusted registry.'
+    : null;
+  const activationBlock = promotedMatch && !promotedMatch.identity.active
+    ? promotedMatch.identity.platform === 'X'
+      ? 'X provider polling is intentionally paused. The trusted identity stays inactive until provider access is explicitly re-enabled.'
+      : promotedMatch.identity.platform === 'WEB'
+        ? 'Public-web activation requires a verified parser profile. Use the selected public-page onboarding lane instead.'
+        : null
+    : null;
   const promotableFeed = candidate.status === 'APPROVED' && candidate.candidate_kind === 'RSS_ATOM' && !exact;
-  const promotablePage = candidate.status === 'APPROVED' && candidate.candidate_kind === 'PUBLIC_WEB' && !exact;
+  const promotablePage = candidate.status === 'APPROVED' && candidate.candidate_kind === 'PUBLIC_WEB' && !exact && !selfLinkProposal;
 
   function promotePage() {
     setPageProfileError(null);
@@ -114,7 +136,7 @@ function CandidateCard({ item, onReview, onPromote, onPromotePage, busy }: {
       {officiality && <div className={`mt-4 rounded-xl border p-4 ${proposalClass(officiality.proposal.proposal_type)}`}>
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-wider opacity-70">P7.3 officiality proposal · proposal only</p>
+            <p className="text-xs font-semibold uppercase tracking-wider opacity-70">P7 officiality proposal · proposal only</p>
             <p className="mt-1 text-sm font-semibold">{proposalLabel(officiality.proposal.proposal_type)}</p>
           </div>
           <span className="rounded-full border border-current/30 px-2.5 py-1 text-xs font-semibold">score {(officiality.proposal.officiality_score * 100).toFixed(0)}%</span>
@@ -137,7 +159,11 @@ function CandidateCard({ item, onReview, onPromote, onPromotePage, busy }: {
 
       {exact && <div className="mt-4 rounded-xl border border-red-900/50 bg-red-950/20 p-4"><p className="text-sm font-medium text-red-200">Exact existing registry URL match</p><p className="mt-1 text-xs text-red-300/80">{exact.source?.display_name ?? exact.identity.id} · Tier {exact.source?.authority_tier ?? '—'} · {exact.identity.platform} / {exact.identity.connector_type}</p></div>}
 
-      {candidate.promoted_source_identity_id && <div className="mt-4 rounded-xl border border-emerald-900/50 bg-emerald-950/20 p-4"><p className="text-sm font-medium text-emerald-200">Promoted to trusted registry</p><p className="mt-1 break-all text-xs text-emerald-300/80">Source identity {candidate.promoted_source_identity_id}</p></div>}
+      {candidate.promoted_source_identity_id && <div className="mt-4 rounded-xl border border-emerald-900/50 bg-emerald-950/20 p-4">
+        <p className="text-sm font-medium text-emerald-200">Attached to trusted registry</p>
+        <p className="mt-1 break-all text-xs text-emerald-300/80">Source identity {candidate.promoted_source_identity_id}</p>
+        {promotedMatch && <p className="mt-1 text-xs text-emerald-300/80">{promotedMatch.identity.platform} · {promotedMatch.identity.connector_type} · {promotedMatch.identity.active ? 'ACTIVE' : 'INACTIVE'}</p>}
+      </div>}
 
       {candidate.review_reason && <div className="mt-4 rounded-xl border border-zinc-800 p-3 text-sm text-zinc-400"><span className="font-medium text-zinc-300">Review reason:</span> {candidate.review_reason}</div>}
 
@@ -150,6 +176,27 @@ function CandidateCard({ item, onReview, onPromote, onPromotePage, busy }: {
           <button disabled={busy || reason.trim().length < 3} onClick={() => onReview(item, 'REJECTED', reason)} className="rounded-lg border border-red-900 bg-red-950/20 px-3 py-2 text-xs text-red-300 disabled:opacity-40">Reject</button>
           {exact && <button disabled={busy || reason.trim().length < 3} onClick={() => onReview(item, 'DUPLICATE', reason)} className="rounded-lg border border-red-900 px-3 py-2 text-xs text-red-300 disabled:opacity-40">Mark duplicate</button>}
         </div>
+      </div>}
+
+      {attachable && <div className="mt-5 rounded-xl border border-violet-900/60 bg-violet-950/15 p-4">
+        <p className="text-xs font-semibold uppercase tracking-wider text-violet-300">P7.4 explicit identity attachment</p>
+        <p className="mt-2 text-sm leading-6 text-zinc-400">Approval is still not attachment. This action binds the verified destination to the matched existing source and creates it <strong className="text-zinc-200">inactive by default</strong>. It does not create a source, change authority, or start polling.</p>
+        {officiality?.matchedSource && <p className="mt-2 text-xs text-zinc-400">Target source: <span className="text-zinc-200">{officiality.matchedSource.display_name}</span></p>}
+        {attachmentBlock ? <p className="mt-3 rounded-lg border border-amber-900/60 bg-amber-950/20 p-3 text-xs leading-5 text-amber-200">{attachmentBlock}</p> : <>
+          <label className="mt-3 block text-xs font-semibold uppercase tracking-wider text-zinc-500">Attachment reason</label>
+          <textarea value={attachmentReason} onChange={(event) => setAttachmentReason(event.target.value)} rows={2} className="mt-2 w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm outline-none focus:border-violet-500" placeholder="What independently verified that this destination belongs to the matched source?" />
+          <button disabled={busy || attachmentReason.trim().length < 3} onClick={() => onAttach(item, attachmentReason)} className="mt-3 rounded-lg border border-violet-800 bg-violet-950/30 px-3 py-2 text-xs font-medium text-violet-200 disabled:opacity-40">Attach inactive identity</button>
+        </>}
+      </div>}
+
+      {candidate.status === 'PROMOTED' && promotedMatch && !promotedMatch.identity.active && <div className="mt-5 rounded-xl border border-cyan-900/60 bg-cyan-950/15 p-4">
+        <p className="text-xs font-semibold uppercase tracking-wider text-cyan-300">P7.4 connector activation</p>
+        <p className="mt-2 text-sm leading-6 text-zinc-400">Attachment established registry ownership only. Activation is a separate audited action because it can start connector work or external API traffic.</p>
+        {activationBlock ? <p className="mt-3 rounded-lg border border-amber-900/60 bg-amber-950/20 p-3 text-xs leading-5 text-amber-200">{activationBlock}</p> : <>
+          <label className="mt-3 block text-xs font-semibold uppercase tracking-wider text-zinc-500">Activation reason</label>
+          <textarea value={activationReason} onChange={(event) => setActivationReason(event.target.value)} rows={2} className="mt-2 w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm outline-none focus:border-cyan-500" placeholder="Why is this connector ready to be enabled now?" />
+          <button disabled={busy || activationReason.trim().length < 3} onClick={() => onActivate(item, activationReason)} className="mt-3 rounded-lg border border-cyan-800 bg-cyan-950/30 px-3 py-2 text-xs font-medium text-cyan-200 disabled:opacity-40">Activate connector identity</button>
+        </>}
       </div>}
 
       {promotableFeed && <div className="mt-5 rounded-xl border border-emerald-900/50 bg-emerald-950/10 p-4">
@@ -197,29 +244,20 @@ export function SourceDiscoveryWorkflow() {
   const [formError, setFormError] = useState<string | null>(null);
   const [proposalFilter, setProposalFilter] = useState<'ALL' | OfficialityProposalType>('ALL');
 
+  const refresh = async () => queryClient.invalidateQueries({ queryKey: ['source-discovery'] });
   const submitMutation = useMutation({
     mutationFn: submitSourceCandidate,
     onSuccess: async () => {
       setUrl(''); setDisplayName(''); setRole(''); setLanguages(''); setEvidenceUrl(''); setEvidenceNote(''); setFormError(null);
-      await queryClient.invalidateQueries({ queryKey: ['source-discovery'] });
+      await refresh();
     },
     onError: (error) => setFormError(error instanceof Error ? error.message : 'Unable to submit candidate'),
   });
-
-  const reviewMutation = useMutation({
-    mutationFn: reviewSourceCandidate,
-    onSuccess: async () => queryClient.invalidateQueries({ queryKey: ['source-discovery'] }),
-  });
-
-  const promoteMutation = useMutation({
-    mutationFn: promoteMediaFeedCandidate,
-    onSuccess: async () => queryClient.invalidateQueries({ queryKey: ['source-discovery'] }),
-  });
-
-  const promotePageMutation = useMutation({
-    mutationFn: promoteSelectedPublicPageCandidate,
-    onSuccess: async () => queryClient.invalidateQueries({ queryKey: ['source-discovery'] }),
-  });
+  const reviewMutation = useMutation({ mutationFn: reviewSourceCandidate, onSuccess: refresh });
+  const attachMutation = useMutation({ mutationFn: attachDiscoveredIdentity, onSuccess: refresh });
+  const activateMutation = useMutation({ mutationFn: activateDiscoveredIdentity, onSuccess: refresh });
+  const promoteMutation = useMutation({ mutationFn: promoteMediaFeedCandidate, onSuccess: refresh });
+  const promotePageMutation = useMutation({ mutationFn: promoteSelectedPublicPageCandidate, onSuccess: refresh });
 
   const counts = useMemo(() => {
     const result = { pending: 0, approved: 0, promoted: 0, rejected: 0, duplicate: 0 };
@@ -274,21 +312,26 @@ export function SourceDiscoveryWorkflow() {
     const duplicateSourceIdentityId = status === 'DUPLICATE' ? item.exactRegistryMatches[0]?.identity.id : undefined;
     reviewMutation.mutate({ candidateId: item.candidate.id, status, reason: reason.trim(), duplicateSourceIdentityId });
   }
-
+  function attach(item: SourceDiscoveryItem, reason: string) {
+    attachMutation.mutate({ candidateId: item.candidate.id, reason: reason.trim() });
+  }
+  function activate(item: SourceDiscoveryItem, reason: string) {
+    activateMutation.mutate({ candidateId: item.candidate.id, reason: reason.trim() });
+  }
   function promote(item: SourceDiscoveryItem, authorityTier: MediaAuthorityTier, pollClass: MediaPollClass, reason: string) {
     promoteMutation.mutate({ candidateId: item.candidate.id, authorityTier, pollClass, reason: reason.trim() });
   }
-
   function promotePage(item: SourceDiscoveryItem, authorityTier: PublicPageAuthorityTier, pollClass: PublicPagePollClass, parserProfile: PublicPageParserProfile, reason: string) {
     promotePageMutation.mutate({ candidateId: item.candidate.id, authorityTier, pollClass, parserProfile, reason: reason.trim() });
   }
 
-  const busy = reviewMutation.isPending || promoteMutation.isPending || promotePageMutation.isPending;
+  const busy = reviewMutation.isPending || attachMutation.isPending || activateMutation.isPending || promoteMutation.isPending || promotePageMutation.isPending;
+  const mutationError = reviewMutation.error || attachMutation.error || activateMutation.error || promoteMutation.error || promotePageMutation.error;
 
   return (
     <section className="rounded-3xl border border-zinc-800 bg-zinc-900/50 p-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
-        <div><p className="text-xs font-semibold uppercase tracking-[0.25em] text-amber-400">Source trust workflow</p><h2 className="mt-2 text-xl font-semibold">Candidate review + explicit trust promotion</h2><p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-400">Candidates are untrusted until reviewed. <strong className="text-zinc-200">Approve still does not promote.</strong> Automated officiality scores are evidence summaries, never decisions. RSS media and selected public pages each require a separate audited promotion action with capped authority.</p></div>
+        <div><p className="text-xs font-semibold uppercase tracking-[0.25em] text-amber-400">Source trust workflow</p><h2 className="mt-2 text-xl font-semibold">Candidate review + explicit trust lifecycle</h2><p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-400">Candidates are untrusted until reviewed. <strong className="text-zinc-200">Approve still does not attach or activate.</strong> P7.4 adds an audited inactive attachment step and a separate connector activation step, so trust assignment never silently starts external polling.</p></div>
         {query.data && <p className="text-xs text-zinc-500">Updated {new Date(query.data.generatedAt).toLocaleString()}</p>}
       </div>
 
@@ -302,7 +345,7 @@ export function SourceDiscoveryWorkflow() {
 
       {query.data && <div className="mt-5 rounded-2xl border border-amber-900/40 bg-amber-950/10 p-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <div><p className="text-xs font-semibold uppercase tracking-wider text-amber-400">P7.3 officiality proposals</p><p className="mt-1 text-xs text-zinc-500">Filter review queue by evidence state. Counts cover all open proposals, not trust decisions.</p></div>
+          <div><p className="text-xs font-semibold uppercase tracking-wider text-amber-400">P7 officiality proposals</p><p className="mt-1 text-xs text-zinc-500">Filter review queue by evidence state. Counts cover all open proposals, not trust decisions.</p></div>
           <p className="text-sm font-semibold text-zinc-200">{query.data.proposalSummary.open} open</p>
         </div>
         <div className="mt-3 flex flex-wrap gap-2">{PROPOSAL_FILTERS.map((filter) => <button key={filter.value} type="button" onClick={() => setProposalFilter(filter.value)} className={`rounded-lg border px-3 py-2 text-xs ${proposalFilter === filter.value ? 'border-amber-500 bg-amber-950/40 text-amber-200' : 'border-zinc-700 text-zinc-400 hover:text-zinc-200'}`}>{filter.label} · {proposalCount(filter.value)}</button>)}</div>
@@ -326,10 +369,8 @@ export function SourceDiscoveryWorkflow() {
 
       {query.isPending && <p className="mt-6 text-sm text-zinc-500">Loading discovery candidates…</p>}
       {query.isError && <p className="mt-6 text-sm text-red-300">{query.error.message}</p>}
-      {reviewMutation.isError && <p className="mt-4 text-sm text-red-300">{reviewMutation.error.message}</p>}
-      {promoteMutation.isError && <p className="mt-4 text-sm text-red-300">{promoteMutation.error.message}</p>}
-      {promotePageMutation.isError && <p className="mt-4 text-sm text-red-300">{promotePageMutation.error.message}</p>}
-      {query.data && <div className="mt-6 space-y-4">{visibleItems.length === 0 ? <p className="text-sm text-zinc-500">No candidates match this proposal filter.</p> : visibleItems.map((item) => <CandidateCard key={item.candidate.id} item={item} onReview={review} onPromote={promote} onPromotePage={promotePage} busy={busy} />)}</div>}
+      {mutationError && <p className="mt-4 text-sm text-red-300">{mutationError.message}</p>}
+      {query.data && <div className="mt-6 space-y-4">{visibleItems.length === 0 ? <p className="text-sm text-zinc-500">No candidates match this proposal filter.</p> : visibleItems.map((item) => <CandidateCard key={item.candidate.id} item={item} onReview={review} onAttach={attach} onActivate={activate} onPromote={promote} onPromotePage={promotePage} busy={busy} />)}</div>}
     </section>
   );
 }
