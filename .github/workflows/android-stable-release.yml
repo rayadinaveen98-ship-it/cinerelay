@@ -14,8 +14,8 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  CINERELAY_VERSION_CODE: '210001'
-  CINERELAY_VERSION_NAME: '0.2.1'
+  CINERELAY_VERSION_CODE: '210002'
+  CINERELAY_VERSION_NAME: '0.2.2'
   CINERELAY_SUPABASE_URL: https://dnqaejljfzwhsainpdxb.supabase.co
   CINERELAY_SUPABASE_PUBLISHABLE_KEY: sb_publishable_hR65p2JkQ2x5fFLx_kkcNQ_1SxNN3QP
 
@@ -115,7 +115,7 @@ jobs:
             exit 1
           fi
 
-      - name: Build CineRelay v0.2.1 stable APK
+      - name: Build CineRelay v0.2.2 stable APK
         run: gradle -p apps/android --no-daemon --stacktrace :app:assembleRelease
 
       - name: Verify stable APK contract and signer
@@ -135,44 +135,44 @@ jobs:
 
           APKSIGNER="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -n 1)"
           test -x "$APKSIGNER"
-          "$APKSIGNER" verify --print-certs "$APK" | tee "$OUT/CineRelay-v0.2.1.signing-certificate.txt"
+          "$APKSIGNER" verify --print-certs "$APK" | tee "$OUT/CineRelay-v0.2.2.signing-certificate.txt"
           EXPECTED="$(tr -d '[:space:]' < apps/android/signing/cinerelay-update-cert.sha256 | tr '[:lower:]' '[:upper:]')"
-          ACTUAL="$(awk -F': ' '/certificate SHA-256 digest/{print toupper($NF); exit}' "$OUT/CineRelay-v0.2.1.signing-certificate.txt" | tr -d ':[:space:]')"
+          ACTUAL="$(awk -F': ' '/certificate SHA-256 digest/{print toupper($NF); exit}' "$OUT/CineRelay-v0.2.2.signing-certificate.txt" | tr -d ':[:space:]')"
           if [[ -z "$ACTUAL" || "$ACTUAL" != "$EXPECTED" ]]; then
             echo "CineRelay stable signer mismatch. Expected $EXPECTED, got ${ACTUAL:-missing}." >&2
             exit 1
           fi
 
-          cp "$APK" "$OUT/CineRelay-v0.2.1.apk"
-          sha256sum "$OUT/CineRelay-v0.2.1.apk" | tee "$OUT/CineRelay-v0.2.1.sha256"
-          printf '%s\n' "$CINERELAY_VERSION_CODE" > "$OUT/CineRelay-v0.2.1.version-code.txt"
-          printf '%s\n' "$CINERELAY_VERSION_NAME" > "$OUT/CineRelay-v0.2.1.version-name.txt"
-          printf '%s\n' 'true' > "$OUT/CineRelay-v0.2.1.firebase-configured.txt"
-          printf '%s\n' 'true' > "$OUT/CineRelay-v0.2.1.update-signing-configured.txt"
+          cp "$APK" "$OUT/CineRelay-v0.2.2.apk"
+          sha256sum "$OUT/CineRelay-v0.2.2.apk" | tee "$OUT/CineRelay-v0.2.2.sha256"
+          printf '%s\n' "$CINERELAY_VERSION_CODE" > "$OUT/CineRelay-v0.2.2.version-code.txt"
+          printf '%s\n' "$CINERELAY_VERSION_NAME" > "$OUT/CineRelay-v0.2.2.version-name.txt"
+          printf '%s\n' 'true' > "$OUT/CineRelay-v0.2.2.firebase-configured.txt"
+          printf '%s\n' 'true' > "$OUT/CineRelay-v0.2.2.update-signing-configured.txt"
 
       - name: Upload stable APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: cinerelay-android-v0.2.1-stable
+          name: cinerelay-android-v0.2.2-stable
           path: stable-release
           if-no-files-found: error
           retention-days: 90
 
-      - name: Publish GitHub v0.2.1 release
+      - name: Publish GitHub v0.2.2 release
         if: github.ref == 'refs/heads/main'
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          if gh release view v0.2.1 >/dev/null 2>&1; then
-            echo 'GitHub release v0.2.1 already exists; leaving the immutable release untouched.'
+          if gh release view v0.2.2 >/dev/null 2>&1; then
+            echo 'GitHub release v0.2.2 already exists; leaving the immutable release untouched.'
             exit 0
           fi
-          gh release create v0.2.1 \
-            stable-release/CineRelay-v0.2.1.apk \
-            stable-release/CineRelay-v0.2.1.sha256 \
-            stable-release/CineRelay-v0.2.1.signing-certificate.txt \
+          gh release create v0.2.2 \
+            stable-release/CineRelay-v0.2.2.apk \
+            stable-release/CineRelay-v0.2.2.sha256 \
+            stable-release/CineRelay-v0.2.2.signing-certificate.txt \
             --target "$GITHUB_SHA" \
-            --title 'CineRelay v0.2.1' \
-            --notes-file docs/releases/V0.2.1.md
+            --title 'CineRelay v0.2.2' \
+            --notes-file docs/releases/V0.2.2.md
