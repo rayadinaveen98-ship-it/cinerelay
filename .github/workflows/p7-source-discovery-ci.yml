@@ -10,7 +10,9 @@ on:
       - 'apps/web/src/lib/source-discovery-api.ts'
       - 'supabase/migrations/**p7_2_source_discovery**'
       - 'supabase/migrations/**p7_2_automatic_source_discovery**'
+      - 'supabase/migrations/**p7_4_operator_identity_attachment**'
       - 'supabase/tests/database/source_discovery_automation_p7_2.test.sql'
+      - 'supabase/tests/database/source_identity_attachment_p7_4.test.sql'
       - '.github/workflows/p7-source-discovery-ci.yml'
   push:
     branches:
@@ -23,7 +25,9 @@ on:
       - 'apps/web/src/lib/source-discovery-api.ts'
       - 'supabase/migrations/**p7_2_source_discovery**'
       - 'supabase/migrations/**p7_2_automatic_source_discovery**'
+      - 'supabase/migrations/**p7_4_operator_identity_attachment**'
       - 'supabase/tests/database/source_discovery_automation_p7_2.test.sql'
+      - 'supabase/tests/database/source_identity_attachment_p7_4.test.sql'
       - '.github/workflows/p7-source-discovery-ci.yml'
 
 concurrency:
@@ -88,13 +92,16 @@ jobs:
         run: npm --prefix apps/web install --no-audit --no-fund --ignore-scripts
       - name: Build operator console
         run: npm --prefix apps/web run build
-      - name: Verify officiality review surface is in browser artifact
+      - name: Verify officiality and identity lifecycle surfaces are in browser artifact
         shell: bash
         run: |
           set -euo pipefail
           grep -R -F 'officiality proposal' apps/web/dist/assets --include='*.js'
           grep -R -F 'Ownership verification required' apps/web/dist/assets --include='*.js'
           grep -R -F 'Trust boundary' apps/web/dist/assets --include='*.js'
+          grep -R -F 'Attach inactive identity' apps/web/dist/assets --include='*.js'
+          grep -R -F 'Activate connector identity' apps/web/dist/assets --include='*.js'
+          grep -R -F 'X provider polling is intentionally paused' apps/web/dist/assets --include='*.js'
           if grep -R -E 'SUPABASE_SERVICE_ROLE_KEY|CINERELAY_INTERNAL_ADMIN_SECRET' apps/web/dist; then
             echo 'Forbidden privileged credential marker found in P7 browser bundle' >&2
             exit 1
