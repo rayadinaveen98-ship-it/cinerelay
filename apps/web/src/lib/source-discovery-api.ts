@@ -37,32 +37,66 @@ const EvidenceSchema = z.object({
   created_at: z.string(),
 });
 
+const SourceSchema = z.object({
+  id: z.string().uuid(),
+  display_name: z.string(),
+  authority_tier: z.number(),
+  source_role: z.string().nullable(),
+  territory: z.string().nullable(),
+  active: z.boolean(),
+});
+
+const IdentitySchema = z.object({
+  id: z.string().uuid(),
+  source_id: z.string().uuid(),
+  platform: z.string(),
+  canonical_url: z.string(),
+  connector_type: z.string(),
+  access_mode: z.string(),
+  active: z.boolean(),
+});
+
 const RegistryMatchSchema = z.object({
-  identity: z.object({
-    id: z.string().uuid(),
-    source_id: z.string().uuid(),
-    platform: z.string(),
-    canonical_url: z.string(),
-    connector_type: z.string(),
-    access_mode: z.string(),
-    active: z.boolean(),
+  identity: IdentitySchema,
+  source: SourceSchema.nullable(),
+});
+
+const OfficialityProposalSchema = z.object({
+  proposal: z.object({
+    candidate_id: z.string().uuid(),
+    proposal_type: z.enum(['EXACT_IDENTITY', 'ADD_IDENTITY_TO_EXISTING_SOURCE', 'REVIEW_OWNERSHIP', 'REVIEW_NEW_SOURCE']),
+    matched_source_id: z.string().uuid().nullable(),
+    matched_source_identity_id: z.string().uuid().nullable(),
+    proposed_authority_tier: z.coerce.number().nullable(),
+    proposed_source_role: z.string().nullable(),
+    officiality_score: z.coerce.number(),
+    support_count: z.coerce.number(),
+    distinct_origin_sources: z.coerce.number(),
+    status: z.enum(['OPEN', 'RESOLVED']),
+    recommended_action: z.string(),
+    rationale: z.record(z.string(), z.unknown()),
+    first_seen_at: z.string(),
+    last_seen_at: z.string(),
+    resolved_at: z.string().nullable(),
   }),
-  source: z.object({
-    id: z.string().uuid(),
-    display_name: z.string(),
-    authority_tier: z.number(),
-    source_role: z.string().nullable(),
-    territory: z.string().nullable(),
-    active: z.boolean(),
-  }).nullable(),
+  matchedSource: SourceSchema.nullable(),
+  matchedIdentity: IdentitySchema.nullable(),
 });
 
 const BootstrapSchema = z.object({
   generatedAt: z.string(),
+  proposalSummary: z.object({
+    open: z.number(),
+    exactIdentity: z.number(),
+    addIdentity: z.number(),
+    reviewOwnership: z.number(),
+    reviewNewSource: z.number(),
+  }),
   items: z.array(z.object({
     candidate: CandidateSchema,
     evidence: z.array(EvidenceSchema),
     exactRegistryMatches: z.array(RegistryMatchSchema),
+    officialityProposal: OfficialityProposalSchema.nullable(),
   })),
 });
 
@@ -73,6 +107,7 @@ const ActionSchema = z.object({
 
 export type SourceDiscoveryBootstrap = z.infer<typeof BootstrapSchema>;
 export type SourceDiscoveryItem = SourceDiscoveryBootstrap['items'][number];
+export type OfficialityProposalType = NonNullable<SourceDiscoveryItem['officialityProposal']>['proposal']['proposal_type'];
 export type CandidateKind = z.infer<typeof CandidateSchema>['candidate_kind'];
 export type CandidateReviewStatus = 'REVIEWING' | 'APPROVED' | 'REJECTED' | 'DUPLICATE';
 export type MediaAuthorityTier = 3 | 4;
