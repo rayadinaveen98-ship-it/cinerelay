@@ -1,0 +1,66 @@
+name: CineRelay P7 Source Discovery CI
+
+on:
+  pull_request:
+    paths:
+      - 'supabase/functions/source-discovery-worker/**'
+      - 'supabase/functions/cinerelay-scheduler-dispatch/**'
+      - 'supabase/migrations/**p7_2_source_discovery**'
+      - 'supabase/migrations/**p7_2_automatic_source_discovery**'
+      - 'supabase/tests/database/source_discovery_automation_p7_2.test.sql'
+      - '.github/workflows/p7-source-discovery-ci.yml'
+  push:
+    branches:
+      - main
+    paths:
+      - 'supabase/functions/source-discovery-worker/**'
+      - 'supabase/functions/cinerelay-scheduler-dispatch/**'
+      - 'supabase/migrations/**p7_2_source_discovery**'
+      - 'supabase/migrations/**p7_2_automatic_source_discovery**'
+      - 'supabase/tests/database/source_discovery_automation_p7_2.test.sql'
+      - '.github/workflows/p7-source-discovery-ci.yml'
+
+concurrency:
+  group: cinerelay-p7-source-discovery-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  source-discovery-edge:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - name: Type-check source-discovery-worker
+        run: deno check --config supabase/functions/source-discovery-worker/deno.json supabase/functions/source-discovery-worker/index.ts
+      - name: Type-check scheduler dispatcher
+        run: deno check --config supabase/functions/cinerelay-scheduler-dispatch/deno.json supabase/functions/cinerelay-scheduler-dispatch/index.ts
+      - name: Build deployment-native P7 Edge bundle
+        shell: bash
+        run: |
+          set -euo pipefail
+          for fn in source-discovery-worker cinerelay-scheduler-dispatch; do
+            mkdir -p "p7-edge-deploy/$fn"
+            npx --yes esbuild@0.25.9 "supabase/functions/$fn/index.ts" \
+              --bundle \
+              --format=esm \
+              --platform=neutral \
+              --main-fields=module,main \
+              --target=es2022 \
+              --minify \
+              --external:@supabase/supabase-js \
+              --outfile="p7-edge-deploy/$fn/index.js"
+            cp "supabase/functions/$fn/deno.json" "p7-edge-deploy/$fn/deno.json"
+          done
+      - name: Upload P7 deployment bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: cinerelay-p7-source-discovery-deploy-bundle
+          path: p7-edge-deploy
+          if-no-files-found: error
+          retention-days: 7
