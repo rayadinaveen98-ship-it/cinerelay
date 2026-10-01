@@ -117,13 +117,25 @@ async function bootstrap(limit: number, status?: string) {
   const rows = candidates ?? [];
   const candidateIds = rows.map((row) => row.id);
 
-  const { data: evidence, error: evidenceError } = candidateIds.length
-    ? await admin.from('source_discovery_evidence')
-      .select('id,candidate_id,evidence_type,evidence_url,note,observed_at,metadata,created_at')
-      .in('candidate_id', candidateIds)
-      .order('observed_at', { ascending: false })
-    : { data: [], error: null };
+  const [{ data: evidence, error: evidenceError }, { data: proposals, error: proposalError }, { data: openProposalRows, error: summaryError }] = await Promise.all([
+    candidateIds.length
+      ? admin.from('source_discovery_evidence')
+        .select('id,candidate_id,evidence_type,evidence_url,note,observed_at,metadata,created_at')
+        .in('candidate_id', candidateIds)
+        .order('observed_at', { ascending: false })
+      : Promise.resolve({ data: [], error: null }),
+    candidateIds.length
+      ? admin.from('source_officiality_proposals')
+        .select('candidate_id,proposal_type,matched_source_id,matched_source_identity_id,proposed_authority_tier,proposed_source_role,officiality_score,support_count,distinct_origin_sources,status,recommended_action,rationale,first_seen_at,last_seen_at,resolved_at')
+        .in('candidate_id', candidateIds)
+      : Promise.resolve({ data: [], error: null }),
+    admin.from('source_officiality_proposals')
+      .select('proposal_type')
+      .eq('status', 'OPEN'),
+  ]);
   if (evidenceError) throw evidenceError;
+  if (proposalError) throw proposalError;
+  if (summaryError) throw summaryError;
 
   const exactUrls = [...new Set(rows.flatMap((row) => [row.normalized_url, row.candidate_url]).filter(Boolean))];
   const { data: exactIdentities, error: identityError } = exactUrls.length
@@ -132,7 +144,20 @@ async function bootstrap(limit: number, status?: string) {
       .in('canonical_url', exactUrls)
     : { data: [], error: null };
   if (identityError) throw identityError;
-  const sourceIds = [...new Set((exactIdentities ?? []).map((row) => row.source_id).filter(Boolean))];
+
+  const proposalMatchedIdentityIds = [...new Set((proposals ?? []).map((row) => row.matched_source_identity_id).filter((id): id is string => typeof id === 'string'))];
+  const { data: proposalMatchedIdentities, error: matchedIdentityError } = proposalMatchedIdentityIds.length
+    ? await admin.from('source_identities')
+      .select('id,source_id,platform,canonical_url,connector_type,access_mode,active')
+      .in('id', proposalMatchedIdentityIds)
+    : { data: [], error: null };
+  if (matchedIdentityError) throw matchedIdentityError;
+
+  const sourceIds = [...new Set([
+    ...(exactIdentities ?? []).map((row) => row.source_id),
+    ...(proposals ?? []).map((row) => row.matched_source_id),
+    ...(proposalMatchedIdentities ?? []).map((row) => row.source_id),
+  ].filter((id): id is string => typeof id === 'string'))];
   const { data: sources, error: sourceError } = sourceIds.length
     ? await admin.from('sources')
       .select('id,display_name,authority_tier,source_role,territory,active')
@@ -141,6 +166,8 @@ async function bootstrap(limit: number, status?: string) {
   if (sourceError) throw sourceError;
 
   const sourceMap = new Map((sources ?? []).map((row) => [row.id, row]));
+  const matchedIdentityMap = new Map((proposalMatchedIdentities ?? []).map((row) => [row.id, row]));
+  const proposalByCandidate = new Map((proposals ?? []).map((row) => [row.candidate_id, row]));
   const evidenceByCandidate = new Map<string, Record<string, unknown>[]>();
   for (const item of evidence ?? []) {
     const list = evidenceByCandidate.get(item.candidate_id) ?? [];
@@ -148,15 +175,43 @@ async function bootstrap(limit: number, status?: string) {
     evidenceByCandidate.set(item.candidate_id, list);
   }
 
+  const proposalSummary = {
+    open: 0,
+    exactIdentity: 0,
+    addIdentity: 0,
+    reviewOwnership: 0,
+    reviewNewSource: 0,
+  };
+  for (const proposal of openProposalRows ?? []) {
+    proposalSummary.open += 1;
+    if (proposal.proposal_type === 'EXACT_IDENTITY') proposalSummary.exactIdentity += 1;
+    if (proposal.proposal_type === 'ADD_IDENTITY_TO_EXISTING_SOURCE') proposalSummary.addIdentity += 1;
+    if (proposal.proposal_type === 'REVIEW_OWNERSHIP') proposalSummary.reviewOwnership += 1;
+    if (proposal.proposal_type === 'REVIEW_NEW_SOURCE') proposalSummary.reviewNewSource += 1;
+  }
+
   return {
     generatedAt: new Date().toISOString(),
-    items: rows.map((candidate) => ({
-      candidate,
-      evidence: evidenceByCandidate.get(candidate.id) ?? [],
-      exactRegistryMatches: (exactIdentities ?? [])
-        .filter((identity) => identity.canonical_url === candidate.normalized_url || identity.canonical_url === candidate.candidate_url)
-        .map((identity) => ({ identity, source: sourceMap.get(identity.source_id) ?? null })),
-    })),
+    proposalSummary,
+    items: rows.map((candidate) => {
+      const proposal = proposalByCandidate.get(candidate.id) ?? null;
+      const matchedIdentity = proposal?.matched_source_identity_id
+        ? matchedIdentityMap.get(proposal.matched_source_identity_id) ?? null
+        : null;
+      const matchedSourceId = proposal?.matched_source_id ?? matchedIdentity?.source_id ?? null;
+      return {
+        candidate,
+        evidence: evidenceByCandidate.get(candidate.id) ?? [],
+        exactRegistryMatches: (exactIdentities ?? [])
+          .filter((identity) => identity.canonical_url === candidate.normalized_url || identity.canonical_url === candidate.candidate_url)
+          .map((identity) => ({ identity, source: sourceMap.get(identity.source_id) ?? null })),
+        officialityProposal: proposal ? {
+          proposal,
+          matchedSource: matchedSourceId ? sourceMap.get(matchedSourceId) ?? null : null,
+          matchedIdentity,
+        } : null,
+      };
+    }),
   };
 }
 
