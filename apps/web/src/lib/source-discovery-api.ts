@@ -160,11 +160,7 @@ export function submitSourceCandidate(input: {
   evidenceUrl?: string;
   evidenceNote?: string;
 }) {
-  return invoke({
-    action: 'submit',
-    discoveryMethod: 'OPERATOR',
-    ...input,
-  }, ActionSchema);
+  return invoke({ action: 'submit', discoveryMethod: 'OPERATOR', ...input }, ActionSchema);
 }
 
 export function reviewSourceCandidate(input: {
@@ -174,6 +170,14 @@ export function reviewSourceCandidate(input: {
   duplicateSourceIdentityId?: string;
 }) {
   return invoke({ action: 'review', ...input }, ActionSchema);
+}
+
+export function attachDiscoveredIdentity(input: { candidateId: string; reason: string }) {
+  return invoke({ action: 'attachDiscoveredIdentity', ...input }, ActionSchema);
+}
+
+export function activateDiscoveredIdentity(input: { candidateId: string; reason: string }) {
+  return invoke({ action: 'activateDiscoveredIdentity', ...input }, ActionSchema);
 }
 
 export function promoteMediaFeedCandidate(input: {
