@@ -86,7 +86,7 @@ jobs:
           set -euo pipefail
           version_code=$((200000 + GITHUB_RUN_NUMBER))
           echo "CINERELAY_VERSION_CODE=$version_code" >> "$GITHUB_ENV"
-          echo "CINERELAY_VERSION_NAME=0.2.1-canary.${GITHUB_RUN_NUMBER}" >> "$GITHUB_ENV"
+          echo "CINERELAY_VERSION_NAME=0.2.3-canary.${GITHUB_RUN_NUMBER}" >> "$GITHUB_ENV"
           echo "CineRelay versionCode=$version_code"
       - name: Configure stable update signing when available
         id: signing
@@ -169,8 +169,8 @@ jobs:
             echo 'Privileged server credential marker found in Android source' >&2
             exit 1
           fi
-      - name: Build CineRelay V0.2.1 Canary APK
-        run: gradle -p apps/android --no-daemon --stacktrace :app:assembleDebug
+      - name: Test and build CineRelay v0.2.3 Canary APK
+        run: gradle -p apps/android --no-daemon --stacktrace :app:testDebugUnitTest :app:assembleDebug
       - name: Verify Firebase build contract
         shell: bash
         run: |
@@ -219,17 +219,17 @@ jobs:
             echo 'Privileged credential marker found in APK' >&2
             exit 1
           fi
-          sha256sum "$APK" | tee "$OUT/CineRelay-v0.2.1-canary.sha256"
-          printf '%s\n' "${CINERELAY_FIREBASE_CONFIGURED:-false}" > "$OUT/CineRelay-v0.2.1-canary.firebase-configured.txt"
-          printf '%s\n' "$CINERELAY_VERSION_CODE" > "$OUT/CineRelay-v0.2.1-canary.version-code.txt"
-          printf '%s\n' "$CINERELAY_VERSION_NAME" > "$OUT/CineRelay-v0.2.1-canary.version-name.txt"
-          printf '%s\n' '${{ steps.signing.outputs.configured }}' > "$OUT/CineRelay-v0.2.1-canary.update-signing-configured.txt"
+          sha256sum "$APK" | tee "$OUT/CineRelay-v0.2.3-canary.sha256"
+          printf '%s\n' "${CINERELAY_FIREBASE_CONFIGURED:-false}" > "$OUT/CineRelay-v0.2.3-canary.firebase-configured.txt"
+          printf '%s\n' "$CINERELAY_VERSION_CODE" > "$OUT/CineRelay-v0.2.3-canary.version-code.txt"
+          printf '%s\n' "$CINERELAY_VERSION_NAME" > "$OUT/CineRelay-v0.2.3-canary.version-name.txt"
+          printf '%s\n' '${{ steps.signing.outputs.configured }}' > "$OUT/CineRelay-v0.2.3-canary.update-signing-configured.txt"
           if [[ '${{ steps.signing.outputs.configured }}' == 'true' ]]; then
             APKSIGNER="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -n 1)"
             test -x "$APKSIGNER"
-            "$APKSIGNER" verify --print-certs "$APK" | tee "$OUT/CineRelay-v0.2.1-canary.signing-certificate.txt"
+            "$APKSIGNER" verify --print-certs "$APK" | tee "$OUT/CineRelay-v0.2.3-canary.signing-certificate.txt"
             EXPECTED="$(tr -d '[:space:]' < apps/android/signing/cinerelay-update-cert.sha256 | tr '[:lower:]' '[:upper:]')"
-            ACTUAL="$(awk -F': ' '/certificate SHA-256 digest/{print toupper($NF); exit}' "$OUT/CineRelay-v0.2.1-canary.signing-certificate.txt" | tr -d ':[:space:]')"
+            ACTUAL="$(awk -F': ' '/certificate SHA-256 digest/{print toupper($NF); exit}' "$OUT/CineRelay-v0.2.3-canary.signing-certificate.txt" | tr -d ':[:space:]')"
             if [[ -z "$ACTUAL" || "$ACTUAL" != "$EXPECTED" ]]; then
               echo "CineRelay signer mismatch. Expected $EXPECTED, got ${ACTUAL:-missing}." >&2
               exit 1
@@ -243,14 +243,14 @@ jobs:
         if: steps.signing.outputs.configured == 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: cinerelay-android-v0.2.1-update-apk
+          name: cinerelay-android-v0.2.3-update-apk
           path: |
             apps/android/app/build/outputs/apk/debug/app-debug.apk
-            apps/android/app/build/outputs/apk/debug/CineRelay-v0.2.1-canary.sha256
-            apps/android/app/build/outputs/apk/debug/CineRelay-v0.2.1-canary.firebase-configured.txt
-            apps/android/app/build/outputs/apk/debug/CineRelay-v0.2.1-canary.version-code.txt
-            apps/android/app/build/outputs/apk/debug/CineRelay-v0.2.1-canary.version-name.txt
-            apps/android/app/build/outputs/apk/debug/CineRelay-v0.2.1-canary.update-signing-configured.txt
-            apps/android/app/build/outputs/apk/debug/CineRelay-v0.2.1-canary.signing-certificate.txt
+            apps/android/app/build/outputs/apk/debug/CineRelay-v0.2.3-canary.sha256
+            apps/android/app/build/outputs/apk/debug/CineRelay-v0.2.3-canary.firebase-configured.txt
+            apps/android/app/build/outputs/apk/debug/CineRelay-v0.2.3-canary.version-code.txt
+            apps/android/app/build/outputs/apk/debug/CineRelay-v0.2.3-canary.version-name.txt
+            apps/android/app/build/outputs/apk/debug/CineRelay-v0.2.3-canary.update-signing-configured.txt
+            apps/android/app/build/outputs/apk/debug/CineRelay-v0.2.3-canary.signing-certificate.txt
           if-no-files-found: error
           retention-days: 14
