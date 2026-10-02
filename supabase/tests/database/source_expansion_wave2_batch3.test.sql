@@ -9,7 +9,7 @@ select is(
     from public.source_identities
     where platform = 'YOUTUBE'
       and active = true
-      and config ->> 'expansionWave' = 'wave2-batch3'
+      and connector_config ->> 'expansionWave' = 'wave2-batch3'
   ),
   8,
   'wave 2 batch 3 registers exactly eight active YouTube identities'
@@ -20,7 +20,7 @@ select is(
     select count(*)::integer
     from public.youtube_channel_state ycs
     join public.source_identities si on si.id = ycs.source_identity_id
-    where si.config ->> 'expansionWave' = 'wave2-batch3'
+    where si.connector_config ->> 'expansionWave' = 'wave2-batch3'
       and ycs.uploads_playlist_id = 'UU' || substring(si.platform_identity_id from 3)
   ),
   8,
@@ -33,7 +33,7 @@ select is(
     from public.source_identities si
     join public.sources s on s.id = si.source_id
     where s.display_name = 'ManoramaMAX'
-      and si.config ->> 'expansionWave' = 'wave2-batch3'
+      and si.connector_config ->> 'expansionWave' = 'wave2-batch3'
       and si.platform_identity_id = 'UCz1ht-a2eKE_s1vMh3OHtIg'
       and si.active = true
   ),
@@ -47,7 +47,7 @@ select is(
     from public.source_identities si
     join public.sources s on s.id = si.source_id
     where s.display_name = 'Sony LIV'
-      and si.config ->> 'expansionWave' = 'wave2-batch3'
+      and si.connector_config ->> 'expansionWave' = 'wave2-batch3'
       and si.platform_identity_id = any(array[
         'UC-ybzIsgchcx7PHqOSxn5OQ',
         'UCQmxcMxjYcBM5Pel4qUW2hA',
@@ -65,7 +65,7 @@ select is(
     from public.source_identities si
     join public.sources s on s.id = si.source_id
     where s.display_name = 'Sun NXT'
-      and si.config ->> 'expansionWave' = 'wave2-batch3'
+      and si.connector_config ->> 'expansionWave' = 'wave2-batch3'
       and si.platform_identity_id = any(array[
         'UCo3J37dmHuiL7L0klvO1KKA',
         'UC26UNezdPZfGkRnxX3fVWGA',
@@ -86,7 +86,7 @@ select is(
       and s.authority_tier = 3
       and s.source_role = 'TRADE_MEDIA'
       and si.platform_identity_id = 'UColde1DYHBhFE1wTIZECmvA'
-      and si.config ->> 'expansionWave' = 'wave2-batch3'
+      and si.connector_config ->> 'expansionWave' = 'wave2-batch3'
       and si.active = true
   ),
   1,
