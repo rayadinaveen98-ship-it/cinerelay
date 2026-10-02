@@ -118,7 +118,7 @@ jobs:
           grep -R -F 'X provider polling is intentionally paused' apps/web/dist/assets --include='*.js'
           grep -R -F 'Title/source relationship suggestions' apps/web/dist/assets --include='*.js'
           grep -R -F 'Approve time-bounded relationship' apps/web/dist/assets --include='*.js'
-          grep -R -F 'SOURCE_SCOPE_RESOLUTIONS_EXCLUDED' apps/web/dist/assets --include='*.js'
+          grep -R -F 'Source-scope resolutions are explicitly excluded' apps/web/dist/assets --include='*.js'
           if grep -R -E 'SUPABASE_SERVICE_ROLE_KEY|CINERELAY_INTERNAL_ADMIN_SECRET' apps/web/dist; then
             echo 'Forbidden privileged credential marker found in P7 browser bundle' >&2
             exit 1
