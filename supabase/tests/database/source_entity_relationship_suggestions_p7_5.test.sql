@@ -1,7 +1,7 @@
 begin;
 
 create extension if not exists pgtap with schema extensions;
-select plan(27);
+select plan(28);
 
 insert into public.sources (id,display_name,authority_tier,source_role,territory,languages,active) values
 ('76100000-0000-4000-8000-000000000001','P75 Official Studio',1,'PRODUCTION_HOUSE','IN',array['te','en'],true),
@@ -39,7 +39,7 @@ insert into public.entity_resolution_results (
 ('76500000-0000-4000-8000-000000000004','76400000-0000-4000-8000-000000000004','76300000-0000-4000-8000-000000000003',1.0000,'RESOLVED','[{"method":"SOURCE_ENTITY_SCOPE"}]','source-scope-resolver-v1','2026-10-02 04:02+00'),
 ('76500000-0000-4000-8000-000000000005','76400000-0000-4000-8000-000000000005','76300000-0000-4000-8000-000000000001',1.0000,'RESOLVED','[{"method":"CANONICAL_TITLE_ALIAS"}]','canonical-title-resolver-v1','2026-10-02 03:02+00'),
 ('76500000-0000-4000-8000-000000000006','76400000-0000-4000-8000-000000000006','76300000-0000-4000-8000-000000000001',1.0000,'RESOLVED','[{"method":"CANONICAL_TITLE_ALIAS"}]','canonical-title-resolver-v1','2026-10-02 03:32+00'),
-('76500000-0000-4000-8000-000000000007','76400000-0000-4000-8000-000000000007','76300000-0000-4000-8000-000000000004',1.0000,'RESOLVED','[{"method":"CANONICAL_TITLE_ALIAS"}]','canonical-title-resolver-v1','2026-10-02 02:02+00');
+('76500000-0000-4000-8000-000000000007','76400000-0000-4000-8000-000000000001','76300000-0000-4000-8000-000000000004',1.0000,'RESOLVED','[{"method":"CANONICAL_TITLE_ALIAS"}]','canonical-title-resolver-v1','2026-10-02 02:02+00');
 
 insert into public.source_entity_candidates (
   source_identity_id,entity_id,relationship,confidence,priority,valid_from,valid_to,active
