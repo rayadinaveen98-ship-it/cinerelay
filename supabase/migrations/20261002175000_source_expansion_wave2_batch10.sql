@@ -106,19 +106,27 @@ begin
   );
   perform public.seed_source_identity_runtime(v_identity, 'UU' || substring('UCXv0AGtxxRzxJ7lP1M2l4jA' from 3));
 
-  -- Attach Disney India to the already-reviewed Walt Disney parent rather
-  -- than creating a duplicate regional source brand.
+  -- Production already has this reviewed Tier-1 Walt Disney parent. Fresh
+  -- migration-only databases do not, so bootstrap the same parent shape only
+  -- when absent; never create a parallel "Disney India" source brand.
   select s.id into v_source
   from public.sources s
   where lower(s.display_name)=lower('The Walt Disney Company')
-    and s.active=true
-    and s.authority_tier=1
-    and s.source_role='PRODUCTION_HOUSE'
-  order by s.created_at
+  order by s.active desc, s.created_at
   limit 1;
 
   if v_source is null then
-    raise exception 'wave2_batch10_reviewed_disney_parent_missing';
+    insert into public.sources (
+      display_name, authority_tier, source_role, territory, languages, active, notes
+    ) values (
+      'The Walt Disney Company', 1, 'PRODUCTION_HOUSE', 'GLOBAL', array['en']::text[], true,
+      'Source Expansion Wave 2 Batch 10 bootstrap for the existing reviewed first-party Walt Disney parent.'
+    ) returning id into v_source;
+  elsif not exists (
+    select 1 from public.sources s
+    where s.id=v_source and s.active=true and s.authority_tier=1 and s.source_role='PRODUCTION_HOUSE'
+  ) then
+    raise exception 'wave2_batch10_parent_source_requires_review:The Walt Disney Company';
   end if;
 
   select source_identity_id into v_identity
