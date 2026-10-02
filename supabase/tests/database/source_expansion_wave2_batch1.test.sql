@@ -23,8 +23,7 @@ select is(
   (
     select count(*)::integer
     from public.source_identities si
-    join public.sources s on s.id = si.source_id
-    where s.display_name in ('Bollywood Hungama','Filmibeat','The Indian Express — Entertainment')
+    where si.connector_config->>'expansionWave' = 'wave2-batch1'
       and si.platform = 'RSS'
       and si.connector_type = 'RSS_ATOM'
       and si.access_mode = 'FEED'
@@ -39,11 +38,11 @@ select is(
     select count(*)::integer
     from public.feed_source_state fss
     join public.source_identities si on si.id = fss.source_identity_id
-    join public.sources s on s.id = si.source_id
-    where s.display_name in ('Bollywood Hungama','Filmibeat','The Indian Express — Entertainment')
+    where si.connector_config->>'expansionWave' = 'wave2-batch1'
+      and si.platform = 'RSS'
   ),
   12,
-  'all twelve RSS identities have feed runtime state'
+  'all twelve Batch 1 RSS identities have feed runtime state'
 );
 
 select is(
