@@ -9,7 +9,7 @@ const supabase = createClient(supabaseUrl, serviceRoleKey, {
   auth: { persistSession: false, autoRefreshToken: false },
 });
 
-type Action = 'youtube-enrichment' | 'process-raw-item' | 'youtube-fallback' | 'youtube-maintenance' | 'feed-poll' | 'page-poll' | 'ott-provider-detail' | 'threads-profile-poll' | 'instagram-business-poll' | 'x-profile-poll' | 'push-delivery' | 'source-activity-push' | 'digest-compose' | 'creator-radar' | 'evidence-summary' | 'source-discovery';
+type Action = 'youtube-enrichment' | 'process-raw-item' | 'youtube-fallback' | 'youtube-maintenance' | 'feed-poll' | 'page-poll' | 'ott-provider-detail' | 'threads-profile-poll' | 'instagram-business-poll' | 'x-profile-poll' | 'push-delivery' | 'source-activity-push' | 'digest-compose' | 'creator-radar' | 'evidence-summary' | 'source-discovery' | 'source-relationship-refresh';
 
 type DispatchTarget = {
   slug: string;
@@ -33,6 +33,7 @@ const TARGETS: Record<Action, DispatchTarget> = {
   'creator-radar': { slug: 'creator-radar-worker', body: { limit: 100 } },
   'evidence-summary': { slug: 'evidence-summary-worker', body: { limit: 100 } },
   'source-discovery': { slug: 'source-discovery-worker', body: { limit: 250, lookbackMinutes: 360 } },
+  'source-relationship-refresh': { slug: 'source-relationship-worker', body: { lookbackDays: 21 } },
 };
 
 function json(status: number, body: Record<string, unknown>): Response {
