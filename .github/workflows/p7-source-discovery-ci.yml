@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - 'supabase/functions/source-discovery-worker/**'
+      - 'supabase/functions/source-relationship-worker/**'
       - 'supabase/functions/cinerelay-scheduler-dispatch/**'
       - 'supabase/functions/cinerelay-source-discovery-api/**'
       - 'supabase/functions/cinerelay-source-relationship-api/**'
@@ -19,12 +20,15 @@ on:
       - 'supabase/tests/database/source_discovery_automation_p7_2.test.sql'
       - 'supabase/tests/database/source_identity_attachment_p7_4.test.sql'
       - 'supabase/tests/database/source_entity_relationship_suggestions_p7_5.test.sql'
+      - 'supabase/tests/database/source_entity_relationship_evidence_dedupe_p7_5.test.sql'
+      - 'supabase/tests/database/source_entity_relationship_scheduler_p7_5.test.sql'
       - '.github/workflows/p7-source-discovery-ci.yml'
   push:
     branches:
       - main
     paths:
       - 'supabase/functions/source-discovery-worker/**'
+      - 'supabase/functions/source-relationship-worker/**'
       - 'supabase/functions/cinerelay-scheduler-dispatch/**'
       - 'supabase/functions/cinerelay-source-discovery-api/**'
       - 'supabase/functions/cinerelay-source-relationship-api/**'
@@ -40,6 +44,8 @@ on:
       - 'supabase/tests/database/source_discovery_automation_p7_2.test.sql'
       - 'supabase/tests/database/source_identity_attachment_p7_4.test.sql'
       - 'supabase/tests/database/source_entity_relationship_suggestions_p7_5.test.sql'
+      - 'supabase/tests/database/source_entity_relationship_evidence_dedupe_p7_5.test.sql'
+      - 'supabase/tests/database/source_entity_relationship_scheduler_p7_5.test.sql'
       - '.github/workflows/p7-source-discovery-ci.yml'
 
 concurrency:
@@ -60,6 +66,8 @@ jobs:
           deno-version: v2.x
       - name: Type-check source-discovery-worker
         run: deno check --config supabase/functions/source-discovery-worker/deno.json supabase/functions/source-discovery-worker/index.ts
+      - name: Type-check source-relationship-worker
+        run: deno check --config supabase/functions/source-relationship-worker/deno.json supabase/functions/source-relationship-worker/index.ts
       - name: Type-check scheduler dispatcher
         run: deno check --config supabase/functions/cinerelay-scheduler-dispatch/deno.json supabase/functions/cinerelay-scheduler-dispatch/index.ts
       - name: Type-check source-discovery operator API
@@ -70,7 +78,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          for fn in source-discovery-worker cinerelay-scheduler-dispatch cinerelay-source-discovery-api cinerelay-source-relationship-api; do
+          for fn in source-discovery-worker source-relationship-worker cinerelay-scheduler-dispatch cinerelay-source-discovery-api cinerelay-source-relationship-api; do
             mkdir -p "p7-edge-deploy/$fn"
             npx --yes esbuild@0.25.9 "supabase/functions/$fn/index.ts" \
               --bundle \
