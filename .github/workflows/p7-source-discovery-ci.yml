@@ -6,13 +6,19 @@ on:
       - 'supabase/functions/source-discovery-worker/**'
       - 'supabase/functions/cinerelay-scheduler-dispatch/**'
       - 'supabase/functions/cinerelay-source-discovery-api/**'
+      - 'supabase/functions/cinerelay-source-relationship-api/**'
       - 'apps/web/src/pages/SourceDiscoveryWorkflow.tsx'
+      - 'apps/web/src/pages/SourceEntityRelationshipWorkflow.tsx'
+      - 'apps/web/src/pages/OperationsPage.tsx'
       - 'apps/web/src/lib/source-discovery-api.ts'
+      - 'apps/web/src/lib/source-relationship-api.ts'
       - 'supabase/migrations/**p7_2_source_discovery**'
       - 'supabase/migrations/**p7_2_automatic_source_discovery**'
       - 'supabase/migrations/**p7_4_operator_identity_attachment**'
+      - 'supabase/migrations/**p7_5_source_entity_relationship**'
       - 'supabase/tests/database/source_discovery_automation_p7_2.test.sql'
       - 'supabase/tests/database/source_identity_attachment_p7_4.test.sql'
+      - 'supabase/tests/database/source_entity_relationship_suggestions_p7_5.test.sql'
       - '.github/workflows/p7-source-discovery-ci.yml'
   push:
     branches:
@@ -21,13 +27,19 @@ on:
       - 'supabase/functions/source-discovery-worker/**'
       - 'supabase/functions/cinerelay-scheduler-dispatch/**'
       - 'supabase/functions/cinerelay-source-discovery-api/**'
+      - 'supabase/functions/cinerelay-source-relationship-api/**'
       - 'apps/web/src/pages/SourceDiscoveryWorkflow.tsx'
+      - 'apps/web/src/pages/SourceEntityRelationshipWorkflow.tsx'
+      - 'apps/web/src/pages/OperationsPage.tsx'
       - 'apps/web/src/lib/source-discovery-api.ts'
+      - 'apps/web/src/lib/source-relationship-api.ts'
       - 'supabase/migrations/**p7_2_source_discovery**'
       - 'supabase/migrations/**p7_2_automatic_source_discovery**'
       - 'supabase/migrations/**p7_4_operator_identity_attachment**'
+      - 'supabase/migrations/**p7_5_source_entity_relationship**'
       - 'supabase/tests/database/source_discovery_automation_p7_2.test.sql'
       - 'supabase/tests/database/source_identity_attachment_p7_4.test.sql'
+      - 'supabase/tests/database/source_entity_relationship_suggestions_p7_5.test.sql'
       - '.github/workflows/p7-source-discovery-ci.yml'
 
 concurrency:
@@ -52,11 +64,13 @@ jobs:
         run: deno check --config supabase/functions/cinerelay-scheduler-dispatch/deno.json supabase/functions/cinerelay-scheduler-dispatch/index.ts
       - name: Type-check source-discovery operator API
         run: deno check --config supabase/functions/cinerelay-source-discovery-api/deno.json supabase/functions/cinerelay-source-discovery-api/index.ts
+      - name: Type-check source-relationship operator API
+        run: deno check --config supabase/functions/cinerelay-source-relationship-api/deno.json supabase/functions/cinerelay-source-relationship-api/index.ts
       - name: Build deployment-native P7 Edge bundle
         shell: bash
         run: |
           set -euo pipefail
-          for fn in source-discovery-worker cinerelay-scheduler-dispatch cinerelay-source-discovery-api; do
+          for fn in source-discovery-worker cinerelay-scheduler-dispatch cinerelay-source-discovery-api cinerelay-source-relationship-api; do
             mkdir -p "p7-edge-deploy/$fn"
             npx --yes esbuild@0.25.9 "supabase/functions/$fn/index.ts" \
               --bundle \
@@ -92,7 +106,7 @@ jobs:
         run: npm --prefix apps/web install --no-audit --no-fund --ignore-scripts
       - name: Build operator console
         run: npm --prefix apps/web run build
-      - name: Verify officiality and identity lifecycle surfaces are in browser artifact
+      - name: Verify officiality, identity lifecycle, and relationship surfaces are in browser artifact
         shell: bash
         run: |
           set -euo pipefail
@@ -102,6 +116,9 @@ jobs:
           grep -R -F 'Attach inactive identity' apps/web/dist/assets --include='*.js'
           grep -R -F 'Activate connector identity' apps/web/dist/assets --include='*.js'
           grep -R -F 'X provider polling is intentionally paused' apps/web/dist/assets --include='*.js'
+          grep -R -F 'Title/source relationship suggestions' apps/web/dist/assets --include='*.js'
+          grep -R -F 'Approve time-bounded relationship' apps/web/dist/assets --include='*.js'
+          grep -R -F 'SOURCE_SCOPE_RESOLUTIONS_EXCLUDED' apps/web/dist/assets --include='*.js'
           if grep -R -E 'SUPABASE_SERVICE_ROLE_KEY|CINERELAY_INTERNAL_ADMIN_SECRET' apps/web/dist; then
             echo 'Forbidden privileged credential marker found in P7 browser bundle' >&2
             exit 1
