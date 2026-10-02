@@ -27,7 +27,7 @@ as $$
       coalesce(ri.published_at, ri.first_seen_at) as observed_at,
       s.source_role,
       row_number() over (
-        partition by ri.id
+        partition by ri.id, err.entity_id
         order by err.created_at desc, err.score desc, err.id desc
       ) as resolution_rank
     from public.entity_resolution_results err
@@ -90,7 +90,7 @@ as $$
       'evidenceCount', a.evidence_count,
       'lastEvidenceAt', a.last_evidence_at,
       'resolutionEngine', 'canonical-title-resolver-v1',
-      'resolutionRowPolicy', 'LATEST_PER_RAW_ITEM',
+      'resolutionRowPolicy', 'LATEST_PER_RAW_ITEM_ENTITY',
       'relationship', 'PROJECT_COVERAGE',
       'trustMutation', 'PROPOSAL_ONLY',
       'proposalVersion', 'p7.5-source-entity-v2',
@@ -167,9 +167,8 @@ begin
       err.id as resolution_result_id,
       err.score::numeric(5,4) as resolution_score,
       coalesce(ri.published_at, ri.first_seen_at) as observed_at,
-      err.entity_id,
       row_number() over (
-        partition by ri.id
+        partition by p.id, ri.id
         order by err.created_at desc, err.score desc, err.id desc
       ) as resolution_rank
     from public.raw_items ri
@@ -179,6 +178,7 @@ begin
     join public.entities e on e.id = err.entity_id and e.status = 'ACTIVE'
     join public.source_entity_relationship_proposals p
       on p.source_identity_id = ri.source_identity_id
+     and p.entity_id = err.entity_id
     where p.status in ('OPEN','STALE','APPROVED')
       and s.source_role in ('PRODUCTION_HOUSE','MUSIC_LABEL','OTT_PLATFORM','PROJECT_OFFICIAL')
       and e.entity_type in ('MOVIE','SERIES','SEASON')
@@ -189,7 +189,6 @@ begin
   ), eligible_evidence as (
     select re.proposal_id, re.raw_item_id, re.resolution_result_id, re.resolution_score, re.observed_at
     from ranked_evidence re
-    join public.source_entity_relationship_proposals p on p.id = re.proposal_id and p.entity_id = re.entity_id
     where re.resolution_rank = 1
   )
   insert into public.source_entity_relationship_evidence (
