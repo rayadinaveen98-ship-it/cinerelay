@@ -7,11 +7,13 @@ declare
   r record;
 begin
   -- Strengthen two existing Tier-1 label parents with official regional lanes.
+  -- Hosted production already has these reviewed parents; fresh migration-only
+  -- databases do not, so bootstrap the same Tier-1 label shape only when absent.
   for r in
     select * from (values
-      ('Think Music India','UC9Z3ZrgSyFA75VQ5HpqSbtA','@thinkmusic_kannada',array['kn']::text[],'THINK_MUSIC_KANNADA'),
-      ('Aditya Music','UCo_iDY0qQ4d4ad3zRAZtPsg','@AdityaMusicTamil',array['ta']::text[],'ADITYA_MUSIC_TAMIL')
-    ) as v(source_name, channel_id, handle, languages, lane)
+      ('Think Music India','UC9Z3ZrgSyFA75VQ5HpqSbtA','@thinkmusic_kannada',array['kn']::text[],array['ta','te','kn','ml','en']::text[],'THINK_MUSIC_KANNADA'),
+      ('Aditya Music','UCo_iDY0qQ4d4ad3zRAZtPsg','@AdityaMusicTamil',array['ta']::text[],array['te','ta','en']::text[],'ADITYA_MUSIC_TAMIL')
+    ) as v(source_name, channel_id, handle, languages, parent_languages, lane)
   loop
     select s.id into v_source
     from public.sources s
@@ -19,7 +21,14 @@ begin
     order by s.active desc, s.created_at
     limit 1;
 
-    if v_source is null or not exists (
+    if v_source is null then
+      insert into public.sources (
+        display_name, authority_tier, source_role, territory, languages, active, notes
+      ) values (
+        r.source_name, 1, 'MUSIC_LABEL', 'IN', r.parent_languages, true,
+        'Source Expansion Wave 2 Batch 15 bootstrap for the existing reviewed Tier-1 music-label parent.'
+      ) returning id into v_source;
+    elsif not exists (
       select 1 from public.sources s
       where s.id=v_source and s.active=true and s.authority_tier=1 and s.source_role='MUSIC_LABEL'
     ) then
