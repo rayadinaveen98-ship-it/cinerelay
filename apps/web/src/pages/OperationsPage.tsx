@@ -3,6 +3,7 @@ import { fetchConsoleOperations } from '../lib/console-api';
 import { PushReadinessPanel } from './PushReadinessPanel';
 import { ReviewWorkflow } from './ReviewWorkflow';
 import { SourceDiscoveryWorkflow } from './SourceDiscoveryWorkflow';
+import { SourceEntityRelationshipWorkflow } from './SourceEntityRelationshipWorkflow';
 
 function fmt(value: string | null | undefined) {
   return value ? new Date(value).toLocaleString() : '—';
@@ -90,6 +91,7 @@ export function OperationsPage() {
         </div>
       </section>
 
+      <SourceEntityRelationshipWorkflow />
       <SourceDiscoveryWorkflow />
       <ReviewWorkflow />
     </div>
