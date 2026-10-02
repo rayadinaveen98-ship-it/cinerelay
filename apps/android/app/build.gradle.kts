@@ -41,8 +41,8 @@ android {
         applicationId = "com.cinerelay.app"
         minSdk = 26
         targetSdk = 36
-        versionCode = configuredVersionCode ?: 210002
-        versionName = configuredVersionName ?: "0.2.2"
+        versionCode = configuredVersionCode ?: 210003
+        versionName = configuredVersionName ?: "0.2.3"
 
         buildConfigField("String", "SUPABASE_URL", "\"${publicConfig("CINERELAY_SUPABASE_URL", "https://dnqaejljfzwhsainpdxb.supabase.co")}\"")
         buildConfigField("String", "SUPABASE_PUBLISHABLE_KEY", "\"${publicConfig("CINERELAY_SUPABASE_PUBLISHABLE_KEY", "sb_publishable_hR65p2JkQ2x5fFLx_kkcNQ_1SxNN3QP")}\"")
@@ -115,4 +115,6 @@ dependencies {
 
     implementation(platform("com.google.firebase:firebase-bom:34.19.0"))
     implementation("com.google.firebase:firebase-messaging")
+
+    testImplementation("junit:junit:4.13.2")
 }
