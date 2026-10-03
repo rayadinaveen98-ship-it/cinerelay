@@ -14,7 +14,6 @@ import com.cinerelay.app.data.PushState
 import com.cinerelay.app.push.PushManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -215,11 +214,10 @@ class CineRelayViewModel(application: Application) : AndroidViewModel(applicatio
                                 val events = async { backend.eventFeed("radar", limit = 80, allowGuest = true) }
                                 val youtube = async { backend.newsroom(NewsroomPlatform.YOUTUBE.name, limit = 70) }
                                 val web = async { backend.newsroom(NewsroomPlatform.WEB.name, limit = 50) }
-                                val (youtubeItems, webItems) = awaitAll(youtube, web)
                                 LoadResult.Radar(
                                     events = events.await(),
-                                    youtube = youtubeItems as List<NewsroomSignal>,
-                                    web = webItems as List<NewsroomSignal>,
+                                    youtube = youtube.await(),
+                                    web = web.await(),
                                 )
                             }
                         }
@@ -238,7 +236,7 @@ class CineRelayViewModel(application: Application) : AndroidViewModel(applicatio
                         }
                         latestNewsroomSignals = selectedLane
                         app.homeCache.write(
-                            userId = existingSession?.userId ?: backend.currentSession()?.userId.orEmpty(),
+                            userId = backend.currentSession()?.userId.orEmpty(),
                             youtube = result.youtube,
                             web = result.web,
                         )
