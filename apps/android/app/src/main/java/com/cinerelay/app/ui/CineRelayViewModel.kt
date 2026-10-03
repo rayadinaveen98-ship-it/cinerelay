@@ -66,7 +66,6 @@ class CineRelayViewModel(application: Application) : AndroidViewModel(applicatio
 
     init {
         if (_state.value.authenticated) {
-            loadCachedHome()
             refreshAll()
         }
     }
