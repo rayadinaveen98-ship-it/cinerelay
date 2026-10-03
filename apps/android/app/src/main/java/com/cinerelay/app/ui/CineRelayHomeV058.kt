@@ -106,7 +106,7 @@ fun CineRelayHomeV058(
             .distinctBy { it.key }
             .sortedWith(
                 compareByDescending<HomeStoryV059> {
-                    homeHeroScoreV066(it) + if (it.key in favoriteKeys) 80 else 0
+                    homeHeroScoreV066(it, personalization.favoriteLanguages) + if (it.key in favoriteKeys) 80 else 0
                 }.thenByDescending { homeSignalInstantV059(it.representative) },
             )
         ranked.filter { !it.representative.thumbnailUrl.isNullOrBlank() }
@@ -150,9 +150,9 @@ fun CineRelayHomeV058(
                     if (rails.isEmpty() && !state.loading) {
                         item {
                             Column(Modifier.fillMaxWidth().padding(horizontal = 22.dp, vertical = 24.dp)) {
-                                Text("You're caught up", color = Home58Text, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                                Text("Nothing new yet", color = Home58Text, fontSize = 20.sp, fontWeight = FontWeight.Bold)
                                 Spacer(Modifier.height(6.dp))
-                                Text("Pull down anytime. CineRelay will check your favorites and trusted movie sources for something new.", color = Home58Muted, fontSize = 13.sp, lineHeight = 19.sp)
+                                Text("Pull down to check for fresh movie and OTT updates.", color = Home58Muted, fontSize = 13.sp, lineHeight = 19.sp)
                             }
                         }
                     }
@@ -162,7 +162,7 @@ fun CineRelayHomeV058(
 
             HomeArchiveFloatingV060(
                 onOpenArchive = onOpenArchive,
-                modifier = Modifier.align(Alignment.BottomStart).padding(start = 16.dp, bottom = 96.dp),
+                modifier = Modifier.align(Alignment.BottomStart).padding(start = 14.dp, bottom = 96.dp),
             )
         }
     }
@@ -354,24 +354,19 @@ private fun HomeHeroEmptyV058(favoriteSources: List<PersonalizationSource>) {
 private fun HomeArchiveFloatingV060(onOpenArchive: () -> Unit, modifier: Modifier = Modifier) {
     Surface(
         color = Home58Panel.copy(alpha = 0.96f),
-        shape = RoundedCornerShape(16.dp),
+        shape = CircleShape,
         shadowElevation = 8.dp,
-        modifier = modifier.clickable(onClick = onOpenArchive),
+        modifier = modifier
+            .size(48.dp)
+            .clickable(onClick = onOpenArchive),
     ) {
-        Row(
-            modifier = Modifier.padding(start = 10.dp, end = 14.dp, top = 9.dp, bottom = 9.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Surface(color = Home58Gold.copy(alpha = 0.14f), shape = RoundedCornerShape(11.dp), modifier = Modifier.size(34.dp)) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(Icons.Default.Archive, contentDescription = null, tint = Home58Gold, modifier = Modifier.size(18.dp))
-                }
-            }
-            Spacer(Modifier.width(9.dp))
-            Column {
-                Text("Archive", color = Home58Text, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                Text("Past updates", color = Home58Muted, fontSize = 9.sp)
-            }
+        Box(contentAlignment = Alignment.Center) {
+            Icon(
+                Icons.Default.Archive,
+                contentDescription = "Open archive",
+                tint = Home58Gold,
+                modifier = Modifier.size(21.dp),
+            )
         }
     }
 }
@@ -464,13 +459,15 @@ private fun buildHomeRailsV059(
     add("Just In", stories.take(24))
 
     val labels = linkedMapOf(
-        "te" to "Latest Telugu Updates",
-        "hi" to "Latest Hindi Updates",
+        "te" to "Telugu Cinema",
+        "hi" to "Hindi Cinema",
         "ta" to "Tamil Cinema",
         "ml" to "Malayalam Cinema",
         "kn" to "Kannada Cinema",
         "en" to "English & International",
     )
+    val indianLanguages = setOf("te", "ta", "ml", "kn", "hi")
+    add("Indian Cinema", stories.filter { story -> story.updates.any { it.languageCode?.lowercase(Locale.ENGLISH) in indianLanguages } }, minimum = 3, limit = 24)
     val languageOrder = (favoriteLanguages.filter { it in labels.keys } + labels.keys).distinct()
     for (code in languageOrder) add(labels.getValue(code), stories.filter { story -> story.updates.any { it.languageCode?.lowercase() == code } })
 
@@ -594,9 +591,12 @@ private fun homeRepresentativeScoreV059(signal: NewsroomSignal): Int {
     return score
 }
 
-private fun homeHeroScoreV066(story: HomeStoryV059): Int {
+private fun homeHeroScoreV066(story: HomeStoryV059, favoriteLanguages: Set<String>): Int {
     val signal = story.representative
     var score = 0
+    val language = (signal.languageCode ?: signal.canonicalEvent?.primaryLanguage)?.lowercase(Locale.ENGLISH)
+    if (language != null && language in favoriteLanguages.map { it.lowercase(Locale.ENGLISH) }) score += 34
+    if (language in setOf("te", "ta", "ml", "kn", "hi")) score += 8
     if (!signal.thumbnailUrl.isNullOrBlank()) score += 32
     score += story.officialSourceCount.coerceAtMost(3) * 18
     score += story.sourceCount.coerceAtMost(4) * 8
@@ -608,6 +608,7 @@ private fun homeHeroScoreV066(story: HomeStoryV059): Int {
     }
     val radar = signal.canonicalEvent?.radar
     if (radar != null && radar.label != "NO_ACTION") score += radar.score.coerceIn(0, 100) / 4
+    if (signal.source.role == "MUSIC_LABEL" && !signal.title.hasAnyV058("trailer", "teaser", "glimpse", "announcement", "poster")) score -= 18
     val ageHours = Duration.between(homeSignalInstantV059(signal), Instant.now()).toHours().coerceAtLeast(0)
     score += when {
         ageHours <= 2 -> 24
