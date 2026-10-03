@@ -8,6 +8,8 @@ import com.cinerelay.app.data.ApiException
 import com.cinerelay.app.data.OttProvider
 import com.cinerelay.app.data.OttRelease
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -85,31 +87,39 @@ class OttViewModelV054(application: Application) : AndroidViewModel(application)
             val request = _state.value
             runCatching {
                 withContext(Dispatchers.IO) {
-                    val todayFeed = client.ott(
-                        window = OttWindow.TODAY.apiValue,
-                        providerCode = request.providerCode,
-                        language = request.language,
-                        contentType = request.contentType.apiValue,
-                        evidenceStatus = request.evidence.apiValue,
-                        limit = 75,
-                    )
-                    val upcomingFeed = client.ott(
-                        window = OttWindow.UPCOMING.apiValue,
-                        providerCode = request.providerCode,
-                        language = request.language,
-                        contentType = request.contentType.apiValue,
-                        evidenceStatus = request.evidence.apiValue,
-                        limit = 100,
-                    )
-                    val releasedFeed = client.ott(
-                        window = OttWindow.RELEASED.apiValue,
-                        providerCode = request.providerCode,
-                        language = request.language,
-                        contentType = request.contentType.apiValue,
-                        evidenceStatus = request.evidence.apiValue,
-                        limit = 100,
-                    )
-                    Triple(todayFeed, upcomingFeed, releasedFeed)
+                    coroutineScope {
+                        val todayRequest = async {
+                            client.ott(
+                                window = OttWindow.TODAY.apiValue,
+                                providerCode = request.providerCode,
+                                language = request.language,
+                                contentType = request.contentType.apiValue,
+                                evidenceStatus = request.evidence.apiValue,
+                                limit = 60,
+                            )
+                        }
+                        val upcomingRequest = async {
+                            client.ott(
+                                window = OttWindow.UPCOMING.apiValue,
+                                providerCode = request.providerCode,
+                                language = request.language,
+                                contentType = request.contentType.apiValue,
+                                evidenceStatus = request.evidence.apiValue,
+                                limit = 80,
+                            )
+                        }
+                        val releasedRequest = async {
+                            client.ott(
+                                window = OttWindow.RELEASED.apiValue,
+                                providerCode = request.providerCode,
+                                language = request.language,
+                                contentType = request.contentType.apiValue,
+                                evidenceStatus = request.evidence.apiValue,
+                                limit = 80,
+                            )
+                        }
+                        Triple(todayRequest.await(), upcomingRequest.await(), releasedRequest.await())
+                    }
                 }
             }.onSuccess { (todayFeed, upcomingFeed, releasedFeed) ->
                 val todayIso = todayFeed.today ?: upcomingFeed.today ?: releasedFeed.today
