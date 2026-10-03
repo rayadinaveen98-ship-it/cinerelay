@@ -7,6 +7,7 @@ import com.cinerelay.app.CineRelayApplication
 import com.cinerelay.app.data.ApiException
 import com.cinerelay.app.data.ConsumerDeepLinkTarget
 import com.cinerelay.app.data.OnThisDayMovie
+import com.cinerelay.app.data.OnThisDaySnapshot
 import com.cinerelay.app.data.PersonalizationState
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
