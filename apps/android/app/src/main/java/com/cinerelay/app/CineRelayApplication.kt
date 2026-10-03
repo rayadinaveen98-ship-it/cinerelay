@@ -8,6 +8,7 @@ import com.cinerelay.app.data.BackendClient
 import com.cinerelay.app.data.ConsumerClient
 import com.cinerelay.app.data.EvidenceClient
 import com.cinerelay.app.data.IntelligenceClient
+import com.cinerelay.app.data.HomeCache
 import com.cinerelay.app.data.OnThisDayClient
 import com.cinerelay.app.data.OttCalendarClient
 import com.cinerelay.app.data.SessionStore
@@ -18,6 +19,8 @@ class CineRelayApplication : Application() {
     lateinit var sessionStore: SessionStore
         private set
     lateinit var backendClient: BackendClient
+        private set
+    lateinit var homeCache: HomeCache
         private set
     lateinit var evidenceClient: EvidenceClient
         private set
@@ -36,6 +39,7 @@ class CineRelayApplication : Application() {
         super.onCreate()
         sessionStore = SessionStore(this)
         backendClient = BackendClient(sessionStore)
+        homeCache = HomeCache(this)
         evidenceClient = EvidenceClient(sessionStore, backendClient)
         intelligenceClient = IntelligenceClient(sessionStore, backendClient)
         ottCalendarClient = OttCalendarClient(sessionStore, backendClient)
