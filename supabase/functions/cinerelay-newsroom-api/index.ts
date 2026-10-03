@@ -314,6 +314,12 @@ async function newsroom(
     const ingestedAt = raw.first_seen_at ?? raw.created_at;
     const sourceArtworkUrl = artworkUrlOf(identity.connector_config);
     const thumbnailUrl = thumbnailUrlOf(raw.metadata);
+    const sourceLanguages = Array.isArray(source.languages) ? source.languages : [];
+    const effectiveLanguageCode =
+      stringValue(raw.language_code)?.toLowerCase() ??
+      stringValue(entity?.primary_language)?.toLowerCase() ??
+      sourceLanguages.find((value) => typeof value === 'string' && value.trim().length > 0)?.trim().toLowerCase() ??
+      null;
     const canonicalEvent = event ? {
       id: event.id,
       entityId: event.primary_entity_id,
@@ -357,7 +363,7 @@ async function newsroom(
       },
       itemType: raw.item_type ?? null,
       mediaType: raw.media_type ?? null,
-      languageCode: raw.language_code ?? null,
+      languageCode: effectiveLanguageCode,
       title: raw.raw_title ?? 'Untitled source update',
       text: raw.raw_text ?? null,
       thumbnailUrl,
