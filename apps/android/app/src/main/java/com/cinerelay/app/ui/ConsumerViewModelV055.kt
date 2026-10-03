@@ -9,6 +9,8 @@ import com.cinerelay.app.data.ConsumerDeepLinkTarget
 import com.cinerelay.app.data.OnThisDayMovie
 import com.cinerelay.app.data.PersonalizationState
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -76,21 +78,48 @@ class ConsumerViewModelV055(application: Application) : AndroidViewModel(applica
 
         viewModelScope.launch {
             _state.value = _state.value.copy(onThisDayLoading = true, onThisDayError = null)
-            runCatching { withContext(Dispatchers.IO) { onThisDay.load(date = date) } }
-                .onSuccess { snapshot ->
-                    _state.value = _state.value.copy(
-                        onThisDayLoading = false,
-                        onThisDayDate = snapshot.selectedDate,
-                        onThisDayMovies = snapshot.movies,
-                        onThisDayError = null,
-                    )
+            runCatching {
+                withContext(Dispatchers.IO) {
+                    coroutineScope {
+                        val preferredLanguage = _state.value.personalization?.favoriteLanguages
+                            ?.firstOrNull()
+                            ?.trim()
+                            ?.lowercase()
+                            ?.takeIf { it.isNotBlank() }
+                            ?: "te"
+                        val allRequest = async {
+                            runCatching { onThisDay.load(date = date, limit = 60) }
+                        }
+                        val preferredRequest = async {
+                            runCatching { onThisDay.load(date = date, language = preferredLanguage, limit = 40) }.getOrNull()
+                        }
+                        val allSnapshot = allRequest.await().getOrElse { error ->
+                            preferredRequest.await() ?: throw error
+                        }
+                        val preferredSnapshot = preferredRequest.await()
+                        val merged = buildList {
+                            preferredSnapshot?.movies?.let(::addAll)
+                            addAll(allSnapshot.movies)
+                        }.distinctBy { it.id }.take(100)
+                        OnThisDaySnapshot(
+                            selectedDate = allSnapshot.selectedDate,
+                            movies = merged,
+                        )
+                    }
                 }
-                .onFailure {
-                    _state.value = _state.value.copy(
-                        onThisDayLoading = false,
-                        onThisDayError = "Cinema history is temporarily unavailable.",
-                    )
-                }
+            }.onSuccess { snapshot ->
+                _state.value = _state.value.copy(
+                    onThisDayLoading = false,
+                    onThisDayDate = snapshot.selectedDate,
+                    onThisDayMovies = snapshot.movies,
+                    onThisDayError = null,
+                )
+            }.onFailure {
+                _state.value = _state.value.copy(
+                    onThisDayLoading = false,
+                    onThisDayError = "Cinema history is temporarily unavailable.",
+                )
+            }
         }
     }
 
