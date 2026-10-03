@@ -13,6 +13,8 @@ import com.cinerelay.app.data.NewsroomSignal
 import com.cinerelay.app.data.PushState
 import com.cinerelay.app.push.PushManager
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -63,7 +65,10 @@ class CineRelayViewModel(application: Application) : AndroidViewModel(applicatio
     val state: StateFlow<CineRelayUiState> = _state.asStateFlow()
 
     init {
-        if (_state.value.authenticated) refreshAll()
+        if (_state.value.authenticated) {
+            loadCachedHome()
+            refreshAll()
+        }
     }
 
     fun openAuth(mode: AuthMode = AuthMode.SIGN_IN) {
@@ -197,16 +202,24 @@ class CineRelayViewModel(application: Application) : AndroidViewModel(applicatio
                 withContext(Dispatchers.IO) {
                     when (_state.value.tab) {
                         AppTab.LIVE -> {
-                            val youtube = backend.newsroom(NewsroomPlatform.YOUTUBE.name, limit = 100)
-                            val web = backend.newsroom(NewsroomPlatform.WEB.name, limit = 80)
-                            LoadResult.Home(youtube = youtube, web = web)
+                            coroutineScope {
+                                val youtube = async { backend.newsroom(NewsroomPlatform.YOUTUBE.name, limit = 70) }
+                                val web = async { backend.newsroom(NewsroomPlatform.WEB.name, limit = 50) }
+                                LoadResult.Home(youtube = youtube.await(), web = web.await())
+                            }
                         }
                         AppTab.FOLLOWING -> LoadResult.Events(backend.eventFeed("following"))
                         AppTab.RADAR -> {
-                            val events = backend.eventFeed("radar", limit = 80, allowGuest = true)
-                            val youtube = backend.newsroom(NewsroomPlatform.YOUTUBE.name, limit = 100)
-                            val web = backend.newsroom(NewsroomPlatform.WEB.name, limit = 80)
-                            LoadResult.Radar(events = events, youtube = youtube, web = web)
+                            coroutineScope {
+                                val events = async { backend.eventFeed("radar", limit = 80, allowGuest = true) }
+                                val youtube = async { backend.newsroom(NewsroomPlatform.YOUTUBE.name, limit = 70) }
+                                val web = async { backend.newsroom(NewsroomPlatform.WEB.name, limit = 50) }
+                                LoadResult.Radar(
+                                    events = events.await(),
+                                    youtube = youtube.await(),
+                                    web = web.await(),
+                                )
+                            }
                         }
                         AppTab.ALERTS -> LoadResult.Alerts(backend.alerts())
                     }
@@ -222,6 +235,11 @@ class CineRelayViewModel(application: Application) : AndroidViewModel(applicatio
                             NewsroomPlatform.X -> emptyList()
                         }
                         latestNewsroomSignals = selectedLane
+                        app.homeCache.write(
+                            userId = backend.currentSession()?.userId.orEmpty(),
+                            youtube = result.youtube,
+                            web = result.web,
+                        )
                         current.copy(
                             loading = false,
                             homeSignals = combined,
@@ -317,6 +335,7 @@ class CineRelayViewModel(application: Application) : AndroidViewModel(applicatio
     }
 
     private fun refreshAll() {
+        if (!_state.value.authenticated) return
         viewModelScope.launch {
             runCatching { withContext(Dispatchers.IO) { backend.bootstrap() } }
                 .onSuccess { bootstrap ->
@@ -326,11 +345,37 @@ class CineRelayViewModel(application: Application) : AndroidViewModel(applicatio
                         bootstrap = bootstrap,
                         error = null,
                     )
-                    refreshPushState()
-                    refresh()
                 }
-                .onFailure(::handleFailure)
+                .onFailure { error ->
+                    if (error is ApiException && error.statusCode == 401) handleFailure(error)
+                }
         }
+        refreshPushState()
+        refresh()
+    }
+
+    private fun loadCachedHome() {
+        val userId = backend.currentSession()?.userId?.trim().orEmpty()
+        if (userId.isBlank()) return
+        val cached = app.homeCache.read(userId) ?: return
+        val current = _state.value
+        val selectedLane = when (current.newsroomPlatform) {
+            NewsroomPlatform.YOUTUBE -> cached.youtube
+            NewsroomPlatform.WEB -> cached.web
+            NewsroomPlatform.X -> emptyList()
+        }
+        latestNewsroomSignals = selectedLane
+        _state.value = current.copy(
+            homeSignals = combineHomeSignals(cached.youtube, cached.web),
+            newsroomFilterCounts = newsroomCounts(selectedLane),
+            newsroomSourceRoleCounts = newsroomSourceRoleCounts(selectedLane),
+            newsroomSignals = filterNewsroom(
+                selectedLane,
+                current.newsroomFilter,
+                current.newsroomSourceRole,
+                current.newsroomPlatform,
+            ),
+        )
     }
 
     private fun refreshPushState() {

@@ -98,7 +98,7 @@ fun OnThisDayV057(
                             Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = HistoryText)
                         }
                         Column(Modifier.weight(1f)) {
-                            Text("CINEMA TIME MACHINE", color = HistoryGold, fontSize = 9.sp, fontWeight = FontWeight.Black, letterSpacing = 1.5.sp)
+                            Text("INDIAN CINEMA HISTORY", color = HistoryGold, fontSize = 9.sp, fontWeight = FontWeight.Black, letterSpacing = 1.5.sp)
                             Text("Today in Cinema", color = HistoryText, fontSize = 24.sp, fontWeight = FontWeight.Bold)
                         }
                         TextButton(onClick = onToday) {
@@ -147,10 +147,10 @@ fun OnThisDayV057(
                                 ) {
                                     Box(Modifier.size(9.dp).clip(CircleShape).background(HistoryGold))
                                     Spacer(Modifier.height(12.dp))
-                                    Text("No exact-date releases found", color = HistoryText, fontSize = 19.sp, fontWeight = FontWeight.Bold)
+                                    Text("Nothing found for this date yet", color = HistoryText, fontSize = 19.sp, fontWeight = FontWeight.Bold)
                                     Spacer(Modifier.height(7.dp))
                                     Text(
-                                        "Our catalog does not have a verified exact release date for this day yet. Use the quick jumps or explore the day before.",
+                                        "We don’t have a confirmed release for this date yet. Try another day or use the quick jumps.",
                                         color = HistoryMuted,
                                         fontSize = 12.sp,
                                         lineHeight = 18.sp,
@@ -398,7 +398,11 @@ private fun OnThisDayMovieRowV070(movie: OnThisDayMovie, modifier: Modifier = Mo
     }
 }
 
-private fun historyVerificationLabelV070(value: String): String = value
+private fun historyVerificationLabelV070(value: String): String = when (value.uppercase(Locale.ENGLISH)) {
+    "VERIFIED", "CONFIRMED", "OFFICIAL" -> "Confirmed"
+    "UNVERIFIED", "UNKNOWN" -> "Needs checking"
+    else -> value.lowercase(Locale.ENGLISH).replace('_', ' ').replaceFirstChar { it.titlecase(Locale.ENGLISH) }
+}
     .lowercase(Locale.ENGLISH)
     .split('_')
     .filter { it.isNotBlank() }

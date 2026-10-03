@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -171,7 +172,7 @@ fun OttReleasesV054(
                                 title = "This Weekend",
                                 subtitle = ottWeekendLabelV060(state.weekendStart, state.weekendEnd),
                                 items = state.weekendItems,
-                                emptyMessage = "No confirmed or reported releases are mapped to this weekend yet.",
+                                emptyMessage = "No confirmed releases listed for this weekend yet.",
                             )
                         }
                         item {
@@ -214,19 +215,19 @@ private fun OttOverviewV069(state: OttUiState) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
-                    Text("OTT RELEASE INTELLIGENCE", color = OttGold, fontSize = 9.sp, fontWeight = FontWeight.Black, letterSpacing = 1.1.sp)
-                    Text("What should I watch next?", color = OttText, fontSize = 19.sp, fontWeight = FontWeight.Bold)
+                    Text("OTT RELEASES", color = OttGold, fontSize = 9.sp, fontWeight = FontWeight.Black, letterSpacing = 1.1.sp)
+                    Text("What’s new on streaming?", color = OttText, fontSize = 19.sp, fontWeight = FontWeight.Bold)
                 }
                 Surface(color = OttGreen.copy(alpha = 0.10f), shape = RoundedCornerShape(50)) {
                     Row(Modifier.padding(horizontal = 9.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
                         Box(Modifier.size(6.dp).clip(CircleShape).background(OttGreen))
                         Spacer(Modifier.width(5.dp))
-                        Text("Evidence-backed", color = OttGreen, fontSize = 8.sp, fontWeight = FontWeight.Bold)
+                        Text("Verified where possible", color = OttGreen, fontSize = 8.sp, fontWeight = FontWeight.Bold)
                     }
                 }
             }
             Text(
-                "Weekend and today first, plus what is already streaming and what is coming over the next 30 days. Filters stay optional.",
+                "See what’s new today, this weekend, and over the next 30 days.",
                 color = OttMuted,
                 fontSize = 11.sp,
                 lineHeight = 17.sp,
@@ -300,7 +301,7 @@ private fun OttFiltersV060(
                         }
                     }
                     Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
-                        Text("CONTENT", color = OttMuted, fontSize = 8.sp, fontWeight = FontWeight.Black, letterSpacing = 1.2.sp)
+                        Text("TYPE", color = OttMuted, fontSize = 8.sp, fontWeight = FontWeight.Black, letterSpacing = 1.2.sp)
                         LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             item { OttChipV054("Movies + Series", state.contentType == OttContentType.ALL) { onSelectContentType(OttContentType.ALL) } }
                             item { OttChipV054("Movies", state.contentType == OttContentType.MOVIES) { onSelectContentType(OttContentType.MOVIES) } }
@@ -308,9 +309,9 @@ private fun OttFiltersV060(
                         }
                     }
                     Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
-                        Text("VERIFICATION", color = OttMuted, fontSize = 8.sp, fontWeight = FontWeight.Black, letterSpacing = 1.2.sp)
+                        Text("STATUS", color = OttMuted, fontSize = 8.sp, fontWeight = FontWeight.Black, letterSpacing = 1.2.sp)
                         LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            item { OttChipV054("All evidence", state.evidence == OttEvidenceFilter.ALL) { onSelectEvidence(OttEvidenceFilter.ALL) } }
+                            item { OttChipV054("All", state.evidence == OttEvidenceFilter.ALL) { onSelectEvidence(OttEvidenceFilter.ALL) } }
                             item { OttChipV054("Confirmed", state.evidence == OttEvidenceFilter.CONFIRMED) { onSelectEvidence(OttEvidenceFilter.CONFIRMED) } }
                             item { OttChipV054("Reported", state.evidence == OttEvidenceFilter.REPORTED) { onSelectEvidence(OttEvidenceFilter.REPORTED) } }
                         }
@@ -464,7 +465,11 @@ private fun OttReleaseCardV069(release: OttRelease, modifier: Modifier = Modifie
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
                     )
-                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp),
+                        maxItemsInEachRow = 3,
+                    ) {
                         OttMetaChipV066(
                             when (release.entity.type.uppercase(Locale.ENGLISH)) {
                                 "SERIES", "SEASON" -> "Series"
@@ -493,7 +498,7 @@ private fun OttReleaseCardV069(release: OttRelease, modifier: Modifier = Modifie
             if (release.evidence.conflicting > 0) {
                 Surface(color = OttAmber.copy(alpha = 0.08f), shape = RoundedCornerShape(11.dp)) {
                     Text(
-                        "${release.evidence.conflicting} conflicting evidence item${if (release.evidence.conflicting == 1) "" else "s"} retained — open source before publishing.",
+                        "Sources disagree on this date. Check the source before sharing.",
                         color = OttAmber,
                         fontSize = 9.sp,
                         fontWeight = FontWeight.Bold,
@@ -512,17 +517,18 @@ private fun OttReleaseCardV069(release: OttRelease, modifier: Modifier = Modifie
                     modifier = Modifier.size(14.dp),
                 )
                 Spacer(Modifier.width(6.dp))
-                Text(
-                    when {
-                        release.evidence.firstParty > 0 -> "${release.evidence.firstParty} official source${if (release.evidence.firstParty == 1) "" else "s"}"
-                        else -> "${release.evidence.total} retained source${if (release.evidence.total == 1) "" else "s"}"
-                    },
-                    color = OttMuted,
-                    fontSize = 9.sp,
-                    modifier = Modifier.weight(1f),
-                )
-                release.lastVerifiedAt?.let {
-                    Text("Verified ${ottTimeAgoV066(it)}", color = OttMuted, fontSize = 8.sp)
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        when {
+                            release.evidence.firstParty > 0 -> "${release.evidence.firstParty} official source${if (release.evidence.firstParty == 1) "" else "s"}"
+                            else -> "${release.evidence.total} source${if (release.evidence.total == 1) "" else "s"}"
+                        },
+                        color = OttMuted,
+                        fontSize = 9.sp,
+                    )
+                    release.lastVerifiedAt?.let {
+                        Text("Checked ${ottTimeAgoV066(it)}", color = OttMuted, fontSize = 8.sp)
+                    }
                 }
             }
 
@@ -534,7 +540,7 @@ private fun OttReleaseCardV069(release: OttRelease, modifier: Modifier = Modifie
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Column(Modifier.weight(1f)) {
-                            Text("SOURCE", color = OttMuted, fontSize = 7.sp, fontWeight = FontWeight.Black, letterSpacing = 0.7.sp)
+                            Text("Source", color = OttMuted, fontSize = 7.sp, fontWeight = FontWeight.Black, letterSpacing = 0.7.sp)
                             Text(
                                 sourceRef.source.name ?: sourceRef.title ?: "Evidence source",
                                 color = OttText,
