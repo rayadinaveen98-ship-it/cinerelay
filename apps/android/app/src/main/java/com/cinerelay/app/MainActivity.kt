@@ -165,8 +165,6 @@ class MainActivity : ComponentActivity() {
                 if (archiveVisible && state.authenticated) archiveViewModel.load()
             }
 
-            val personalizationResolved = consumerState.personalization != null
-            val setupResolving = state.authenticated && (!onboardingState.authenticated || !personalizationResolved)
             val personalizationVisible = state.authenticated &&
                 (consumerState.personalization?.completed == false || personalizationEditorVisible) &&
                 state.authMode == null
@@ -201,8 +199,6 @@ class MainActivity : ComponentActivity() {
                             modifier = Modifier.fillMaxSize(),
                         )
                     }
-
-                    setupResolving -> CineRelaySetupLoadingV050(Modifier.fillMaxSize())
 
                     personalizationVisible -> {
                         PersonalizationOnboardingV055(
