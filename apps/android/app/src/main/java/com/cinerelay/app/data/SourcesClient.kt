@@ -42,12 +42,13 @@ class SourcesClient(
     private val baseUrl = BuildConfig.SUPABASE_URL.trimEnd('/')
     private val publishableKey = BuildConfig.SUPABASE_PUBLISHABLE_KEY
 
-    fun sources(platform: String): SourceDirectory {
+    fun sources(platform: String, officialOnly: Boolean = false): SourceDirectory {
         val json = post(
             function = "cinerelay-sources-api",
             body = JSONObject()
                 .put("action", "sources")
-                .put("platform", platform.uppercase()),
+                .put("platform", platform.uppercase())
+                .put("officialOnly", officialOnly),
             fallbackError = "Source directory request failed",
         )
         return SourceDirectory(
