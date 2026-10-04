@@ -65,7 +65,7 @@ class NotificationOnboardingViewModel(application: Application) : AndroidViewMod
             runCatching {
                 withContext(Dispatchers.IO) {
                     val preferences = preferencesClient.get()
-                    val directory = if (preferences.setupCompleted) null else sourcesClient.sources("YOUTUBE")
+                    val directory = if (preferences.setupCompleted) null else sourcesClient.sources("YOUTUBE", officialOnly = true)
                     preferences to directory
                 }
             }.onSuccess { (preferences, directory) ->

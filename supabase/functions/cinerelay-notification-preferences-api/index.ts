@@ -118,7 +118,12 @@ async function replaceSelection(userId: string, body: PreferencesRequest): Promi
     p_master_enabled: masterEnabled,
     p_complete_setup: completeSetup,
   });
-  if (error) throw error;
+  if (error) {
+    if (error.message.includes('invalid_source_identity')) {
+      return json(400, { error: 'One or more selected channels are no longer available. Please choose your channels again.' });
+    }
+    throw error;
+  }
 
   return json(200, {
     ...(data && typeof data === 'object' ? data as Record<string, unknown> : { ok: true }),

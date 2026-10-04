@@ -42,7 +42,7 @@ function stringValue(value: unknown): string | null {
   return typeof value === 'string' && value.trim().length > 0 ? value : null;
 }
 
-async function sourceDirectory(platform: SourcePlatform) {
+async function sourceDirectory(platform: SourcePlatform, officialOnly: boolean) {
   const identityResult = await admin.from('source_identities')
     .select('id,source_id,platform,handle,canonical_url,connector_config,active')
     .eq('active', true)
@@ -99,7 +99,7 @@ async function sourceDirectory(platform: SourcePlatform) {
   const items = identities
     .map((identity) => {
       const source = sourceMap.get(identity.source_id);
-      if (!source) return null;
+      if (!source || (officialOnly && source.authority_tier !== 1)) return null;
       const sourceActivity = activity.get(identity.id) ?? { newCount24h: 0, latestObservedAt: null };
       const connectorConfig = recordValue(identity.connector_config);
       return {
@@ -141,12 +141,12 @@ Deno.serve(async (request) => {
     if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: corsHeaders });
     if (request.method !== 'POST') return new Response(null, { status: 405, headers: { ...corsHeaders, allow: 'POST, OPTIONS' } });
 
-    const body = await request.json().catch(() => ({})) as { action?: unknown; platform?: unknown };
+    const body = await request.json().catch(() => ({})) as { action?: unknown; platform?: unknown; officialOnly?: unknown };
     if (body.action !== undefined && body.action !== 'sources') return json(400, { error: 'unsupported_action' });
     const platform = platformOf(body.platform);
     if (!platform) return json(400, { error: 'unsupported_platform' });
 
-    return json(200, await sourceDirectory(platform));
+    return json(200, await sourceDirectory(platform, body.officialOnly === true));
   } catch (error) {
     console.error('cinerelay-sources-api failure', error);
     return json(500, { error: 'internal_error' });
