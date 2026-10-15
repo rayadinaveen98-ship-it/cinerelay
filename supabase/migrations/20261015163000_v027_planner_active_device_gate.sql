@@ -101,7 +101,7 @@ begin
   get diagnostics v_count = row_count;
   return v_count;
 end;
-$function$
+$function$;
 
 revoke execute on function public.plan_due_source_activity_notifications(integer) from public, anon, authenticated;
 grant execute on function public.plan_due_source_activity_notifications(integer) to service_role;
