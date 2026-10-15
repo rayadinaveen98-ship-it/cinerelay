@@ -75,7 +75,7 @@ select is(
    join public.source_activity_deliveries d on d.id=t.source_activity_delivery_id
    where d.user_id='e1000000-0000-4000-8000-000000000002'::uuid),
   1,
-  'only subscribed active-device user's fresh target is created'
+  'only the active-device user receives a fresh target'
 );
 select is(
   (select count(*)::integer from public.source_activity_delivery_targets t
