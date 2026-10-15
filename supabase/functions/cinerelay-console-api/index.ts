@@ -48,14 +48,42 @@ async function exactCount(table: string, filter?: (query: any) => any): Promise<
 }
 
 async function overview(user: { id: string; email?: string | null }, operator: { display_name?: string | null }) {
-  const [rawItems, events, sources, unresolved, healthResult, channelResult] = await Promise.all([
+  const [rawItems, events, sources, unresolved, healthResult, channelResult, identitiesResult] = await Promise.all([
     exactCount('raw_items'), exactCount('events'), exactCount('source_identities', (q) => q.eq('active', true)),
     exactCount('current_entity_resolution_results', (q) => q.eq('resolution_state', 'UNRESOLVED')),
-    admin.from('source_health').select('health_state'), admin.from('youtube_channel_state').select('fallback_gap_count'),
+    admin.from('source_health').select('source_identity_id,health_state,last_success_at,consecutive_failures,last_error_code'),
+    admin.from('youtube_channel_state').select('source_identity_id,last_fallback_check_at,fallback_gap_count'),
+    admin.from('source_identities').select('id,platform').eq('active', true),
   ]);
   if (healthResult.error) throw healthResult.error;
   if (channelResult.error) throw channelResult.error;
-  const healthRows = healthResult.data ?? [];
+  if (identitiesResult.error) throw identitiesResult.error;
+
+  // Source console uses the same effective-state rules as source_effective_health
+  // rather than displaying WebSub accelerator misses as ingestion outages.
+  const identityMap = new Map((identitiesResult.data ?? []).map((row) => [row.id, row]));
+  const fallbackMap = new Map((channelResult.data ?? []).map((row) => [row.source_identity_id, row]));
+  const nowMs = Date.now();
+  const healthRows = (healthResult.data ?? [])
+    .filter((row) => identityMap.has(row.source_identity_id))
+    .map((row) => {
+      const identity = identityMap.get(row.source_identity_id);
+      const lastSuccessMs = row.last_success_at ? Date.parse(row.last_success_at) : Number.NEGATIVE_INFINITY;
+      const lastFallback = fallbackMap.get(row.source_identity_id)?.last_fallback_check_at;
+      const lastFallbackMs = lastFallback ? Date.parse(lastFallback) : Number.NEGATIVE_INFINITY;
+      const failures = Number(row.consecutive_failures ?? 0);
+      let state = row.health_state;
+      if (identity?.platform === 'YOUTUBE' &&
+        ['WEBSUB_MISSED_DELIVERY', 'WEBSUB_STALE'].includes(row.last_error_code ?? '') &&
+        failures === 0 && lastFallbackMs >= nowMs - 2 * 60 * 60_000) {
+        state = 'HEALTHY';
+      } else if (failures >= 5 && lastSuccessMs < nowMs - 72 * 60 * 60_000) {
+        state = 'DEAD';
+      } else if (lastSuccessMs < nowMs - 24 * 60 * 60_000) {
+        state = 'STALE';
+      }
+      return { health_state: state };
+    });
   return {
     generatedAt: new Date().toISOString(),
     operator: { userId: user.id, email: user.email ?? null, displayName: operator.display_name ?? null },
@@ -63,6 +91,8 @@ async function overview(user: { id: string; email?: string | null }, operator: {
     health: {
       healthy: healthRows.filter((row) => row.health_state === 'HEALTHY').length,
       degraded: healthRows.filter((row) => row.health_state === 'DEGRADED').length,
+      stale: healthRows.filter((row) => row.health_state === 'STALE').length,
+      dead: healthRows.filter((row) => row.health_state === 'DEAD').length,
       rateLimited: healthRows.filter((row) => row.health_state === 'RATE_LIMITED').length,
       budgetExhausted: healthRows.filter((row) => row.health_state === 'BUDGET_EXHAUSTED').length,
       gapSources: (channelResult.data ?? []).filter((row) => Number(row.fallback_gap_count ?? 0) > 0).length,
