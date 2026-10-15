@@ -288,6 +288,7 @@ Deno.serve(async (request) => {
 
     let checked = 0;
     let confirmed = 0;
+    let noExplicitDate = 0;
     let failed = 0;
     const results: Record<string, unknown>[] = [];
 
@@ -317,7 +318,36 @@ Deno.serve(async (request) => {
         const pageText = clean(root.innerText).slice(0, 100_000);
         if (!pageText.toLowerCase().includes(config.canonicalTitle.toLowerCase())) throw new Error('ott_provider_title_not_present');
         const releaseDate = premiereDateFromText(pageText);
-        if (!releaseDate) throw new Error('ott_provider_explicit_premiere_date_missing');
+        if (!releaseDate) {
+          // Successful fetch with no explicitly announced premiere is not an
+          // ingestion failure. Preserve the evidence-first boundary: no date,
+          // raw-item revision, canonical event or OTT release is invented.
+          const nextDue = nextCheckIso(identity.poll_class);
+          await patchState(identity.id, {
+            etag: response.headers.get('etag'),
+            last_modified: response.headers.get('last-modified'),
+            last_checked_at: nowIso,
+            last_successful_fetch_at: nowIso,
+            next_check_at: nextDue,
+            last_http_status: response.status,
+            last_item_count: 0,
+            consecutive_not_modified: 0,
+          });
+          await updateHealth(identity.id, {
+            health_state: 'HEALTHY',
+            last_attempt_at: nowIso,
+            last_success_at: nowIso,
+            next_due_at: nextDue,
+            consecutive_failures: 0,
+            last_http_status: response.status,
+            last_error_code: null,
+            last_error_message: null,
+            parser_version: config.parserProfile,
+          });
+          noExplicitDate += 1;
+          results.push({ sourceIdentityId: identity.id, status: 'NO_EXPLICIT_PREMIERE_DATE' });
+          continue;
+        }
 
         const persisted = await persistOfficialRelease({
           identity,
@@ -354,7 +384,7 @@ Deno.serve(async (request) => {
       }
     }
 
-    return json(200, { due: identities?.length ?? 0, checked, confirmed, failed, results });
+    return json(200, { due: identities?.length ?? 0, checked, confirmed, noExplicitDate, failed, results });
   } catch (error) {
     console.error('ott-provider-detail-worker failure', error);
     return json(500, { error: 'internal_error' });
