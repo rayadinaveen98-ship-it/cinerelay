@@ -61,13 +61,31 @@ function OfficialArticleCard({item}:{item:Article}) {
       <p className="text-xs font-medium uppercase tracking-wider text-amber-300">Pending typed suggestion · Not approved</p>
       <p className="mt-2 font-semibold text-zinc-100">{typed.proposed_name} <span className="text-sm font-normal text-zinc-400">· {typed.proposed_entity_type}</span></p>
       <p className="mt-1 text-xs text-zinc-400">{typed.first_party_source_count} first-party source(s) · {typed.evidence_count} evidence item(s)</p>
+      {Boolean(typed.metadata.editorialVerification) &&
+        typeof typed.metadata.editorialVerification === 'object' &&
+        !Array.isArray(typed.metadata.editorialVerification) &&
+        <div className="mt-3 rounded-lg border border-zinc-700/70 bg-zinc-900/70 p-3">
+          <p className="text-xs font-semibold uppercase tracking-wide text-zinc-300">Evidence checked · Not catalogue approval</p>
+          <p className="mt-1 text-xs leading-5 text-zinc-300">
+            {String((typed.metadata.editorialVerification as Record<string, unknown>).reviewNote ?? 'Awaiting independent corroboration')}
+          </p>
+          <p className="mt-2 text-xs text-zinc-500">
+            Region: {(typed.metadata.editorialVerification as Record<string, unknown>).priority === 'INDIA_FIRST'
+              ? 'India-first' : 'Global / secondary'} · Language: {typed.primary_language?.toUpperCase() ?? 'Unknown'} · Country: {typed.country_code ?? 'Unknown'}
+          </p>
+        </div>}
+      <p className="mt-2 text-xs text-amber-300">
+        {typed.source_count} source identit{typed.source_count === 1 ? 'y' : 'ies'} recorded.
+        Catalogue approval requires 2 independent source owners and confidence of at least 0.85.
+        {typed.confidence < 0.85 ? ' Confidence is currently below that threshold.' : ''}
+      </p>
       {typeof typed.metadata.seasonNumber==='number'&&<p className="mt-1 text-xs text-zinc-400">Season {typed.metadata.seasonNumber} mentioned in evidence</p>}
       {typeof typed.metadata.proposedReleaseDate==='string'&&<p className="mt-1 text-xs text-amber-300">Suggested release date {typed.metadata.proposedReleaseDate} — unverified; do not publish without reviewing primary evidence</p>}
       <button type="button" onClick={()=>{setTitle(typed.proposed_name);setEntityType(typed.proposed_entity_type);setEntityId('');}} className="mt-3 rounded-lg border border-amber-700 px-3 py-2 text-xs text-amber-200 hover:bg-amber-950/40">Copy suggested name into review form (not approval)</button>
     </div>:<div className="mt-3 rounded-xl border border-zinc-800 bg-zinc-900/50 p-3 text-sm text-zinc-400">{item.reviewStatus==='MANUAL_TITLE_REVIEW'?'No reliable title detected. Identify the actual movie or series in the official article before proceeding.':'No pending suggestion. Verify the title manually.'}</div>}
     <details className="mt-4 rounded-xl border border-zinc-800 p-4">
       <summary className="cursor-pointer text-sm font-semibold text-zinc-300">Resolve after checking evidence (audited action)</summary>
-      <p className="mt-3 text-xs leading-5 text-amber-200">Resolving an item can reprocess it and potentially publish a canonical event. Verify the precise title, format, and relevance before choosing an entity. Unknown language, country, and release date must remain blank. Older (more than 48 hours since discovery or publication) and undated website articles are identity-only corrections: no new event or notification is generated.</p>
+      <p className="mt-3 text-xs leading-5 text-amber-200">This action resolves an individual article; it is NOT an approval of the typed catalogue candidate. Catalogue approval is separately gated by evidence from two independent owners. Resolving an item can reprocess it and potentially publish a canonical event. Verify the precise title, format, and relevance before choosing an entity. Unknown language, country, and release date must remain blank. Older (more than 48 hours since discovery or publication) and undated website articles are identity-only corrections: no new event or notification is generated.</p>
       <label className="mt-4 block text-xs text-zinc-400">Search existing movie / series first
         <input value={entitySearch} onChange={e=>{setEntitySearch(e.target.value);setEntityId('');}} placeholder="Search canonical titles" className="mt-1 w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm" />
       </label>
