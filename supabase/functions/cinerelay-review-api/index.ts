@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import {candidateOwnerGroupKey} from './owner-grouping.ts';
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL');
 const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
@@ -251,9 +252,10 @@ async function pendingCatalogueReviewQueue(limit: number) {
     // one corroborating group, however many channel/feed identities it has.
     // Unknown parents fall back to source IDs, not identities.
     if (identity) {
-      const key = owners.has(identity.source_id)
-        ? 'corp:' + String(owners.get(identity.source_id))
-        : 'source:' + String(identity.source_id);
+      const key = candidateOwnerGroupKey(
+        String(identity.source_id),
+        owners.has(identity.source_id) ? String(owners.get(identity.source_id)) : null,
+      );
       const groups = ownerGroups.get(evidence.candidate_id) ?? new Set<string>();
       groups.add(key);
       ownerGroups.set(evidence.candidate_id,groups);
