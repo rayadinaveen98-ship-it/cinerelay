@@ -94,6 +94,8 @@ jobs:
         run: deno test supabase/tests/unit/article-review-utils.test.ts
       - name: Test candidate corporate-owner grouping
         run: deno test supabase/tests/unit/catalogue-owner-groups.test.ts
+      - name: Test active catalogue impact audit
+        run: deno test supabase/tests/unit/active-catalogue-audit.test.ts
       - name: Type-check youtube-fallback-worker
         run: deno check --config supabase/functions/youtube-fallback-worker/deno.json supabase/functions/youtube-fallback-worker/index.ts
       - name: Type-check youtube-source-admin

@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { fetchConsoleOperations } from '../lib/console-api';
 import { PushReadinessPanel } from './PushReadinessPanel';
 import { CatalogueReviewPanel } from './CatalogueReviewPanel';
+import { ActiveCatalogueAuditPanel } from './ActiveCatalogueAuditPanel';
 import { ReviewWorkflow } from './ReviewWorkflow';
 import { SourceDiscoveryWorkflow } from './SourceDiscoveryWorkflow';
 import { SourceEntityRelationshipWorkflow } from './SourceEntityRelationshipWorkflow';
@@ -31,6 +32,7 @@ export function OperationsPage() {
           <p className="text-xs text-zinc-500">Updated {new Date(data.generatedAt).toLocaleString()}</p>
         </div>
         <div className="mt-3 flex flex-wrap gap-4">
+          <a href="#active-catalogue-audit" className="text-sm text-amber-400 underline decoration-amber-900/80 underline-offset-4">Audit active catalogue titles ↓</a>
           <a href="#catalogue-review" className="text-sm text-amber-400 underline decoration-amber-900/80 underline-offset-4">Review pending catalogue titles ↓</a>
           <a href="#official-article-review" className="text-sm text-amber-400 underline decoration-amber-900/80 underline-offset-4">Official article & producer leads ↓</a>
         </div>
@@ -41,6 +43,8 @@ export function OperationsPage() {
           <Metric label="Scheduler jobs" value={data.scheduler.length} />
         </div>
       </section>
+
+      <ActiveCatalogueAuditPanel />
 
       <CatalogueReviewPanel />
 
