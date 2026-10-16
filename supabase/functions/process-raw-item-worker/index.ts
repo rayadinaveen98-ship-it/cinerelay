@@ -259,6 +259,11 @@ async function queueTypedOfficialArticleReview(rawItemId: string, headline: stri
       sourceArticleUrl: articleUrl,
       sourceHeadline: headline,
       ...(suggested.seasonNumber ? { seasonNumber: suggested.seasonNumber } : {}),
+      ...(suggested.proposedReleaseDate ? {
+        proposedReleaseDate: suggested.proposedReleaseDate,
+        releaseDateEvidenceRule: suggested.releaseDateEvidenceRule,
+        releaseDateIsUnverified: true,
+      } : {}),
     },
   });
   if (error) throw error; // Fail the job and retry; never silently lose a valid suggestion.
