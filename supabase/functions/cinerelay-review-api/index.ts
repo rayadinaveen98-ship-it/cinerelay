@@ -189,6 +189,81 @@ async function officialArticleReviewQueue(limit: number) {
   return {generatedAt:new Date().toISOString(), items};
 }
 
+/**
+ * All pending catalogue candidates, including YouTube and RSS discoveries.
+ * The separate officialArticleReviewQueue is intentionally WEB_ARTICLE-only.
+ * Operator-authenticated, read-only: NO changes to candidate status,
+ * evidence counts, raw items, events, promotion or notifications.
+ */
+async function pendingCatalogueReviewQueue(limit: number) {
+  const bounded = Math.max(1, Math.min(100, Number.isFinite(limit) ? Math.trunc(limit) : 50));
+  const { data: candidates, error: candidateError } = await admin.from('entity_discovery_candidates')
+    .select('id,proposed_name,proposed_entity_type,status,confidence,evidence_count,source_count,first_party_source_count,primary_language,country_code,metadata,last_seen_at')
+    .eq('status', 'PENDING')
+    .in('proposed_entity_type', ['MOVIE','SERIES'])
+    .order('last_seen_at', { ascending: false })
+    .limit(bounded);
+  if (candidateError) throw candidateError;
+  if (!candidates?.length) return { generatedAt: new Date().toISOString(), items: [] };
+
+  const candidateIds = candidates.map(candidate => candidate.id);
+  const { data: evidences, error: evidenceError } = await admin.from('entity_discovery_evidence')
+    .select('id,candidate_id,raw_item_id,source_identity_id,evidence_role,match_method,is_first_party,observed_at')
+    .in('candidate_id', candidateIds)
+    .order('observed_at', { ascending: false })
+    .limit(1000);
+  if (evidenceError) throw evidenceError;
+  const rawIds = [...new Set((evidences ?? []).map(x => x.raw_item_id))];
+  const identityIds = [...new Set((evidences ?? []).map(x => x.source_identity_id))];
+  const [rawResult, identityResult] = await Promise.all([
+    rawIds.length
+      ? admin.from('raw_items').select('id,raw_title,canonical_url,published_at,item_type').in('id', rawIds)
+      : Promise.resolve({ data: [], error: null }),
+    identityIds.length
+      ? admin.from('source_identities').select('id,source_id,platform').in('id', identityIds)
+      : Promise.resolve({ data: [], error: null }),
+  ]);
+  if (rawResult.error) throw rawResult.error;
+  if (identityResult.error) throw identityResult.error;
+  const raws = new Map((rawResult.data ?? []).map(x => [x.id,x]));
+  const identities = new Map((identityResult.data ?? []).map(x => [x.id,x]));
+  const sourceIds = [...new Set((identityResult.data ?? []).map(x => x.source_id))];
+  const sourceResult = sourceIds.length
+    ? await admin.from('sources').select('id,display_name,source_role').in('id', sourceIds)
+    : { data: [], error: null };
+  if (sourceResult.error) throw sourceResult.error;
+  const sources = new Map((sourceResult.data ?? []).map(x => [x.id,x]));
+
+  const grouped = new Map<string,Array<Record<string,unknown>>>();
+  for (const evidence of evidences ?? []) {
+    const raw = raws.get(evidence.raw_item_id);
+    const identity = identities.get(evidence.source_identity_id);
+    const source = identity ? sources.get(identity.source_id) : null;
+    const list = grouped.get(evidence.candidate_id) ?? [];
+    list.push({
+      id: evidence.id,
+      rawTitle: raw?.raw_title ?? null,
+      sourceUrl: raw?.canonical_url ?? null,
+      publishedAt: raw?.published_at ?? null,
+      itemType: raw?.item_type ?? null,
+      sourceName: source?.display_name ?? 'Unknown source',
+      sourceRole: source?.source_role ?? null,
+      platform: identity?.platform ?? 'UNKNOWN',
+      isFirstParty: evidence.is_first_party,
+      matchMethod: evidence.match_method,
+    });
+    grouped.set(evidence.candidate_id,list);
+  }
+
+  return {
+    generatedAt: new Date().toISOString(),
+    items: candidates.map(candidate => ({
+      ...candidate,
+      evidence: grouped.get(candidate.id) ?? [],
+    })),
+  };
+}
+
 async function entitySearch(query: string) {
   const q = query.trim();
   if (q.length < 2) return { items: [] };
@@ -249,6 +324,7 @@ Deno.serve(async (request): Promise<Response> => {
     if (action === 'bootstrap') return json(200, await reviewBootstrap(Number(body.limit ?? 100)));
     if (action === 'entitySearch') return json(200, await entitySearch(typeof body.query === 'string' ? body.query : ''));
     if (action === 'officialArticleReviewQueue') return json(200, await officialArticleReviewQueue(Number(body.limit ?? 50)));
+    if (action === 'pendingCatalogueReviewQueue') return json(200, await pendingCatalogueReviewQueue(Number(body.limit ?? 50)));
     if(action === 'submitProducerEvidenceLead'){
       if(!validUuid(body.candidateId)) return json(400,{error:'invalid_candidate_id'});
       const sourceUrl=typeof body.sourceUrl==='string'?body.sourceUrl.trim():'';

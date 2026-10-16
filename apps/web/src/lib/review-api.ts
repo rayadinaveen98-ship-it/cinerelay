@@ -130,6 +130,40 @@ const OfficialArticleReviewQueueSchema = z.object({
     needsHumanReview: z.literal(true),
   })),
 });
+const PendingCatalogueQueueSchema = z.object({
+  generatedAt: z.string(),
+  items: z.array(z.object({
+    id: z.string().uuid(),
+    proposed_name: z.string(),
+    proposed_entity_type: z.enum(['MOVIE','SERIES']),
+    status: z.literal('PENDING'),
+    confidence: z.coerce.number(),
+    evidence_count: z.coerce.number(),
+    source_count: z.coerce.number(),
+    first_party_source_count: z.coerce.number(),
+    primary_language: z.string().nullable(),
+    country_code: z.string().nullable(),
+    metadata: z.record(z.string(),z.unknown()),
+    last_seen_at: z.string(),
+    evidence: z.array(z.object({
+      id: z.string().uuid(),
+      rawTitle: z.string().nullable(),
+      sourceUrl: z.string().nullable(),
+      publishedAt: z.string().nullable(),
+      itemType: z.string().nullable(),
+      sourceName: z.string(),
+      sourceRole: z.string().nullable(),
+      platform: z.string(),
+      isFirstParty: z.boolean(),
+      matchMethod: z.string(),
+    })),
+  })),
+});
+export type PendingCatalogueReviewQueue = z.infer<typeof PendingCatalogueQueueSchema>;
+export function fetchPendingCatalogueReviewQueue(limit = 50) {
+  return invoke({ action:'pendingCatalogueReviewQueue',limit }, PendingCatalogueQueueSchema);
+}
+
 export type OfficialArticleReviewItem = z.infer<typeof OfficialArticleReviewQueueSchema>;
 
 export function fetchOfficialArticleReviewQueue(limit = 50) {

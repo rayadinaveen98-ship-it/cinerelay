@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { fetchConsoleOperations } from '../lib/console-api';
 import { PushReadinessPanel } from './PushReadinessPanel';
+import { CatalogueReviewPanel } from './CatalogueReviewPanel';
 import { ReviewWorkflow } from './ReviewWorkflow';
 import { SourceDiscoveryWorkflow } from './SourceDiscoveryWorkflow';
 import { SourceEntityRelationshipWorkflow } from './SourceEntityRelationshipWorkflow';
@@ -29,7 +30,10 @@ export function OperationsPage() {
           <div><p className="text-xs font-semibold uppercase tracking-[0.25em] text-amber-400">Operations</p><h1 className="mt-2 text-2xl font-semibold">Source registry & health</h1></div>
           <p className="text-xs text-zinc-500">Updated {new Date(data.generatedAt).toLocaleString()}</p>
         </div>
-        <a href="#official-article-review" className="mt-3 inline-block text-sm text-amber-400 underline decoration-amber-900/80 underline-offset-4">Jump to official movie & series article review ↓</a>
+        <div className="mt-3 flex flex-wrap gap-4">
+          <a href="#catalogue-review" className="text-sm text-amber-400 underline decoration-amber-900/80 underline-offset-4">Review pending catalogue titles ↓</a>
+          <a href="#official-article-review" className="text-sm text-amber-400 underline decoration-amber-900/80 underline-offset-4">Official article & producer leads ↓</a>
+        </div>
         <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           <Metric label="Source identities" value={data.registry.length} />
           <Metric label="Discovery gaps" value={gapSources.length} critical={gapSources.length > 0} />
@@ -37,6 +41,8 @@ export function OperationsPage() {
           <Metric label="Scheduler jobs" value={data.scheduler.length} />
         </div>
       </section>
+
+      <CatalogueReviewPanel />
 
       <PushReadinessPanel />
 
