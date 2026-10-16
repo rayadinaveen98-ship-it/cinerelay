@@ -71,7 +71,7 @@ const BAD_TITLE_MARKERS = /\b(trailer|teaser|promo|glimpse|scene|clip|highlights
 const NON_CANONICAL_TITLE_COPY = /\b(?:ott\s+release\s+date|when\s+and\s+where\s+to\s+watch|(?:latest\s+)?(?:telugu|tamil|malayalam|kannada|hindi|english)\s+full(?:\s+(?:movie|film))?|latest\s+(?:telugu|tamil|malayalam|kannada|hindi|english)\s+(?:movie|film)|full\s+(?:movie|film)|(?:actor|actress|director)\s+byte\s+about|byte\s+about|this\s+(?:top\s+)?studio|latest\s+(?:movie|film)\s+updates?)\b/i;
 // Official OTT posts can still contain cast bytes, promotional copy and
 // clip headings. Trust the source's authenticity, not every parsed headline.
-const PROMOTIONAL_TITLE_SHAPES = /(?:\b(?:movie|film)\s+scenes?\b|^\s*(?:watch|catch)\s+.{3,80}\s+in\s+|^\s*(?:hot\s+takes|the\s+entertainer\s+everyone|the\s+little\s+things\s+that\s+made|from\s+\d+\s+to\s+\d+)|super\s+show!?\s*$|\s+\|\s+|\.\.\.|\b(?:telugu|tamil|malayalam|kannada|hindi)\s+movie\b)/i;
+const PROMOTIONAL_TITLE_SHAPES = /(?:\b(?:movie|film)\s+scenes?\b|^\s*(?:watch|catch)\s+.{3,80}\s+in\s+|^\s*(?:hot\s+takes|the\s+entertainer\s+everyone|the\s+little\s+things\s+that\s+made|from\s+\d+\s+to\s+\d+)|super\s+show!?\s*$|\s+\|\s+|\.\.\.)/i;
 const CLIP_CAPTION_HASHTAG = /.#[\p{L}\p{N}_]+/u;
 const RELEASE_LANGUAGE = /\b(stream(?:ing|s)?(?:\s+from|\s+on|\s+now)?|premier(?:e|es|ing)(?:\s+on)?|releas(?:e|es|ing)(?:\s+on)?|now\s+streaming|watch\s+now|available\s+now|digital\s+(?:debut|premiere|release))\b/i;
 const NON_MOVIE_TITLE_MARKERS = /(?:\bhotstar\s+specials\b|\bseason\s*\d+\b|\bepisodes?\s*\d*\b|\bep\.?\s*\d+\b|\bweb\s*series\b|\bwebseries\b|\btv\s+show\b|\breality\s+show\b|\bgame\s+show\b|\bserial\b|\bweek\s*\d+\s*[-–—]\s*promo\b|\bsat\s*[-–—]\s*sun\b|\bmon\s*[-–—]\s*fri\b|\bsign\s+up\s+for\s+sony\s+liv\b)/i;
