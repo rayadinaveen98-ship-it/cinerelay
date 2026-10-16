@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -33,6 +34,12 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.activity.compose.BackHandler
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -66,6 +73,13 @@ fun OnThisDayV057(
     onToday: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val landingListState=rememberLazyListState()
+    var openedYear by rememberSaveable { mutableStateOf<Int?>(null) }
+    var openedMovieId by rememberSaveable { mutableStateOf<String?>(null) }
+    LaunchedEffect(state.onThisDayDate) { openedYear=null; openedMovieId=null }
+    BackHandler(enabled=openedYear!=null||openedMovieId!=null){
+        if(openedMovieId!=null) openedMovieId=null else openedYear=null
+    }
     val selected = runCatching { LocalDate.parse(state.onThisDayDate) }.getOrNull() ?: LocalDate.now()
     val today = LocalDate.now()
     val grouped = state.onThisDayMovies.groupBy { it.releaseYear }.toSortedMap(compareByDescending { it })
@@ -84,7 +98,30 @@ fun OnThisDayV057(
         ),
     ) {
         Surface(modifier = modifier.fillMaxSize(), color = HistoryInk) {
-            LazyColumn(
+            val chosenMovie=state.onThisDayMovies.firstOrNull{it.id==openedMovieId}
+            val chosenYear=openedYear
+            if(chosenMovie!=null || chosenYear!=null){
+                LazyColumn(Modifier.fillMaxSize(),contentPadding=PaddingValues(bottom=128.dp),
+                    verticalArrangement=Arrangement.spacedBy(12.dp)){
+                    if(chosenMovie!=null){
+                        item{DiscoverySubpageHeaderV080(chosenMovie.title,
+                            chosenMovie.releaseDate+" · "+chosenMovie.releaseYear,
+                            onBack={openedMovieId=null})}
+                        item{OnThisDayMovieRowV070(chosenMovie,Modifier.padding(horizontal=16.dp))}
+                    }else if(chosenYear!=null){
+                        val movies=grouped[chosenYear].orEmpty()
+                        item{DiscoverySubpageHeaderV080(chosenYear.toString(),
+                            movies.size.toString()+" releases on "+selected.dayOfMonth+" "+selected.month.name.lowercase().replaceFirstChar{it.uppercase()},
+                            onBack={openedYear=null})}
+                        items(movies,key={it.id}){movie->
+                            Box(Modifier.clickable{openedMovieId=movie.id}){
+                                OnThisDayMovieRowV070(movie,Modifier.padding(horizontal=16.dp))
+                            }
+                        }
+                    }
+                }
+            }else LazyColumn(
+                state=landingListState,
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(bottom = 118.dp),
                 verticalArrangement = Arrangement.spacedBy(14.dp),
@@ -98,7 +135,7 @@ fun OnThisDayV057(
                             Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = HistoryText)
                         }
                         Column(Modifier.weight(1f)) {
-                            Text("INDIAN CINEMA HISTORY", color = HistoryGold, fontSize = 9.sp, fontWeight = FontWeight.Black, letterSpacing = 1.5.sp)
+                            Text("INDIAN CINEMA HISTORY", color = HistoryGold, fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 1.5.sp)
                             Text("Today in Cinema", color = HistoryText, fontSize = 24.sp, fontWeight = FontWeight.Bold)
                         }
                         TextButton(onClick = onToday) {
@@ -162,16 +199,46 @@ fun OnThisDayV057(
 
                     else -> {
                         grouped.forEach { (year, movies) ->
-                            item(key = "year:$year") {
-                                HistoryYearHeaderV060(year = year, selectedYear = selected.year, count = movies.size)
+                            item(key="year:$year"){
+                                DiscoverySectionHeadingV080(year.toString(),
+                                    if(year==selected.year)"This year" else "Historical releases",
+                                    movies.size,onSeeAll={openedYear=year})
                             }
-                            items(movies, key = { "history:${it.id}:${it.releaseDate}" }) { movie ->
-                                OnThisDayMovieRowV070(movie, modifier = Modifier.padding(horizontal = 18.dp))
+                            item(key="year-rail:$year"){
+                                LazyRow(contentPadding=PaddingValues(horizontal=16.dp),
+                                    horizontalArrangement=Arrangement.spacedBy(12.dp)){
+                                    items(movies.take(12),key={it.id}){movie->
+                                        HistoryPreviewCardV080(movie){openedMovieId=movie.id}
+                                    }
+                                }
                             }
                         }
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun HistoryPreviewCardV080(movie:OnThisDayMovie,onClick:()->Unit){
+    Surface(color=HistoryPanel,shape=RoundedCornerShape(DiscoveryUiV080.CardRadius),
+        modifier=Modifier.width(152.dp).clickable(onClick=onClick)){
+        Column(Modifier.padding(10.dp),verticalArrangement=Arrangement.spacedBy(8.dp)){
+            Box(Modifier.fillMaxWidth().height(150.dp).clip(RoundedCornerShape(12.dp))
+                .background(HistoryRaised),contentAlignment=Alignment.Center){
+                val art=movie.posterUrl?:movie.backdropUrl
+                if(!art.isNullOrBlank()){
+                    AsyncImage(model=art,contentDescription=movie.title,contentScale=ContentScale.Crop,
+                        modifier=Modifier.fillMaxSize())
+                }else{
+                    Text(movie.releaseYear.toString(),color=HistoryGold,fontSize=22.sp,fontWeight=FontWeight.Bold)
+                }
+            }
+            Text(movie.title,color=HistoryText,fontSize=14.sp,lineHeight=18.sp,fontWeight=FontWeight.SemiBold,
+                maxLines=2,overflow=TextOverflow.Ellipsis,modifier=Modifier.height(38.dp))
+            Text(listOfNotNull(movie.language,movie.countryCode).joinToString(" • "),
+                color=HistoryMuted,fontSize=11.sp,maxLines=1,overflow=TextOverflow.Ellipsis)
         }
     }
 }
@@ -189,8 +256,8 @@ private fun HistoryDateHeroV060(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 18.dp)
-            .clip(RoundedCornerShape(28.dp))
+            .padding(horizontal = 16.dp)
+            .clip(RoundedCornerShape(22.dp))
             .background(
                 Brush.linearGradient(
                     listOf(
@@ -210,7 +277,7 @@ private fun HistoryDateHeroV060(
                     Text(
                         selected.format(DateTimeFormatter.ofPattern("dd", Locale.ENGLISH)),
                         color = HistoryGold,
-                        fontSize = 38.sp,
+                        fontSize = 32.sp,
                         fontWeight = FontWeight.Black,
                     )
                     Text(
@@ -223,7 +290,7 @@ private fun HistoryDateHeroV060(
                     Text(
                         selected.format(DateTimeFormatter.ofLocalizedDate(FormatStyle.FULL)),
                         color = HistoryMuted,
-                        fontSize = 10.sp,
+                        fontSize = 12.sp,
                     )
                 }
                 IconButton(onClick = onNext, enabled = selected < today) {
@@ -249,7 +316,7 @@ private fun HistoryStatV060(label: String, value: String, modifier: Modifier = M
     Surface(color = HistoryInk.copy(alpha = 0.52f), shape = RoundedCornerShape(16.dp), modifier = modifier) {
         Column(Modifier.padding(vertical = 9.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             Text(value, color = HistoryText, fontSize = 15.sp, fontWeight = FontWeight.Black)
-            Text(label, color = HistoryMuted, fontSize = 8.sp, fontWeight = FontWeight.Bold)
+            Text(label, color = HistoryMuted, fontSize = 11.sp, fontWeight = FontWeight.Bold)
         }
     }
 }
@@ -370,7 +437,7 @@ private fun OnThisDayMovieRowV070(movie: OnThisDayMovie, modifier: Modifier = Mo
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
                     Surface(color = HistoryGold.copy(alpha = 0.10f), shape = RoundedCornerShape(50)) {
                         Text(
-                            if (movie.yearsAgo == 1) "1 year ago today" else "${movie.yearsAgo} years ago today",
+                            when(movie.yearsAgo){0->"Released today";1->"1 year ago today";else->movie.yearsAgo.toString()+" years ago today"},
                             color = HistoryGold,
                             fontSize = 9.sp,
                             fontWeight = FontWeight.Bold,
