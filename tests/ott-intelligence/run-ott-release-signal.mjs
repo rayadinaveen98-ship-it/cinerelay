@@ -300,4 +300,33 @@ const validAasha = extractOttMovieReleaseSignal({
 });
 assert.equal(validAasha?.title, 'Aasha', 'clean film identity remains allowed');
 
+
+const promotedCaptionRegression = [
+  'Catch Joel Joseph in Kappi Squad',
+  'Catch Rinosh George in Kappi Squad',
+  'Happy Ending Telugu Movie Scenes',
+  'Hot Takes keep getting hotter 🔥😎 #Awarapan2OnPrime',
+  'Jailer 2 Super Show!',
+  'The entertainer everyone’s been waiting for! ❤️ Bethlehem Kudumba Unit',
+  'The little things that made Bethlehem, Bethlehem. 💛 Bethlehem Kudumba Unit',
+  'Watch Anagha Ajith in Kappi Squad',
+  'Love & Romance | Honeymoon Express Telugu Movie',
+];
+for (const badTitle of promotedCaptionRegression) {
+  const value = extractOttMovieReleaseSignal({
+    title: badTitle + ' | Streaming Now on JioHotstar',
+    publishedAt: '2026-10-16T09:00:00Z',
+    source: { authorityTier: 1, role: 'OTT_PLATFORM', name: 'JioHotstar Tamil' },
+  });
+  assert.equal(value, undefined, 'official source caption must not become a canonical title: ' + badTitle);
+}
+for (const cleanTitle of ['Catch Me If You Can', 'Aasha', '#Love', 'కాంతార', 'Paranthu Po']) {
+  const value = extractOttMovieReleaseSignal({
+    title: cleanTitle + ' | Streaming Now on JioHotstar',
+    publishedAt: '2026-10-16T09:00:00Z',
+    source: { authorityTier: 1, role: 'OTT_PLATFORM', name: 'JioHotstar Tamil' },
+  });
+  assert.equal(value?.title, cleanTitle, 'movie title must remain parsable: '+cleanTitle);
+}
+
 console.log('OTT release signal contract passed');
