@@ -236,4 +236,64 @@ assert.equal(
   'low-authority sources must not enter canonical OTT discovery',
 );
 
+
+
+// Phase 1 regression: the source's release verb can be genuine while its
+// surrounding YouTube caption or trade headline is NOT a canonical title.
+const promotionalFragments = [
+  {
+    title: '#Karmakhya Latest Telugu Full Movie Streaming Now on #PrimeVideo, #JioHotstar & #AhaVideo',
+    source: { authorityTier: 1, role: 'OTT_PLATFORM', name: 'Prime Video India' },
+  },
+  {
+    title: '#Karmakhya Telugu Full Movie Streaming Now on Prime Video',
+    source: { authorityTier: 1, role: 'OTT_PLATFORM', name: 'Prime Video India' },
+  },
+  {
+    title: '#UglyStory Telugu Full Movie Streaming Now on Prime Video',
+    source: { authorityTier: 1, role: 'OTT_PLATFORM', name: 'Prime Video India' },
+  },
+  {
+    title: 'After King, this top studio set to release Love And War on Netflix October 29, 2026',
+    source: { authorityTier: 3, role: 'TRADE_MEDIA', name: 'Trade Film News' },
+  },
+  {
+    title: 'Aasha OTT release date: Urvashi, Joju George and Aishwarya Lekshmi\'s Malayalam film set for Netflix release October 29, 2026',
+    source: { authorityTier: 3, role: 'TRADE_MEDIA', name: 'Trade Film News' },
+  },
+  {
+    title: 'Sharanya Pradeep Byte about Karmakhya Movie Streaming Now on Prime Video',
+    source: { authorityTier: 1, role: 'OTT_PLATFORM', name: 'Prime Video India' },
+  },
+  {
+    title: 'Please watch! #Euphoria Telugu Full Movie Streaming Now on Prime Video',
+    source: { authorityTier: 1, role: 'OTT_PLATFORM', name: 'Prime Video India' },
+  },
+];
+for (const item of promotionalFragments) {
+  const got = extractOttMovieReleaseSignal({
+    ...item,
+    publishedAt: '2026-10-16T06:30:00Z',
+  });
+  assert.equal(got, undefined, 'promotional copy must not become a movie title: ' + item.title);
+}
+
+// Preserve names that are genuinely short, hashtag-prefixed or regional.
+// A non-canonical headline must be rejected without blacklisting its movie.
+const validHashtag = extractOttMovieReleaseSignal({
+  title: '#Love Movie | Streaming Now on Netflix',
+  source: { authorityTier: 1, role: 'OTT_PLATFORM', name: 'Netflix' },
+});
+assert.equal(validHashtag?.title, '#Love', 'standalone hashtag title remains allowed');
+const validTelugu = extractOttMovieReleaseSignal({
+  title: 'కాంతార Movie | Streaming Now on Prime Video',
+  source: { authorityTier: 1, role: 'OTT_PLATFORM', name: 'Prime Video' },
+});
+assert.equal(validTelugu?.title, 'కాంతార', 'regional-script title remains allowed');
+const validAasha = extractOttMovieReleaseSignal({
+  title: 'Aasha Movie | Streaming Now on Netflix',
+  source: { authorityTier: 1, role: 'OTT_PLATFORM', name: 'Netflix' },
+});
+assert.equal(validAasha?.title, 'Aasha', 'clean film identity remains allowed');
+
 console.log('OTT release signal contract passed');
