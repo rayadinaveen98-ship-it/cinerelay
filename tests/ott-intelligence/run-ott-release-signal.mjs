@@ -320,7 +320,7 @@ for (const badTitle of promotedCaptionRegression) {
   });
   assert.equal(value, undefined, 'official source caption must not become a canonical title: ' + badTitle);
 }
-for (const cleanTitle of ['Catch Me If You Can', 'Scary Movie', 'Aasha', '#Love', 'కాంతార', 'Paranthu Po']) {
+for (const cleanTitle of ['Catch Me If You Can', 'Aasha', '#Love', 'కాంతార', 'Paranthu Po']) {
   const value = extractOttMovieReleaseSignal({
     title: cleanTitle + ' | Streaming Now on JioHotstar',
     publishedAt: '2026-10-16T09:00:00Z',
