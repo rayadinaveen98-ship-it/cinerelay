@@ -1,6 +1,12 @@
 # CineRelay Phase 1 — Cloudflare operator console release and acceptance
 
-Status on 16 October 2026: `cinerelay-review-api` v7 is ACTIVE in production and the Sources & ops pending-catalogue UI is merged into `main` (PR #64). The repository locks the web console to **Cloudflare Pages/static hosting** (`apps/web/README.md`). A real Cloudflare Pages project URL, deployment mode and current production commit have **not** been established from the available connected services. Do not claim the UI is live solely from GitHub CI success.
+Status on 16 October 2026: `cinerelay-review-api` v9 is ACTIVE in production. The Sources & ops pending-title and active-title audit screens are merged into `main` (PRs #64 and #69). The repository locks the web console to **Cloudflare Pages/static hosting** (`apps/web/README.md`). A real Cloudflare Pages project URL, deployment mode and current production commit have **not** been established from the available connected services. Do not claim the UI is live solely from GitHub CI success.
+
+## Historical deployment lead — investigate existing project first
+
+Earlier CineRelay deployment records identify **`https://cinerelay-console.pages.dev`**, project **`cinerelay-console`**, and an original Git integration production branch **`phase-3/internal-web-console`** on 16 September 2026. These are historical details, **not proof** that the current site is accessible, still on that branch, or serving the latest build. Later release notes did not independently verify the Pages project address.
+
+The new workflow `phase1-cloudflare-live-release-verify.yml` probes that historical URL without deployment privileges and provides on-demand strict verification of the live `release-info.json` SHA and SPA routes. Look at its job output first, then check Cloudflare Workers & Pages for the actual current production branch. If the existing production branch remains `phase-3/internal-web-console`, newer `main` UI changes may not be deploying. Do not create a second project to fix that; update the **existing** project's Git production branch only after confirming its identity and integration mode.
 
 ## Identify the existing Cloudflare Pages project (do not create duplicates)
 
