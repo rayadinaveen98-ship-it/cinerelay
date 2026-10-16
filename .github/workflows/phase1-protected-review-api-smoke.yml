@@ -24,36 +24,38 @@ jobs:
           trap 'rm -f "$body"' EXIT
 
           # Intentionally NO Supabase publishable key, access token, cookies
-          # or privileged secrets. The Edge function handles its own auth.
-          code="$(curl --silent --show-error --max-time 20 --retry 1 \
-            --request POST -H 'content-type: application/json' \
-            --data '{"action":"pendingCatalogueReviewQueue","limit":1}' \
-            --output "$body" --write-out '%{http_code}' "$REVIEW_API_URL")"
-          if [[ "$code" != "401" ]] || ! grep -Fq '"authentication_required"' "$body"; then
-            echo "::error::Unauthenticated catalogue endpoint did not deny access (HTTP $code)"
-            exit 1
-          fi
-          if grep -Eq '"(items|rawTitle|producerEvidenceLeads)"[[:space:]]*:' "$body"; then
-            echo "::error::Private catalogue data leaked in unauthenticated response"
-            exit 1
-          fi
-          echo "PASS: no bearer token -> application authentication_required (401)"
+          # or privileged secrets. Verify BOTH operator read-only endpoints.
+          for action in pendingCatalogueReviewQueue activeCatalogueQualityAudit; do
+            payload="$(printf '{"action":"%s","limit":1}' "$action")"
+            code="$(curl --silent --show-error --max-time 20 --retry 1 \
+              --request POST -H 'content-type: application/json' \
+              --data "$payload" \
+              --output "$body" --write-out '%{http_code}' "$REVIEW_API_URL")"
+            if [[ "$code" != "401" ]] || ! grep -Fq '"authentication_required"' "$body"; then
+              echo "::error::$action did not reject no-token request (HTTP $code)"
+              exit 1
+            fi
+            if grep -Eq '"(items|sourceEvidence|eventSamples|rawTitle|producerEvidenceLeads)"[[:space:]]*:' "$body"; then
+              echo "::error::$action leaked protected fields without login"
+              exit 1
+            fi
+            echo "PASS: $action no-token -> 401"
 
-          # An arbitrary untrusted bearer token must not become an operator.
-          code="$(curl --silent --show-error --max-time 20 --retry 1 \
-            --request POST -H 'content-type: application/json' \
-            -H 'authorization: Bearer not-a-valid-session' \
-            --data '{"action":"pendingCatalogueReviewQueue","limit":1}' \
-            --output "$body" --write-out '%{http_code}' "$REVIEW_API_URL")"
-          if [[ "$code" != "401" ]] || ! grep -Fq '"invalid_session"' "$body"; then
-            echo "::error::Invalid session was not rejected (HTTP $code)"
-            exit 1
-          fi
-          if grep -Eq '"(items|rawTitle|producerEvidenceLeads)"[[:space:]]*:' "$body"; then
-            echo "::error::Private catalogue data leaked with invalid session"
-            exit 1
-          fi
-          echo "PASS: invalid bearer token -> invalid_session (401)"
+            code="$(curl --silent --show-error --max-time 20 --retry 1 \
+              --request POST -H 'content-type: application/json' \
+              -H 'authorization: Bearer not-a-valid-session' \
+              --data "$payload" \
+              --output "$body" --write-out '%{http_code}' "$REVIEW_API_URL")"
+            if [[ "$code" != "401" ]] || ! grep -Fq '"invalid_session"' "$body"; then
+              echo "::error::$action did not reject invalid session (HTTP $code)"
+              exit 1
+            fi
+            if grep -Eq '"(items|sourceEvidence|eventSamples|rawTitle|producerEvidenceLeads)"[[:space:]]*:' "$body"; then
+              echo "::error::$action leaked protected fields with invalid session"
+              exit 1
+            fi
+            echo "PASS: $action invalid bearer -> 401"
+          done
 
           code="$(curl --silent --show-error --max-time 20 --retry 1 \
             --request GET --output "$body" --write-out '%{http_code}' "$REVIEW_API_URL")"
