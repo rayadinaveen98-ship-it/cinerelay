@@ -1,5 +1,6 @@
 import {useState} from 'react';
 import {useMutation,useQuery,useQueryClient} from '@tanstack/react-query';
+import {isIdentityOnlyWebArticle,prioritizePendingSuggestions} from '../lib/article-review-utils';
 import {
   fetchOfficialArticleReviewQueue,resolveReviewItem,searchReviewEntities,
   type OfficialArticleReviewItem,
@@ -51,6 +52,7 @@ function OfficialArticleCard({item}:{item:Article}) {
       <div className="min-w-0 flex-1">
         <p className="text-xs uppercase tracking-wide text-zinc-500">{item.source.name} · Tier {item.source.authorityTier} · {item.resolution.resolution_state}</p>
         <h3 className="mt-2 text-base font-semibold text-zinc-100">{item.rawItem.raw_title??'Untitled article'}</h3>
+        {isIdentityOnlyWebArticle(item.rawItem)&&<p className="mt-2 text-xs font-medium text-amber-300">Historical or undated · identity-only on approval · no new alert</p>}
         <p className="mt-2 text-xs text-zinc-500">Ingested {new Date(item.rawItem.first_seen_at).toLocaleString()}{item.rawItem.published_at?' · Published '+new Date(item.rawItem.published_at).toLocaleString(): ' · Source publication date unconfirmed'}</p>
       </div>
       <a href={item.rawItem.canonical_url} target="_blank" rel="noopener noreferrer" className="shrink-0 text-sm text-amber-300 hover:underline">Read official article ↗</a>
@@ -98,11 +100,11 @@ function OfficialArticleCard({item}:{item:Article}) {
 export function OfficialArticleReviewPanel(){
   const query=useQuery({queryKey:['official-article-review-queue'],queryFn:()=>fetchOfficialArticleReviewQueue(50),refetchInterval:30_000});
   return <section id="official-article-review" className="scroll-mt-6 space-y-4 rounded-3xl border border-zinc-800 bg-zinc-900/40 p-6">
-    <div><p className="text-xs font-semibold uppercase tracking-widest text-amber-400">Official website evidence</p><h2 className="mt-2 text-xl font-semibold">Movie & series article review</h2><p className="mt-2 text-sm leading-6 text-zinc-400">First-party articles that CineRelay ingested but could not associate with a verified title. Typed suggestions are pending evidence, never automatic catalogue approval. No inferred release dates.</p></div>
+    <div><p className="text-xs font-semibold uppercase tracking-widest text-amber-400">Official website evidence</p><h2 className="mt-2 text-xl font-semibold">Movie & series article review</h2><p className="mt-2 text-sm leading-6 text-zinc-400">First-party articles that CineRelay ingested but could not associate with a verified title. Typed suggestions are pending evidence, never automatic catalogue approval. No inferred release dates. Pending suggestions are shown first; unknown-dated items remain identity-only.</p></div>
     {query.isPending&&<p className="text-sm text-zinc-500">Loading protected official-article review queue…</p>}
     {query.isError&&<p className="text-sm text-red-300">Could not load the operator queue: {query.error.message}</p>}
     {query.data&&<><p className="text-sm text-zinc-400">{query.data.items.length} unresolved official article(s) · {query.data.items.filter(x=>x.typedSuggestion?.status==='PENDING').length} with pending typed suggestions · refreshed {new Date(query.data.generatedAt).toLocaleString()}</p>
-      {query.data.items.length===0?<p className="text-sm text-zinc-500">No unresolved official articles.</p>:<div className="space-y-3">{query.data.items.map(item=><OfficialArticleCard key={item.rawItem.id} item={item}/>)}</div>}
+      {query.data.items.length===0?<p className="text-sm text-zinc-500">No unresolved official articles.</p>:<div className="space-y-3">{prioritizePendingSuggestions(query.data.items).map(item=><OfficialArticleCard key={item.rawItem.id} item={item}/>)}</div>}
     </>}
   </section>;
 }
