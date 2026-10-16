@@ -110,6 +110,71 @@ async function reviewQueue(limit: number) {
   return { generatedAt: new Date().toISOString(), items };
 }
 
+/**
+ * Official unresolved articles are not a public newsroom feed. Expose them only
+ * via existing operator auth, with typed candidate suggestions when verified.
+ */
+async function officialArticleReviewQueue(limit: number) {
+  const bounded = Math.max(1, Math.min(100, limit));
+  const {data: rawRows, error: rawError} = await admin.from('raw_items')
+    .select('id,source_identity_id,raw_title,canonical_url,first_seen_at,published_at')
+    .eq('item_type','WEB_ARTICLE')
+    .order('first_seen_at',{ascending:false})
+    .limit(Math.min(400, bounded * 4));
+  if (rawError) throw rawError;
+  const raws = rawRows ?? [];
+  if (!raws.length) return {items:[], generatedAt:new Date().toISOString()};
+  const rawIds = raws.map(x=>x.id);
+  const ids = [...new Set(raws.map(x=>x.source_identity_id))];
+  const [a,b,c] = await Promise.all([
+    admin.from('current_entity_resolution_results')
+      .select('raw_item_id,resolution_state,score,methods,created_at')
+      .in('raw_item_id',rawIds),
+    admin.from('source_identities')
+      .select('id,source_id,platform,connector_type')
+      .in('id',ids).eq('active',true),
+    admin.from('entity_discovery_evidence')
+      .select('raw_item_id,candidate_id').in('raw_item_id',rawIds)
+  ]);
+  if(a.error) throw a.error;
+  if(b.error) throw b.error;
+  if(c.error) throw c.error;
+  const identities = new Map((b.data??[]).map(x=>[x.id,x]));
+  const sourceIds=[...new Set((b.data??[]).map(x=>x.source_id))];
+  const src = sourceIds.length
+    ? await admin.from('sources').select('id,display_name,authority_tier,source_role').in('id',sourceIds)
+    : {data:[],error:null};
+  if(src.error) throw src.error;
+  const sources=new Map((src.data??[]).map(x=>[x.id,x]));
+  const resolutions=new Map((a.data??[]).map(x=>[x.raw_item_id,x]));
+  const evidenceByRaw=new Map<string,string>();
+  for(const x of c.data??[]) evidenceByRaw.set(x.raw_item_id,x.candidate_id);
+  const candidateIds=[...new Set(evidenceByRaw.values())];
+  const suggestions = candidateIds.length
+    ? await admin.from('entity_discovery_candidates')
+        .select('id,proposed_name,proposed_entity_type,status,evidence_count,first_party_source_count,metadata')
+        .in('id',candidateIds)
+    : {data:[],error:null};
+  if(suggestions.error) throw suggestions.error;
+  const candidateMap=new Map((suggestions.data??[]).map(x=>[x.id,x]));
+  const items=raws.flatMap(raw=>{
+    const identity=identities.get(raw.source_identity_id);
+    const source=identity?sources.get(identity.source_id):null;
+    const resolution=resolutions.get(raw.id);
+    if(!identity||!source||identity.platform!=='WEB'||Number(source.authority_tier)>2||
+        !['PRODUCTION_HOUSE','OTT_PLATFORM','FILM_OFFICIAL','PROJECT_OFFICIAL'].includes(source.source_role)||
+        !resolution||!['UNRESOLVED','AMBIGUOUS'].includes(resolution.resolution_state)) return [];
+    const candidate=candidateMap.get(evidenceByRaw.get(raw.id)??'')??null;
+    return [{
+      rawItem:raw, source:{name:source.display_name,authorityTier:source.authority_tier,role:source.source_role},
+      resolution, typedSuggestion:candidate,
+      reviewStatus:candidate?'TYPED_CANDIDATE_REVIEW':'MANUAL_TITLE_REVIEW',
+      needsHumanReview:true,
+    }];
+  }).slice(0,bounded);
+  return {generatedAt:new Date().toISOString(), items};
+}
+
 async function entitySearch(query: string) {
   const q = query.trim();
   if (q.length < 2) return { items: [] };
@@ -169,6 +234,7 @@ Deno.serve(async (request): Promise<Response> => {
 
     if (action === 'bootstrap') return json(200, await reviewBootstrap(Number(body.limit ?? 100)));
     if (action === 'entitySearch') return json(200, await entitySearch(typeof body.query === 'string' ? body.query : ''));
+    if (action === 'officialArticleReviewQueue') return json(200, await officialArticleReviewQueue(Number(body.limit ?? 50)));
 
     const reason = reasonOf(body.reason);
     if (!reason && ['resolveRawItem', 'clearResolutionOverride', 'suppressEvent', 'reclassifyEvent', 'mergeEvents'].includes(action)) {
