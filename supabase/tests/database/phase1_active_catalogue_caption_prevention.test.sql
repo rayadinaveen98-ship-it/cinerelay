@@ -40,8 +40,8 @@ select is(
  'series caption blocked in corroborated promoter');
 select is(
  public.system_promote_first_party_ott_candidate('e6700000-0000-4000-8000-000000000002')->>'reason',
- 'first_party_ott_candidate_type_or_confidence_gate',
- 'clean series goes beyond title quality gate, without being promoted');
+ 'first_party_ott_evidence_gate',
+ 'clean series reaches independent evidence checks rather than being blacklisted');
 select is(
  (select count(*)::text from public.entities e
   where e.canonical_name='From 60 to 20, love always! Hotstar Specials'),
