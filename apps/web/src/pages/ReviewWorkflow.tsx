@@ -91,7 +91,7 @@ function ReviewItemCard({ item }: { item: ReviewItem }) {
         <div className="flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-wide text-amber-300">
           <span>Raw / unresolved signal</span><span>•</span><span>{sourceTrustLabel(item)}</span>
         </div>
-        <p className="mt-2 text-sm leading-6 text-amber-100/80">Canonical identity and event trust are not established yet. Review the source authority, evidence and title before binding or creating an entity.</p>
+        <p className="mt-2 text-sm leading-6 text-amber-100/80">Canonical identity and event trust are not established yet. Review the source authority, evidence and title before binding or creating an entity. For website articles without a verified publication timestamp, or first seen more than 48 hours ago, resolving the title remains an identity-only correction and will not create a new event or push alert.</p>
         <div className="mt-3 grid gap-3 text-xs text-zinc-400 sm:grid-cols-2">
           <div><span className="block uppercase tracking-wide text-zinc-600">Source published</span><span className="mt-1 block text-zinc-300">{fmt(item.rawItem?.published_at)}</span></div>
           <div><span className="block uppercase tracking-wide text-zinc-600">CineRelay first seen</span><span className="mt-1 block text-zinc-300">{fmt(item.rawItem?.first_seen_at)}</span></div>
