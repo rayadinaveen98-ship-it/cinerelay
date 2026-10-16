@@ -1,0 +1,72 @@
+name: CineRelay Protected Review API Smoke
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  protected-review-api:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Verify private review API rejects unauthenticated reads
+        env:
+          REVIEW_API_URL: https://dnqaejljfzwhsainpdxb.supabase.co/functions/v1/cinerelay-review-api
+        shell: bash
+        run: |
+          set -euo pipefail
+          body="$(mktemp)"
+          trap 'rm -f "$body"' EXIT
+
+          # Intentionally NO Supabase publishable key, access token, cookies
+          # or privileged secrets. The Edge function handles its own auth.
+          code="$(curl --silent --show-error --max-time 20 --retry 1 \
+            --request POST -H 'content-type: application/json' \
+            --data '{"action":"pendingCatalogueReviewQueue","limit":1}' \
+            --output "$body" --write-out '%{http_code}' "$REVIEW_API_URL")"
+          if [[ "$code" != "401" ]] || ! grep -Fq '"authentication_required"' "$body"; then
+            echo "::error::Unauthenticated catalogue endpoint did not deny access (HTTP $code)"
+            exit 1
+          fi
+          if grep -Eq '"(items|rawTitle|producerEvidenceLeads)"[[:space:]]*:' "$body"; then
+            echo "::error::Private catalogue data leaked in unauthenticated response"
+            exit 1
+          fi
+          echo "PASS: no bearer token -> application authentication_required (401)"
+
+          # An arbitrary untrusted bearer token must not become an operator.
+          code="$(curl --silent --show-error --max-time 20 --retry 1 \
+            --request POST -H 'content-type: application/json' \
+            -H 'authorization: Bearer not-a-valid-session' \
+            --data '{"action":"pendingCatalogueReviewQueue","limit":1}' \
+            --output "$body" --write-out '%{http_code}' "$REVIEW_API_URL")"
+          if [[ "$code" != "401" ]] || ! grep -Fq '"invalid_session"' "$body"; then
+            echo "::error::Invalid session was not rejected (HTTP $code)"
+            exit 1
+          fi
+          if grep -Eq '"(items|rawTitle|producerEvidenceLeads)"[[:space:]]*:' "$body"; then
+            echo "::error::Private catalogue data leaked with invalid session"
+            exit 1
+          fi
+          echo "PASS: invalid bearer token -> invalid_session (401)"
+
+          code="$(curl --silent --show-error --max-time 20 --retry 1 \
+            --request GET --output "$body" --write-out '%{http_code}' "$REVIEW_API_URL")"
+          if [[ "$code" != "405" ]]; then
+            echo "::error::Unexpected GET method status HTTP $code"
+            exit 1
+          fi
+          echo "PASS: private endpoint is POST-only"
+
+          code="$(curl --silent --show-error --max-time 20 --retry 1 \
+            --request OPTIONS --output "$body" --write-out '%{http_code}' "$REVIEW_API_URL")"
+          if [[ "$code" != "204" ]]; then
+            echo "::error::CORS preflight returned unexpected HTTP $code"
+            exit 1
+          fi
+          echo "PASS: browser preflight supported"
