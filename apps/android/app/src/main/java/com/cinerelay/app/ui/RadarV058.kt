@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -89,6 +90,7 @@ fun RadarV058(
         }
     }
 
+    val landingListState=rememberLazyListState()
     var openedLane by rememberSaveable { mutableStateOf<String?>(null) }
     BackHandler(enabled=openedLane!=null){ openedLane=null }
     val ranked = remember(state.events) {
@@ -161,9 +163,9 @@ fun RadarV058(
                     }
                     Spacer(Modifier.width(13.dp))
                     Column(Modifier.weight(1f)) {
-                        Text("CINERELAY", color = RadarGold58, fontSize = 9.sp, fontWeight = FontWeight.Black, letterSpacing = 1.5.sp)
+                        Text("CINERELAY", color = RadarGold58, fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 1.5.sp)
                         Text("Radar", color = RadarText58, fontSize = 26.sp, fontWeight = FontWeight.Bold)
-                        Text("What is worth covering now · rescored every minute", color = RadarMuted58, fontSize = 11.sp)
+                        Text("What is worth covering now · rescored every minute", color = RadarMuted58, fontSize = 13.sp)
                     }
                     IconButton(onClick = onRefresh, enabled = !state.loading) {
                         if (state.loading) CircularProgressIndicator(Modifier.size(19.dp), strokeWidth = 2.dp, color = RadarGold58)
@@ -188,6 +190,7 @@ fun RadarV058(
                     }
                 } else {
                     LazyColumn(
+                        state=landingListState,
                         contentPadding = PaddingValues(start = 18.dp, end = 18.dp, top = 6.dp, bottom = 110.dp),
                         verticalArrangement = Arrangement.spacedBy(13.dp),
                     ) {

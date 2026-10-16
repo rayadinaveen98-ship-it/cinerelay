@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -112,6 +113,7 @@ fun OttReleasesV054(
     modifier: Modifier = Modifier,
 ) {
     var filtersExpanded by rememberSaveable { mutableStateOf(false) }
+    val landingListState=rememberLazyListState()
     var openedCategory by rememberSaveable { mutableStateOf<String?>(null) }
     var openedReleaseId by rememberSaveable { mutableStateOf<String?>(null) }
     BackHandler(enabled=openedCategory!=null||openedReleaseId!=null){
@@ -152,8 +154,8 @@ fun OttReleasesV054(
                         colors = TopAppBarDefaults.topAppBarColors(containerColor = OttInk),
                         title = {
                             Column {
-                                Text("CINERELAY OTT", color = OttGold, fontSize = 9.sp, fontWeight = FontWeight.Black, letterSpacing = 1.7.sp)
-                                Text("Streaming Guide", color = OttText, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+                                Text("CINERELAY OTT", color = OttGold, fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 1.7.sp)
+                                Text("Streaming Guide", color = OttText, fontSize = 25.sp, fontWeight = FontWeight.Bold)
                             }
                         },
                         actions = {
@@ -166,6 +168,7 @@ fun OttReleasesV054(
                 },
             ) { padding ->
                 LazyColumn(
+                    state=landingListState,
                     modifier = Modifier.fillMaxSize().padding(padding),
                     contentPadding = PaddingValues(start = 14.dp, end = 14.dp, top = 4.dp, bottom = 118.dp),
                     verticalArrangement = Arrangement.spacedBy(14.dp),
@@ -299,14 +302,14 @@ private fun OttFiltersV060(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Column(Modifier.weight(1f)) {
-                    Text("Filters", color = OttText, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                    Text("Filters", color = OttText, fontSize = 16.sp, fontWeight = FontWeight.Bold)
                     Text(
                         if (activeCount == 0) "Optional · platform, language and verification" else "$activeCount active filter${if (activeCount == 1) "" else "s"}",
                         color = if (activeCount == 0) OttMuted else OttGold,
                         fontSize = 9.sp,
                     )
                 }
-                Text(if (expanded) "Hide" else "Show", color = OttGold, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                Text(if (expanded) "Hide" else "Show", color = OttGold, fontSize = 12.sp, fontWeight = FontWeight.Bold)
             }
 
             if (expanded) {

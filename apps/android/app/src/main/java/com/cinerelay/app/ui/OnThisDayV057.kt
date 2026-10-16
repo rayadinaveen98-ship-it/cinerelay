@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -72,6 +73,7 @@ fun OnThisDayV057(
     onToday: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val landingListState=rememberLazyListState()
     var openedYear by rememberSaveable { mutableStateOf<Int?>(null) }
     var openedMovieId by rememberSaveable { mutableStateOf<String?>(null) }
     LaunchedEffect(state.onThisDayDate) { openedYear=null; openedMovieId=null }
@@ -119,6 +121,7 @@ fun OnThisDayV057(
                     }
                 }
             }else LazyColumn(
+                state=landingListState,
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(bottom = 118.dp),
                 verticalArrangement = Arrangement.spacedBy(14.dp),
@@ -132,7 +135,7 @@ fun OnThisDayV057(
                             Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = HistoryText)
                         }
                         Column(Modifier.weight(1f)) {
-                            Text("INDIAN CINEMA HISTORY", color = HistoryGold, fontSize = 9.sp, fontWeight = FontWeight.Black, letterSpacing = 1.5.sp)
+                            Text("INDIAN CINEMA HISTORY", color = HistoryGold, fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 1.5.sp)
                             Text("Today in Cinema", color = HistoryText, fontSize = 24.sp, fontWeight = FontWeight.Bold)
                         }
                         TextButton(onClick = onToday) {
@@ -287,7 +290,7 @@ private fun HistoryDateHeroV060(
                     Text(
                         selected.format(DateTimeFormatter.ofLocalizedDate(FormatStyle.FULL)),
                         color = HistoryMuted,
-                        fontSize = 10.sp,
+                        fontSize = 12.sp,
                     )
                 }
                 IconButton(onClick = onNext, enabled = selected < today) {
@@ -313,7 +316,7 @@ private fun HistoryStatV060(label: String, value: String, modifier: Modifier = M
     Surface(color = HistoryInk.copy(alpha = 0.52f), shape = RoundedCornerShape(16.dp), modifier = modifier) {
         Column(Modifier.padding(vertical = 9.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             Text(value, color = HistoryText, fontSize = 15.sp, fontWeight = FontWeight.Black)
-            Text(label, color = HistoryMuted, fontSize = 8.sp, fontWeight = FontWeight.Bold)
+            Text(label, color = HistoryMuted, fontSize = 11.sp, fontWeight = FontWeight.Bold)
         }
     }
 }
