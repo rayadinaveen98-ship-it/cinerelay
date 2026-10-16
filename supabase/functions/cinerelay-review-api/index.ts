@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import {candidateOwnerGroupKey} from './owner-grouping.ts';
+import {activeCatalogueTitleWarnings,sortActiveCatalogueImpact} from './active-catalogue-audit.ts';
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL');
 const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
@@ -196,6 +197,153 @@ async function officialArticleReviewQueue(limit: number) {
  * Operator-authenticated, read-only: NO changes to candidate status,
  * evidence counts, raw items, events, promotion or notifications.
  */
+/**
+ * Operator-only ACTIVE catalogue audit. Source records and event links stay
+ * unchanged. We scan the complete small catalogue in pages rather than
+ * silently inspecting only the 100 most recent entities.
+ */
+async function activeCatalogueQualityAudit(limit: number) {
+  const bound = Math.max(1,Math.min(100,Number.isFinite(limit)?Math.trunc(limit):50));
+  const pageSize = 500;
+  const maxScanned = 5000;
+  const active: Array<{id:string;entity_type:string;canonical_name:string;status:string;primary_language:string|null;country_code:string|null;created_at:string}> = [];
+  let scanComplete = false;
+  for (let offset=0;offset<maxScanned;offset+=pageSize) {
+    const { data, error } = await admin.from('entities')
+      .select('id,entity_type,canonical_name,status,primary_language,country_code,created_at')
+      .eq('status','ACTIVE')
+      .in('entity_type',['MOVIE','SERIES'])
+      .order('id',{ascending:true}).range(offset,offset+pageSize-1);
+    if(error) throw error;
+    const page = data ?? [];
+    active.push(...page);
+    if(page.length<pageSize){scanComplete=true;break;}
+  }
+  const flagged=active.map(entity=>({
+    ...entity,warnings:activeCatalogueTitleWarnings(entity.canonical_name,entity.entity_type)
+  })).filter(entity=>entity.warnings.length>0);
+  if(!flagged.length){
+    return {generatedAt:new Date().toISOString(), scannedActiveEntities:active.length,
+      scanComplete,totalFlagged:0,eventCountsComplete:true,evidenceLinksComplete:true,items:[]};
+  }
+  // Cap a single operator response; never pretend truncated results are complete.
+  // A large future catalogue can be audited in independently paginated batches.
+  const inspected = flagged.slice(0,250);
+  const ids=inspected.map(x=>x.id);
+  const [evResult,promotedResult]=await Promise.all([
+    admin.from('events')
+      .select('id,primary_entity_id,event_type,headline,status,detected_at,occurred_at')
+      .eq('status','ACTIVE').in('primary_entity_id',ids)
+      .order('detected_at',{ascending:false}).limit(2000),
+    admin.from('entity_discovery_candidates')
+      .select('id,promoted_entity_id,proposed_name,status,confidence,review_reason')
+      .eq('status','PROMOTED').in('promoted_entity_id',ids).limit(500),
+  ]);
+  if(evResult.error)throw evResult.error;
+  if(promotedResult.error)throw promotedResult.error;
+  const events=evResult.data??[];
+  const promoted=promotedResult.data??[];
+  const eventsComplete=events.length<2000;
+  const candidatesComplete=promoted.length<500;
+  const eventIds=events.map(x=>x.id);
+  const candidateIds=promoted.map(x=>x.id);
+  const [eventLinksResult,candidateLinksResult]=await Promise.all([
+    eventIds.length
+      ? admin.from('event_evidence').select('event_id,raw_item_id').in('event_id',eventIds).limit(3000)
+      : Promise.resolve({data:[],error:null}),
+    candidateIds.length
+      ? admin.from('entity_discovery_evidence').select('candidate_id,raw_item_id').in('candidate_id',candidateIds).limit(1500)
+      : Promise.resolve({data:[],error:null}),
+  ]);
+  if(eventLinksResult.error)throw eventLinksResult.error;
+  if(candidateLinksResult.error)throw candidateLinksResult.error;
+  const eventLinks=eventLinksResult.data??[];
+  const candidateLinks=candidateLinksResult.data??[];
+  const linkScanComplete=eventLinks.length<3000&&candidateLinks.length<1500;
+  const rawIds=[...new Set([...eventLinks,...candidateLinks].map(x=>x.raw_item_id).filter((x):x is string=>typeof x==='string'))];
+  const rawResult=rawIds.length
+    ? await admin.from('raw_items')
+      .select('id,raw_title,canonical_url,published_at,source_identity_id')
+      .in('id',rawIds).limit(3000)
+    : {data:[],error:null};
+  if(rawResult.error)throw rawResult.error;
+  const raws=rawResult.data??[];
+  const sourceIdentityIds=[...new Set(raws.map(x=>x.source_identity_id).filter((x):x is string=>typeof x==='string'))];
+  const identitiesResult=sourceIdentityIds.length
+    ? await admin.from('source_identities').select('id,source_id,platform').in('id',sourceIdentityIds)
+    : {data:[],error:null};
+  if(identitiesResult.error)throw identitiesResult.error;
+  const identityMap=new Map((identitiesResult.data??[]).map(x=>[x.id,x]));
+  const sourceIds=[...new Set((identitiesResult.data??[]).map(x=>x.source_id))];
+  const sourceResult=sourceIds.length
+    ? await admin.from('sources').select('id,display_name').in('id',sourceIds)
+    : {data:[],error:null};
+  if(sourceResult.error)throw sourceResult.error;
+  const sourceMap=new Map((sourceResult.data??[]).map(x=>[x.id,x.display_name]));
+  const rawMap=new Map(raws.map(x=>[x.id,x]));
+
+  const eventEntityMap=new Map(events.map(ev=>[ev.id,ev.primary_entity_id]));
+  const candidateEntityMap=new Map(promoted.map(c=>[c.id,c.promoted_entity_id]));
+  const linked=new Map<string,Set<string>>();
+  for(const link of eventLinks){
+    const id=eventEntityMap.get(link.event_id);
+    if(!id||!link.raw_item_id)continue;
+    const set=linked.get(id)??new Set<string>();set.add(link.raw_item_id);linked.set(id,set);
+  }
+  for(const link of candidateLinks){
+    const id=candidateEntityMap.get(link.candidate_id);
+    if(!id||!link.raw_item_id)continue;
+    const set=linked.get(id)??new Set<string>();set.add(link.raw_item_id);linked.set(id,set);
+  }
+  const eventGroups=new Map<string,typeof events>();
+  for(const ev of events){
+    const list=eventGroups.get(ev.primary_entity_id)??[];
+    list.push(ev);eventGroups.set(ev.primary_entity_id,list);
+  }
+  const promotedGroups=new Map<string,typeof promoted>();
+  for(const candidate of promoted){
+    if(!candidate.promoted_entity_id)continue;
+    const list=promotedGroups.get(candidate.promoted_entity_id)??[];
+    list.push(candidate);promotedGroups.set(candidate.promoted_entity_id,list);
+  }
+  const items=sortActiveCatalogueImpact(inspected.map(entity=>{
+    const matchingEvents=eventGroups.get(entity.id)??[];
+    const rawEvidence=[...(linked.get(entity.id)??new Set<string>())]
+      .map(rawId=>rawMap.get(rawId)).filter((x):x is NonNullable<typeof x>=>Boolean(x))
+      .sort((a,b)=>(b.published_at??'').localeCompare(a.published_at??''))
+      .slice(0,6).map(raw=>{
+        const identity=identityMap.get(raw.source_identity_id);
+        return {rawItemId:raw.id,rawTitle:raw.raw_title,
+          sourceUrl:raw.canonical_url,publishedAt:raw.published_at,
+          platform:identity?.platform??'UNKNOWN',
+          sourceName:identity?sourceMap.get(identity.source_id)??'Unknown source':'Unknown source'};
+      });
+    return {
+      ...entity,
+      activeEventCount:matchingEvents.length,
+      eventSamples:matchingEvents.slice(0,6).map(ev=>({
+        id:ev.id,eventType:ev.event_type,headline:ev.headline,
+        detectedAt:ev.detected_at,occurredAt:ev.occurred_at
+      })),
+      sourceEvidence:rawEvidence,
+      linkedPromotedCandidates:(promotedGroups.get(entity.id)??[]).map(c=>({
+        id:c.id,proposedName:c.proposed_name,status:c.status,
+        confidence:c.confidence,reviewReason:c.review_reason
+      })),
+    };
+  })).slice(0,bound);
+
+  return {
+    generatedAt:new Date().toISOString(),
+    scannedActiveEntities:active.length,
+    scanComplete,
+    totalFlagged:flagged.length,
+    eventCountsComplete:eventsComplete&&inspected.length===flagged.length,
+    evidenceLinksComplete:linkScanComplete&&raws.length===rawIds.length&&candidatesComplete&&inspected.length===flagged.length,
+    items,
+  };
+}
+
 async function pendingCatalogueReviewQueue(limit: number) {
   const bounded = Math.max(1, Math.min(100, Number.isFinite(limit) ? Math.trunc(limit) : 50));
   const { data: candidates, error: candidateError } = await admin.from('entity_discovery_candidates')
@@ -349,6 +497,7 @@ Deno.serve(async (request): Promise<Response> => {
     if (action === 'entitySearch') return json(200, await entitySearch(typeof body.query === 'string' ? body.query : ''));
     if (action === 'officialArticleReviewQueue') return json(200, await officialArticleReviewQueue(Number(body.limit ?? 50)));
     if (action === 'pendingCatalogueReviewQueue') return json(200, await pendingCatalogueReviewQueue(Number(body.limit ?? 50)));
+    if (action === 'activeCatalogueQualityAudit') return json(200, await activeCatalogueQualityAudit(Number(body.limit ?? 50)));
     if(action === 'submitProducerEvidenceLead'){
       if(!validUuid(body.candidateId)) return json(400,{error:'invalid_candidate_id'});
       const sourceUrl=typeof body.sourceUrl==='string'?body.sourceUrl.trim():'';
