@@ -8,6 +8,7 @@ select ok(public.automated_ott_candidate_title_looks_canonical('కాంతా�
 select ok(public.automated_ott_candidate_title_looks_canonical('Aasha'), 'short film name allowed');
 select ok(not public.automated_ott_candidate_title_looks_canonical('#Karmakhya Latest Telugu Full'), 'latest Telugu full caption rejected');
 select ok(not public.automated_ott_candidate_title_looks_canonical('#Karmakhya Telugu Full'), 'Telugu full movie caption rejected');
+select ok(not public.automated_ott_candidate_title_looks_canonical('#UglyStory Telugu Full'), 'second promotional title rejected');
 select ok(not public.automated_ott_candidate_title_looks_canonical('Aasha OTT release date: Urvashi'), 'OTT release date headline rejected');
 select ok(not public.automated_ott_candidate_title_looks_canonical('After King, this top studio'), 'editorial studio headline rejected');
 select ok(not public.automated_ott_candidate_title_looks_canonical('Sharanya Pradeep Byte about Karmakhya'), 'interview byte caption rejected');
