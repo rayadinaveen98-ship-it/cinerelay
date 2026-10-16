@@ -130,6 +130,52 @@ const OfficialArticleReviewQueueSchema = z.object({
     needsHumanReview: z.literal(true),
   })),
 });
+const ActiveCatalogueQualityAuditSchema = z.object({
+  generatedAt:z.string(),
+  scannedActiveEntities:z.coerce.number(),
+  scanComplete:z.boolean(),
+  totalFlagged:z.coerce.number(),
+  eventCountsComplete:z.boolean(),
+  evidenceLinksComplete:z.boolean(),
+  items:z.array(z.object({
+    id:z.string().uuid(),
+    entity_type:z.enum(['MOVIE','SERIES']),
+    canonical_name:z.string(),
+    status:z.literal('ACTIVE'),
+    primary_language:z.string().nullable(),
+    country_code:z.string().nullable(),
+    created_at:z.string(),
+    warnings:z.array(z.string()),
+    activeEventCount:z.coerce.number(),
+    eventSamples:z.array(z.object({
+      id:z.string().uuid(),
+      eventType:z.string(),
+      headline:z.string().nullable(),
+      detectedAt:z.string(),
+      occurredAt:z.string().nullable(),
+    })),
+    sourceEvidence:z.array(z.object({
+      rawItemId:z.string().uuid(),
+      rawTitle:z.string().nullable(),
+      sourceUrl:z.string().nullable(),
+      publishedAt:z.string().nullable(),
+      platform:z.string(),
+      sourceName:z.string(),
+    })),
+    linkedPromotedCandidates:z.array(z.object({
+      id:z.string().uuid(),
+      proposedName:z.string(),
+      status:z.string(),
+      confidence:z.coerce.number(),
+      reviewReason:z.string().nullable(),
+    })),
+  })),
+});
+export type ActiveCatalogueQualityAudit = z.infer<typeof ActiveCatalogueQualityAuditSchema>;
+export function fetchActiveCatalogueQualityAudit(limit=50) {
+  return invoke({action:'activeCatalogueQualityAudit',limit},ActiveCatalogueQualityAuditSchema);
+}
+
 const PendingCatalogueQueueSchema = z.object({
   generatedAt: z.string(),
   items: z.array(z.object({
