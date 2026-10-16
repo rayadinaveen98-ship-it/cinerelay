@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { isOfficialArticleSource, suggestOfficialArticleEntity } from './article-entity-suggestions.ts';
+import {RAW_ITEM_SELECT_COLUMNS,reviewedArticleHoldReason} from './reviewed-article-freshness.ts';
 // @deno-types="../../../packages/domain/dist/index.d.ts"
 import { normalizeItem, processSingle, resolveEntity } from '../../../packages/domain/dist/index.js';
 // @deno-types="../../../packages/domain/dist/ott-release-signal.d.ts"
@@ -51,7 +52,7 @@ function sourceRow(value: unknown): Record<string, unknown> | undefined {
 
 async function loadRawItem(rawItemId: string): Promise<Record<string, unknown> | undefined> {
   const { data, error } = await supabase.from('raw_items')
-    .select('id,source_identity_id,platform_item_id,canonical_url,published_at,raw_title,raw_text,normalized_text,content_fingerprint,metadata')
+    .select(RAW_ITEM_SELECT_COLUMNS)
     .eq('id', rawItemId).maybeSingle();
   if (error) throw error;
   return data as Record<string, unknown> | undefined;
@@ -356,6 +357,24 @@ async function processJob(job: Record<string, unknown>, workerId: string): Promi
     }
     await completeJob(job, workerId);
     return { resolution: resolution.state };
+  }
+
+  // Operator approval of an undated/stale website article is an identity fix,
+  // NOT a fresh announcement. Persist resolution, but never synthesize a
+  // historical article into today's feed / push notifications.
+  const holdReason=reviewedArticleHoldReason({
+    operatorOverride:Boolean(operatorOverride),
+    itemType:String(raw.item_type??''),
+    sourcePlatform:source.platform,
+    firstSeenAt:typeof raw.first_seen_at==='string'?raw.first_seen_at:null,
+    publishedAt:typeof raw.published_at==='string'?raw.published_at:null,
+  });
+  if(holdReason){
+    console.info('REVIEWED_WEB_ARTICLE_EVENT_HELD',{
+      rawItemId,reason:holdReason,operatorOverrideId:operatorOverride?.id,
+    });
+    await completeJob(job,workerId);
+    return {resolution:'RESOLVED_REVIEW_ONLY'};
   }
 
   if (ottSignal) await persistOttRelease(resolution.entity.id, rawItemId, ottSignal);

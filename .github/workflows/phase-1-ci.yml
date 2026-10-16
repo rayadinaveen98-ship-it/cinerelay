@@ -89,7 +89,7 @@ jobs:
       - name: Type-check process-raw-item-worker
         run: deno check --config supabase/functions/process-raw-item-worker/deno.json supabase/functions/process-raw-item-worker/index.ts
       - name: Test official article typed-review extraction
-        run: deno test --config supabase/functions/process-raw-item-worker/deno.json supabase/functions/process-raw-item-worker/article-entity-suggestions.test.ts
+        run: deno test --config supabase/functions/process-raw-item-worker/deno.json supabase/functions/process-raw-item-worker/article-entity-suggestions.test.ts supabase/functions/process-raw-item-worker/reviewed-article-freshness.test.ts
       - name: Type-check youtube-fallback-worker
         run: deno check --config supabase/functions/youtube-fallback-worker/deno.json supabase/functions/youtube-fallback-worker/index.ts
       - name: Type-check youtube-source-admin

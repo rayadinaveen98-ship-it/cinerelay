@@ -65,7 +65,7 @@ function OfficialArticleCard({item}:{item:Article}) {
     </div>:<div className="mt-3 rounded-xl border border-zinc-800 bg-zinc-900/50 p-3 text-sm text-zinc-400">{item.reviewStatus==='MANUAL_TITLE_REVIEW'?'No reliable title detected. Identify the actual movie or series in the official article before proceeding.':'No pending suggestion. Verify the title manually.'}</div>}
     <details className="mt-4 rounded-xl border border-zinc-800 p-4">
       <summary className="cursor-pointer text-sm font-semibold text-zinc-300">Resolve after checking evidence (audited action)</summary>
-      <p className="mt-3 text-xs leading-5 text-amber-200">Resolving an item can reprocess it and potentially publish a canonical event. Verify the precise title, format, and relevance before choosing an entity. Unknown language, country, and release date must remain blank.</p>
+      <p className="mt-3 text-xs leading-5 text-amber-200">Resolving an item can reprocess it and potentially publish a canonical event. Verify the precise title, format, and relevance before choosing an entity. Unknown language, country, and release date must remain blank. Older (more than 48 hours since discovery or publication) and undated website articles are identity-only corrections: no new event or notification is generated.</p>
       <label className="mt-4 block text-xs text-zinc-400">Search existing movie / series first
         <input value={entitySearch} onChange={e=>{setEntitySearch(e.target.value);setEntityId('');}} placeholder="Search canonical titles" className="mt-1 w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm" />
       </label>
