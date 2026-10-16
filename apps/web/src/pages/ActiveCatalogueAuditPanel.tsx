@@ -1,6 +1,7 @@
 import {useState} from 'react';
 import {useQuery} from '@tanstack/react-query';
 import {fetchActiveCatalogueQualityAudit} from '../lib/review-api';
+import {CatalogueCorrectionPreview} from './CatalogueCorrectionPreview';
 
 type Scope = 'ALL'|'WITH_EVENTS'|'NO_EVIDENCE';
 
@@ -125,6 +126,8 @@ export function ActiveCatalogueAuditPanel() {
                       </div>)}</div>}
                 </details>
               </div>
+              <CatalogueCorrectionPreview sourceEntityId={item.id}
+                sourceName={item.canonical_name} sourceType={item.entity_type}/>
               {item.linkedPromotedCandidates.length>0 &&
                 <details className="mt-3 rounded-lg border border-zinc-800 p-3">
                   <summary className="cursor-pointer text-xs font-medium text-zinc-400">
