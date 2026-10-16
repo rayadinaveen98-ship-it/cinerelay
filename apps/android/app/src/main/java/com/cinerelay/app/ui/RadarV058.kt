@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -34,6 +35,11 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.activity.compose.BackHandler
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -83,6 +89,8 @@ fun RadarV058(
         }
     }
 
+    var openedLane by rememberSaveable { mutableStateOf<String?>(null) }
+    BackHandler(enabled=openedLane!=null){ openedLane=null }
     val ranked = remember(state.events) {
         state.events.sortedWith(
             compareByDescending<EventCard> { it.radar?.label != null && it.radar.label != "NO_ACTION" }
@@ -109,6 +117,35 @@ fun RadarV058(
             error = RadarRed58,
         ),
     ) {
+        if(openedLane!=null) {
+            val title=when(openedLane) {
+                "cover"->"Cover now"
+                "fresh"->"Fresh source signals"
+                else->"Keep watching"
+            }
+            LazyColumn(Modifier.fillMaxSize().background(RadarInk58),
+                contentPadding=PaddingValues(bottom=120.dp),
+                verticalArrangement=Arrangement.spacedBy(12.dp)) {
+                item { DiscoverySubpageHeaderV080(title,"All available opportunities",onBack={openedLane=null}) }
+                when(openedLane){
+                    "cover"->items(actionable,key={it.id}){event->
+                        Box(Modifier.padding(horizontal=16.dp)){
+                            RadarOpportunityCardV066(event,true){onOpen(event)}
+                        }
+                    }
+                    "fresh"->items(freshSourceOpportunities,key={it.signal.id}){opportunity->
+                        Box(Modifier.padding(horizontal=16.dp)){
+                            RawRadarOpportunityCardV066(opportunity){onOpenUpdate(opportunity.signal)}
+                        }
+                    }
+                    else->items(watchlist,key={it.id}){event->
+                        Box(Modifier.padding(horizontal=16.dp)){
+                            RadarOpportunityCardV066(event,false){onOpen(event)}
+                        }
+                    }
+                }
+            }
+        } else {
         PullToRefreshBox(
             isRefreshing = state.loading,
             onRefresh = onRefresh,
@@ -161,23 +198,64 @@ fun RadarV058(
                                 totalCount = ranked.size + freshSourceOpportunities.size,
                             )
                         }
-                        if (actionable.isNotEmpty()) {
-                            item { RadarSectionTitleV058("Cover now", "Fresh, evidence-backed opportunities still inside CineRelay's action horizon") }
-                            items(actionable, key = { "action:${it.id}" }) { event -> RadarOpportunityCardV066(event, true) { onOpen(event) } }
+                        if(actionable.isNotEmpty()){
+                            item{DiscoverySectionHeadingV080("Cover now","Fresh, evidence-backed opportunities",
+                                actionable.size,onSeeAll={openedLane="cover"})}
+                            item{LazyRow(contentPadding=PaddingValues(horizontal=16.dp),
+                                horizontalArrangement=Arrangement.spacedBy(12.dp)){
+                                items(actionable.take(10),key={it.id}){event->
+                                    RadarPreviewCardV080(radarLabelV058(event,true),event.headline,
+                                        event.radar?.score?:0,event.entityName){onOpen(event)}
+                                }
+                            }}
                         }
-                        if (freshSourceOpportunities.isNotEmpty()) {
-                            item { RadarSectionTitleV058("Fresh source signals", "Very recent official or trusted-source activity that may become a full story") }
-                            items(freshSourceOpportunities, key = { "raw:${it.signal.id}" }) { opportunity ->
-                                RawRadarOpportunityCardV066(opportunity) { onOpenUpdate(opportunity.signal) }
-                            }
+                        if(freshSourceOpportunities.isNotEmpty()){
+                            item{DiscoverySectionHeadingV080("Fresh source signals","Official activity worth checking",
+                                freshSourceOpportunities.size,onSeeAll={openedLane="fresh"})}
+                            item{LazyRow(contentPadding=PaddingValues(horizontal=16.dp),
+                                horizontalArrangement=Arrangement.spacedBy(12.dp)){
+                                items(freshSourceOpportunities.take(10),key={it.signal.id}){opportunity->
+                                    RadarPreviewCardV080(opportunity.label,opportunity.signal.title,
+                                        opportunity.score,opportunity.signal.source.name){
+                                        onOpenUpdate(opportunity.signal)
+                                    }
+                                }
+                            }}
                         }
-                        if (watchlist.isNotEmpty()) {
-                            item { RadarSectionTitleV058("Keep watching", "Context remains useful, but these are not in the cover-now lane") }
-                            items(watchlist.take(16), key = { "watch:${it.id}" }) { event -> RadarOpportunityCardV066(event, false) { onOpen(event) } }
+                        if(watchlist.isNotEmpty()){
+                            item{DiscoverySectionHeadingV080("Keep watching","Developing and contextual stories",
+                                watchlist.size,onSeeAll={openedLane="watch"})}
+                            item{LazyRow(contentPadding=PaddingValues(horizontal=16.dp),
+                                horizontalArrangement=Arrangement.spacedBy(12.dp)){
+                                items(watchlist.take(10),key={it.id}){event->
+                                    RadarPreviewCardV080(radarLabelV058(event,false),event.headline,
+                                        event.radar?.score?:0,event.entityName){onOpen(event)}
+                                }
+                            }}
                         }
                     }
                 }
             }
+        }
+        }
+    }
+}
+
+@Composable
+private fun RadarPreviewCardV080(label:String,headline:String,score:Int,source:String?,onClick:()->Unit){
+    Surface(color=RadarPanel58,shape=RoundedCornerShape(DiscoveryUiV080.CardRadius),
+        modifier=Modifier.width(DiscoveryUiV080.CardWidth).clickable(onClick=onClick)){
+        Column(Modifier.padding(14.dp),verticalArrangement=Arrangement.spacedBy(10.dp)){
+            Row(horizontalArrangement=Arrangement.spacedBy(8.dp),verticalAlignment=Alignment.CenterVertically){
+                Text(label,color=RadarGold58,fontSize=11.sp,fontWeight=FontWeight.Bold,
+                    modifier=Modifier.weight(1f),maxLines=1,overflow=TextOverflow.Ellipsis)
+                Text(score.toString(),color=RadarGold58,fontSize=16.sp,fontWeight=FontWeight.Black)
+            }
+            Text(headline,color=RadarText58,fontSize=16.sp,lineHeight=21.sp,
+                fontWeight=FontWeight.SemiBold,maxLines=3,overflow=TextOverflow.Ellipsis,
+                modifier=Modifier.height(67.dp))
+            Text(source?.takeIf{it.isNotBlank()}?:"Open evidence",color=RadarMuted58,fontSize=12.sp,
+                maxLines=1,overflow=TextOverflow.Ellipsis)
         }
     }
 }
@@ -204,7 +282,7 @@ private fun RadarSummaryV066(actionableCount: Int, sourceOpportunityCount: Int, 
                 RadarSummaryStatV066(sourceOpportunityCount.toString(), "Fresh signals", Modifier.weight(1f))
                 RadarSummaryStatV066((totalCount - actionableCount - sourceOpportunityCount).coerceAtLeast(0).toString(), "Watchlist", Modifier.weight(1f))
             }
-            Text("Radar v2 uses freshness decay, verification, evidence strength and source authority. Stories older than 72 hours leave the cover-now lane.", color = RadarMuted58, fontSize = 9.sp, lineHeight = 14.sp)
+            Text("Ranked by freshness and evidence. See all opens complete lists.", color = RadarMuted58, fontSize = 12.sp, lineHeight = 17.sp)
         }
     }
 }
