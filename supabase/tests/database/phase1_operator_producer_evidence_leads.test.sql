@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(10);
+select plan(12);
 
 insert into public.sources(id,display_name,authority_tier,source_role,active)
 values('cc110000-0000-4000-8000-000000000001','Evidence Lead Fixture',1,'OTT_PLATFORM',true);
@@ -58,5 +58,9 @@ select ok(not has_table_privilege('anon','public.operator_producer_evidence_lead
 select ok(not has_function_privilege('authenticated',
  'public.operator_submit_producer_evidence_lead(uuid,uuid,text,text,text)','EXECUTE'),
  'signed-in non-service database clients cannot submit leads directly');
+select ok(not has_table_privilege('service_role','public.operator_producer_evidence_leads','UPDATE'),
+ 'service API cannot mutate staged leads');
+select ok(not has_table_privilege('service_role','public.operator_producer_evidence_leads','DELETE'),
+ 'service API cannot delete staged leads');
 select * from finish();
 rollback;
