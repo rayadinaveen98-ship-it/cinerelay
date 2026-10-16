@@ -61,7 +61,7 @@ function OfficialArticleCard({item}:{item:Article}) {
       <p className="text-xs font-medium uppercase tracking-wider text-amber-300">Pending typed suggestion · Not approved</p>
       <p className="mt-2 font-semibold text-zinc-100">{typed.proposed_name} <span className="text-sm font-normal text-zinc-400">· {typed.proposed_entity_type}</span></p>
       <p className="mt-1 text-xs text-zinc-400">{typed.first_party_source_count} first-party source(s) · {typed.evidence_count} evidence item(s)</p>
-      {typed.metadata.editorialVerification &&
+      {Boolean(typed.metadata.editorialVerification) &&
         typeof typed.metadata.editorialVerification === 'object' &&
         !Array.isArray(typed.metadata.editorialVerification) &&
         <div className="mt-3 rounded-lg border border-zinc-700/70 bg-zinc-900/70 p-3">
