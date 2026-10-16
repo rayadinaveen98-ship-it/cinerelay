@@ -2,11 +2,64 @@ import {useState} from 'react';
 import {useMutation,useQuery,useQueryClient} from '@tanstack/react-query';
 import {isIdentityOnlyWebArticle,prioritizePendingSuggestions} from '../lib/article-review-utils';
 import {
-  fetchOfficialArticleReviewQueue,resolveReviewItem,searchReviewEntities,
+  fetchOfficialArticleReviewQueue,resolveReviewItem,searchReviewEntities,submitProducerEvidenceLead,
   type OfficialArticleReviewItem,
 } from '../lib/review-api';
 
 type Article = OfficialArticleReviewItem['items'][number];
+
+
+function ProducerLeadFormV1({candidate}:{candidate:NonNullable<Article['typedSuggestion']>}){
+  const qc=useQueryClient();
+  const [sourceUrl,setSourceUrl]=useState('');
+  const [owner,setOwner]=useState('');
+  const [note,setNote]=useState('');
+  const [attested,setAttested]=useState(false);
+  const submit=useMutation({
+    mutationFn:()=>submitProducerEvidenceLead({
+      candidateId:candidate.id,sourceUrl:sourceUrl.trim(),
+      claimedOwnerName:owner.trim(),evidenceNote:note.trim(),
+    }),
+    onSuccess:async()=>{
+      setSourceUrl('');setOwner('');setNote('');setAttested(false);
+      await qc.invalidateQueries({queryKey:['official-article-review-queue']});
+    },
+  });
+  const validLink=/^https:\/\/(www\.)?linkedin\.com\/(posts\/[A-Za-z0-9_-]{8,}|feed\/update\/urn:li:activity:[0-9]{10,})(\/)?(\?.*)?$/.test(sourceUrl.trim());
+  const canSend=validLink&&owner.trim().length>=3&&owner.trim().length<=120
+    &&note.trim().length>=30&&note.trim().length<=1200&&attested&&!submit.isPending;
+  return <details className="mt-3 rounded-lg border border-zinc-700 p-3">
+    <summary className="cursor-pointer text-xs font-semibold text-zinc-200">Submit original producer post for verification</summary>
+    <p className="mt-3 text-xs leading-5 text-amber-200">Lead capture only: no source ingestion, independent-owner credit, catalogue approval or publication. The actual company-authored post URL is required; a company profile or employee reshare is insufficient.</p>
+    {(candidate.producerEvidenceLeads??[]).map(lead=><p key={lead.id} className="mt-2 text-xs leading-5 text-zinc-300">
+      Pending primary-source verification: <a className="text-sky-300 underline" href={lead.source_url} target="_blank" rel="noopener noreferrer">{lead.claimed_owner_name} ↗</a> · {new Date(lead.created_at).toLocaleString()}
+    </p>)}
+    <label className="mt-3 block text-xs text-zinc-400">Original company-authored LinkedIn post URL
+      <input type="url" value={sourceUrl} onChange={e=>setSourceUrl(e.target.value)}
+        placeholder="https://www.linkedin.com/posts/…" maxLength={650}
+        className="mt-1 w-full rounded-lg border border-zinc-700 bg-zinc-950 p-2 text-sm" />
+    </label>
+    <label className="mt-3 block text-xs text-zinc-400">Publishing company (claimed; pending verification)
+      <input value={owner} onChange={e=>setOwner(e.target.value)} maxLength={120}
+        placeholder="e.g. HRX Films" className="mt-1 w-full rounded-lg border border-zinc-700 bg-zinc-950 p-2 text-sm" />
+    </label>
+    <label className="mt-3 block text-xs text-zinc-400">What the original post actually establishes (30+ characters)
+      <textarea value={note} onChange={e=>setNote(e.target.value)} maxLength={1200}
+        placeholder="Identify the exact title, producer and any working-title caveats; do not guess a release date."
+        className="mt-1 min-h-20 w-full rounded-lg border border-zinc-700 bg-zinc-950 p-2 text-sm" />
+    </label>
+    <label className="mt-3 flex items-start gap-2 text-xs text-zinc-300">
+      <input type="checkbox" className="mt-1" checked={attested} onChange={e=>setAttested(e.target.checked)}/>
+      I inspected the original company post. This is a review lead, not confirmed ingestion or title approval.
+    </label>
+    <button type="button" onClick={()=>submit.mutate()} disabled={!canSend}
+      className="mt-3 rounded-lg border border-sky-600 px-3 py-2 text-sm text-sky-300 disabled:opacity-40">
+      {submit.isPending?'Submitting…':'Submit review lead'}
+    </button>
+    {submit.isError&&<p className="mt-2 text-sm text-red-300">{submit.error.message}</p>}
+    {submit.isSuccess&&<p className="mt-2 text-sm text-emerald-300">Saved as an unverified lead. Approval counts are unchanged.</p>}
+  </details>;
+}
 
 function OfficialArticleCard({item}:{item:Article}) {
   const queryClient=useQueryClient();
@@ -95,6 +148,7 @@ function OfficialArticleCard({item}:{item:Article}) {
            </a>}
           <p className="mt-2 text-xs text-zinc-400">Not collected by a CineRelay connector. Does not count toward independent-owner approval or trigger publication.</p>
         </div>}
+      <ProducerLeadFormV1 candidate={typed}/>
       {typeof typed.metadata.seasonNumber==='number'&&<p className="mt-1 text-xs text-zinc-400">Season {typed.metadata.seasonNumber} mentioned in evidence</p>}
       {typeof typed.metadata.proposedReleaseDate==='string'&&<p className="mt-1 text-xs text-amber-300">Suggested release date {typed.metadata.proposedReleaseDate} — unverified; do not publish without reviewing primary evidence</p>}
       <button type="button" onClick={()=>{setTitle(typed.proposed_name);setEntityType(typed.proposed_entity_type);setEntityId('');}} className="mt-3 rounded-lg border border-amber-700 px-3 py-2 text-xs text-amber-200 hover:bg-amber-950/40">Copy suggested name into review form (not approval)</button>

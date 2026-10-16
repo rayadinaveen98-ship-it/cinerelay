@@ -115,6 +115,16 @@ const OfficialArticleReviewQueueSchema = z.object({
       primary_language: z.string().nullable(),
       country_code: z.string().nullable(),
       metadata: z.record(z.string(), z.unknown()),
+      producerEvidenceLeads: z.array(z.object({
+        id:z.string().uuid(),
+        candidate_id:z.string().uuid(),
+        source_url:z.string(),
+        claimed_owner_name:z.string(),
+        evidence_note:z.string(),
+        status:z.literal('NEEDS_PRIMARY_SOURCE_REVIEW'),
+        created_at:z.string(),
+        counts_toward_approval:z.literal(false),
+      })),
     }).nullable(),
     reviewStatus: z.enum(['TYPED_CANDIDATE_REVIEW','MANUAL_TITLE_REVIEW']),
     needsHumanReview: z.literal(true),
@@ -173,4 +183,8 @@ export function reclassifyEvent(eventId: string, eventType: string, reason: stri
 
 export function mergeEvents(fromEventId: string, intoEventId: string, reason: string) {
   return invoke({ action: 'mergeEvents', fromEventId, intoEventId, reason }, ActionSchema);
+}
+
+export function submitProducerEvidenceLead(input:{candidateId:string;sourceUrl:string;claimedOwnerName:string;evidenceNote:string}){
+  return invoke({action:'submitProducerEvidenceLead',...input},ActionSchema);
 }
