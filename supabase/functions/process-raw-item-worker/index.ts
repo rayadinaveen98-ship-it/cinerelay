@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { isOfficialArticleSource, suggestOfficialArticleEntity } from './article-entity-suggestions.ts';
 // @deno-types="../../../packages/domain/dist/index.d.ts"
 import { normalizeItem, processSingle, resolveEntity } from '../../../packages/domain/dist/index.js';
 // @deno-types="../../../packages/domain/dist/ott-release-signal.d.ts"
@@ -239,6 +240,31 @@ async function persistOttRelease(entityId: string, rawItemId: string, signal: Ot
   if (error) throw error;
 }
 
+async function queueTypedOfficialArticleReview(rawItemId: string, headline: string, articleUrl: string): Promise<void> {
+  const suggested = suggestOfficialArticleEntity(headline);
+  if (!suggested) return; // Operator's existing unresolved queue retains ambiguous articles.
+  const { error } = await supabase.rpc('submit_entity_discovery_candidate', {
+    p_proposed_name: suggested.proposedName,
+    p_proposed_entity_type: suggested.proposedEntityType,
+    p_raw_item_id: rawItemId,
+    p_confidence: suggested.confidence,
+    p_primary_language: null,
+    p_country_code: null, // A first-party global OTT page does not imply an Indian production.
+    p_match_method: 'DETERMINISTIC_TITLE',
+    p_weight: 0.70,
+    p_metadata: {
+      discoveryContext: 'OFFICIAL_UNRESOLVED_ARTICLE',
+      reviewRequired: true,
+      evidenceRule: suggested.evidenceRule,
+      sourceArticleUrl: articleUrl,
+      sourceHeadline: headline,
+      ...(suggested.seasonNumber ? { seasonNumber: suggested.seasonNumber } : {}),
+    },
+  });
+  if (error) throw error; // Fail the job and retry; never silently lose a valid suggestion.
+  // Deliberately NO promotion, events, approval, or notification RPC.
+}
+
 async function processJob(job: Record<string, unknown>, workerId: string): Promise<{ resolution: string; eventId?: string }> {
   const payload = job.payload as Record<string, unknown> | undefined;
   const rawItemId = typeof payload?.rawItemId === 'string' ? payload.rawItemId : '';
@@ -320,6 +346,9 @@ async function processJob(job: Record<string, unknown>, workerId: string): Promi
 
   if (resolution.state !== 'RESOLVED' || !resolution.entity?.id) {
     if (ottSignal) await submitOttDiscovery(rawItemId, ottSignal);
+    if (!ottSignal && isOfficialArticleSource(source, String(raw.item_type ?? ''))) {
+      await queueTypedOfficialArticleReview(rawItemId, fixtureItem.title, fixtureItem.url);
+    }
     await completeJob(job, workerId);
     return { resolution: resolution.state };
   }
