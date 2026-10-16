@@ -1,6 +1,8 @@
 name: CineRelay Cloudflare Console Live Release Verification
 
 on:
+  push:
+    branches: [main]
   pull_request:
   workflow_dispatch:
     inputs:
@@ -15,7 +17,7 @@ permissions:
 
 jobs:
   historical-cloudflare-url-probe:
-    if: github.event_name == 'pull_request'
+    if: github.event_name != 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 3
     steps:
@@ -48,6 +50,9 @@ jobs:
           status_manifest="$(curl --silent --show-error --location --max-time 10 \
             --output /tmp/cinerelay-manifest --write-out '%{http_code}' "$url/release-info.json" || true)"
           echo "Current release manifest HTTP status: $status_manifest"
+          if [[ "$GITHUB_EVENT_NAME" == "push" && "$status_manifest" == "200" ]]; then
+            EXPECTED_COMMIT="$GITHUB_SHA" node -e "const fs=require('fs');try{const j=JSON.parse(fs.readFileSync('/tmp/cinerelay-manifest','utf8'));if(j.commit===process.env.EXPECTED_COMMIT){console.log('PASS: Cloudflare is at pushed main commit')}else{console.log('::warning::Cloudflare deployment SHA differs from latest main:',j.commit??'missing','expected:',process.env.EXPECTED_COMMIT)}}catch{console.log('::warning::Cloudflare current deployment has no valid release manifest')}"
+          fi
           if [[ "$status_manifest" == "200" ]]; then
             node -e "const fs=require('fs');try{const x=JSON.parse(fs.readFileSync('/tmp/cinerelay-manifest','utf8')); console.log('Deployment application:',String(x.app).slice(0,90),'commit:',String(x.commit).slice(0,45));}catch{console.log('No valid release JSON (possibly an old SPA fallback)')}"
           fi
