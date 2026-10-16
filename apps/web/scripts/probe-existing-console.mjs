@@ -25,6 +25,7 @@ const markers=[
   ['Active catalogue audit UI','activeCatalogueQualityAudit'],
   ['Pending catalogue UI','pendingCatalogueReviewQueue'],
   ['Producer evidence lead form','submitProducerEvidenceLead'],
+  ['Phase 1A correction impact preview','catalogueCorrectionImpactPreview'],
 ];
 for (const [label,value] of markers){
   const present=body.includes(value);
