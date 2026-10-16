@@ -1,0 +1,35 @@
+name: CineRelay Cloudflare Console Live Release Verification
+
+on:
+  workflow_dispatch:
+    inputs:
+      console_url:
+        description: Existing private CineRelay Cloudflare Pages HTTPS origin
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  verify-existing-cloudflare-console:
+    name: Verify live frontend SHA and safe routes
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify current main commit is actually deployed to the existing console
+        env:
+          LIVE_CONSOLE_URL: ${{ inputs.console_url }}
+          EXPECTED_SHA: ${{ github.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "${GITHUB_REF_NAME}" != "main" ]]; then
+            echo "::error::Run verification from main only, not ${GITHUB_REF_NAME}"
+            exit 1
+          fi
+          node apps/web/scripts/verify-live-console.mjs "$LIVE_CONSOLE_URL" "$EXPECTED_SHA"
