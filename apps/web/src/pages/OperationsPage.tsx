@@ -16,9 +16,41 @@ function pill(value: string, danger = false) {
 }
 
 export function OperationsPage() {
-  const query = useQuery({ queryKey: ['console-operations'], queryFn: fetchConsoleOperations, refetchInterval: 30_000 });
-  if (query.isPending) return <section className="rounded-3xl border border-zinc-800 bg-zinc-900/50 p-6 text-zinc-400">Loading source registry and operations…</section>;
-  if (query.isError) return <section className="rounded-3xl border border-red-900 bg-red-950/20 p-6 text-red-300">{query.error.message}</section>;
+  const query = useQuery({
+    queryKey: ['console-operations'], queryFn: fetchConsoleOperations,
+    // A failed registry RPC should not silently retry for ~30 seconds while
+    // blocking unrelated operator audit panels.
+    retry: false, refetchInterval: 60_000,
+  });
+  if (query.isPending || query.isError) return (
+    <div className="space-y-6">
+      <section className={`rounded-3xl border p-6 ${query.isError ? 'border-red-900 bg-red-950/20' : 'border-zinc-800 bg-zinc-900/50'}`}>
+        <p className="text-xs font-semibold uppercase tracking-wider text-amber-400">Source registry & operations</p>
+        {query.isPending
+          ? <p role="status" className="mt-2 text-sm text-zinc-400">Loading source health and scheduler data…</p>
+          : <>
+              <h1 className="mt-2 text-lg font-semibold text-red-200">Source registry unavailable</h1>
+              <p role="alert" className="mt-2 text-sm text-zinc-300">
+                The operations service could not complete this request. This does not mean your operator login failed.
+              </p>
+              <p className="mt-1 break-words text-xs text-zinc-500">{query.error.message}</p>
+              <button type="button" onClick={() => void query.refetch()} disabled={query.isFetching}
+                className="mt-4 rounded-lg border border-amber-700 px-4 py-2 text-sm font-medium text-amber-200 hover:bg-amber-900/30 disabled:opacity-50">
+                {query.isFetching ? 'Retrying…' : 'Retry source registry'}
+              </button>
+            </>}
+        <p className="mt-3 text-xs text-zinc-500">
+          Catalogue reviews remain available below, even when registry telemetry is unavailable.
+        </p>
+      </section>
+      <ActiveCatalogueAuditPanel />
+      <CatalogueReviewPanel />
+      <PushReadinessPanel />
+      <SourceEntityRelationshipWorkflow />
+      <SourceDiscoveryWorkflow />
+      <ReviewWorkflow />
+    </div>
+  );
 
   const data = query.data;
   const deadJobs = data.jobs.recent.filter((job) => job.state === 'DEAD_LETTER');
