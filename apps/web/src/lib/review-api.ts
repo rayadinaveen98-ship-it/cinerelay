@@ -130,6 +130,58 @@ const OfficialArticleReviewQueueSchema = z.object({
     needsHumanReview: z.literal(true),
   })),
 });
+const CorrectionImpactSchema = z.object({
+  generatedAt:z.string(),
+  referenceScanComplete:z.boolean(),
+  expectedType:z.enum(['MOVIE','SERIES']),
+  source:z.object({
+    id:z.string().uuid(),canonical_name:z.string(),entity_type:z.enum(['MOVIE','SERIES']),
+    status:z.string(),slug:z.string(),
+    primary_language:z.string().nullable(),country_code:z.string().nullable(),
+  }),
+  target:z.object({
+    id:z.string().uuid(),canonical_name:z.string(),entity_type:z.enum(['MOVIE','SERIES']),
+    status:z.string(),slug:z.string(),
+    primary_language:z.string().nullable(),country_code:z.string().nullable(),
+  }).nullable(),
+  sourceImpact:z.lazy(()=>CorrectionImpactDetailsSchema),
+  targetImpact:z.lazy(()=>CorrectionImpactDetailsSchema).nullable(),
+  risk:z.object({
+    canAutoApply:z.literal(false),
+    requiresOperatorReview:z.literal(true),
+    classificationMismatch:z.boolean(),
+    targetTypeMismatch:z.boolean(),
+    releaseCollisions:z.array(z.object({
+      sourceReleaseId:z.string().uuid(),
+      targetReleaseId:z.string().uuid(),
+      providerId:z.string().uuid(),
+      territory:z.string().nullable(),
+    })),
+    warnings:z.array(z.string()),
+  }),
+});
+const CorrectionImpactDetailsSchema=z.object({
+  activeEvents:z.number(),historicalEvents:z.number(),
+  ottReleaseRows:z.number(),promotedCandidates:z.number(),
+  aliases:z.array(z.string()),claims:z.number(),activeFollowers:z.number(),
+  relationshipProposals:z.number(),resolutionLinks:z.number(),
+  alertDeliveries:z.number(),sentAlerts:z.number(),
+  releaseRows:z.array(z.object({
+    id:z.string().uuid(),providerId:z.string().uuid(),territory:z.string().nullable(),
+    releaseType:z.string().nullable(),date:z.string().nullable(),precision:z.string(),
+    state:z.string(),evidenceStatus:z.string(),
+  })),
+  eventSamples:z.array(z.object({
+    id:z.string().uuid(),type:z.string(),status:z.string(),headline:z.string().nullable(),
+  })),
+});
+export type CorrectionImpactPreview=z.infer<typeof CorrectionImpactSchema>;
+export function fetchCorrectionImpactPreview(
+  sourceEntityId:string,targetEntityId:string|null,expectedType:'MOVIE'|'SERIES',
+){
+  return invoke({action:'catalogueCorrectionImpactPreview',sourceEntityId,targetEntityId,expectedType},CorrectionImpactSchema);
+}
+
 const ActiveCatalogueQualityAuditSchema = z.object({
   generatedAt:z.string(),
   scannedActiveEntities:z.coerce.number(),
