@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { OfficialArticleReviewPanel } from './OfficialArticleReviewPanel';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   clearReviewOverride,
@@ -30,6 +31,8 @@ function ReviewItemCard({ item }: { item: ReviewItem }) {
   const [reason, setReason] = useState('');
   const [newName, setNewName] = useState('');
   const [newType, setNewType] = useState<'MOVIE' | 'SERIES' | 'SEASON'>('MOVIE');
+  const [primaryLanguage, setPrimaryLanguage] = useState('');
+  const [countryCode, setCountryCode] = useState('');
   const entitySearch = useQuery({
     queryKey: ['review-entity-search', search],
     queryFn: () => searchReviewEntities(search),
@@ -43,14 +46,16 @@ function ReviewItemCard({ item }: { item: ReviewItem }) {
       ...(selectedEntityId ? { entityId: selectedEntityId } : {
         newEntityName: newName,
         newEntityType: newType,
-        primaryLanguage: 'te',
-        countryCode: 'IN',
+        ...(primaryLanguage.trim() ? { primaryLanguage: primaryLanguage.trim().toLowerCase() } : {}),
+        ...(countryCode.trim() ? { countryCode: countryCode.trim().toUpperCase() } : {}),
       }),
     }),
     onSuccess: async () => {
       setReason('');
       setSearch('');
       setNewName('');
+      setPrimaryLanguage('');
+      setCountryCode('');
       setSelectedEntityId('');
       await queryClient.invalidateQueries({ queryKey: ['review-bootstrap'] });
       await queryClient.invalidateQueries({ queryKey: ['console-overview'] });
@@ -65,7 +70,9 @@ function ReviewItemCard({ item }: { item: ReviewItem }) {
     },
   });
 
-  const canResolve = reason.trim().length >= 3 && Boolean(selectedEntityId || newName.trim());
+  const metadataValid = (!primaryLanguage.trim() || /^[a-z]{2,3}$/i.test(primaryLanguage.trim())) &&
+    (!countryCode.trim() || /^[a-z]{2}$/i.test(countryCode.trim()));
+  const canResolve = reason.trim().length >= 3 && metadataValid && Boolean(selectedEntityId || newName.trim());
 
   return (
     <article className="rounded-2xl border border-zinc-800 bg-zinc-950/70 p-5">
@@ -111,6 +118,14 @@ function ReviewItemCard({ item }: { item: ReviewItem }) {
           <p className="text-sm font-medium text-zinc-200">Or create missing entity</p>
           <input value={newName} onChange={(event) => { setNewName(event.target.value); setSelectedEntityId(''); }} placeholder="Canonical title" className="mt-3 w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm outline-none focus:border-amber-500" />
           <select value={newType} onChange={(event) => setNewType(event.target.value as 'MOVIE' | 'SERIES' | 'SEASON')} className="mt-2 w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm"><option value="MOVIE">Movie</option><option value="SERIES">Series</option><option value="SEASON">Season</option></select>
+          <div className="mt-3 grid grid-cols-2 gap-2">
+            <label className="text-xs text-zinc-400">Language (only if verified)
+              <input value={primaryLanguage} onChange={(event) => setPrimaryLanguage(event.target.value)} placeholder="Unknown · e.g. hi" maxLength={3} className="mt-1 w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm" />
+            </label>
+            <label className="text-xs text-zinc-400">Country (only if verified)
+              <input value={countryCode} onChange={(event) => setCountryCode(event.target.value)} placeholder="Unknown · e.g. IN" maxLength={2} className="mt-1 w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm" />
+            </label>
+          </div>
         </div>
       </div>
 
@@ -193,6 +208,8 @@ export function ReviewWorkflow() {
         <p className="mt-3 text-sm leading-6 text-zinc-400">Corrections create durable overrides, teach the source candidate scope, enqueue the normal intelligence worker, and write an immutable audit action. Historical unresolved rows do not count once a newer resolution exists.</p>
         <div className="mt-4 rounded-xl border border-zinc-800 bg-zinc-950/60 p-4"><p className="text-xs uppercase tracking-wide text-zinc-500">Current review items</p><p className="mt-1 text-3xl font-semibold">{data.items.length}</p></div>
       </section>
+
+      <OfficialArticleReviewPanel />
 
       <section className="space-y-4">
         {data.items.length === 0 ? <div className="rounded-2xl border border-zinc-800 bg-zinc-900/40 p-6 text-sm text-zinc-500">No unresolved or ambiguous current items.</div> : data.items.map((item) => <ReviewItemCard key={item.resolution.raw_item_id} item={item} />)}

@@ -79,6 +79,49 @@ const BootstrapSchema = z.object({
   })),
 });
 
+
+const OfficialArticleReviewQueueSchema = z.object({
+  generatedAt: z.string(),
+  items: z.array(z.object({
+    rawItem: z.object({
+      id: z.string().uuid(),
+      source_identity_id: z.string().uuid(),
+      raw_title: z.string().nullable(),
+      canonical_url: z.string(),
+      first_seen_at: z.string(),
+      published_at: z.string().nullable(),
+    }),
+    source: z.object({
+      name: z.string(),
+      authorityTier: z.coerce.number(),
+      role: z.string(),
+    }),
+    resolution: z.object({
+      raw_item_id: z.string().uuid(),
+      resolution_state: z.enum(['UNRESOLVED','AMBIGUOUS']),
+      score: z.coerce.number(),
+      methods: z.array(z.unknown()),
+      created_at: z.string(),
+    }),
+    typedSuggestion: z.object({
+      id: z.string().uuid(),
+      proposed_name: z.string(),
+      proposed_entity_type: z.enum(['MOVIE','SERIES','SEASON']),
+      status: z.string(),
+      evidence_count: z.coerce.number(),
+      first_party_source_count: z.coerce.number(),
+      metadata: z.record(z.string(), z.unknown()),
+    }).nullable(),
+    reviewStatus: z.enum(['TYPED_CANDIDATE_REVIEW','MANUAL_TITLE_REVIEW']),
+    needsHumanReview: z.literal(true),
+  })),
+});
+export type OfficialArticleReviewItem = z.infer<typeof OfficialArticleReviewQueueSchema>;
+
+export function fetchOfficialArticleReviewQueue(limit = 50) {
+  return invoke({action:'officialArticleReviewQueue',limit}, OfficialArticleReviewQueueSchema);
+}
+
 const SearchSchema = z.object({ items: z.array(EntitySchema) });
 const ActionSchema = z.object({ ok: z.literal(true), result: z.record(z.string(), z.unknown()) });
 
