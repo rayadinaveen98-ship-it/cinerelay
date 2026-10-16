@@ -109,6 +109,11 @@ begin
   'https://about.netflix.com/en/news/netflix-brings-fans-its-biggest-south-indian-slate-this-year')
  ) v(source_id,expected_name,owner_id,proof)
  loop
+   -- Production has these explicitly registered identities; a fresh CI database
+   -- does not. Skip absent exact UUIDs, but NEVER accept a mismatched existing UUID.
+   if not exists(select 1 from public.sources s where s.id=rec.source_id) then
+     continue;
+   end if;
    if not exists(select 1 from public.sources s where s.id=rec.source_id and s.display_name=rec.expected_name) then
      raise exception 'corporate_source_mismatch: %',rec.expected_name;
    end if;
