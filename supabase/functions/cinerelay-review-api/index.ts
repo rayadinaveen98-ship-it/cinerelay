@@ -152,7 +152,7 @@ async function officialArticleReviewQueue(limit: number) {
   const candidateIds=[...new Set(evidenceByRaw.values())];
   const suggestions = candidateIds.length
     ? await admin.from('entity_discovery_candidates')
-        .select('id,proposed_name,proposed_entity_type,status,evidence_count,first_party_source_count,metadata')
+        .select('id,proposed_name,proposed_entity_type,status,evidence_count,source_count,first_party_source_count,confidence,primary_language,country_code,metadata')
         .in('id',candidateIds)
     : {data:[],error:null};
   if(suggestions.error) throw suggestions.error;
