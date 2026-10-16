@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import {candidateOwnerGroupKey} from './owner-grouping.ts';
 import {activeCatalogueTitleWarnings,sortActiveCatalogueImpact} from './active-catalogue-audit.ts';
+import {assessCorrectionRisk,type CorrectionEntity,type CorrectionRelease} from './correction-impact.ts';
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL');
 const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
@@ -436,6 +437,101 @@ async function pendingCatalogueReviewQueue(limit: number) {
   };
 }
 
+/** Operator-only, read-only dry run for a specific suspected catalogue correction.
+ * Does NOT invent a target, create aliases, transfer records or send alerts. */
+async function catalogueCorrectionImpactPreview(
+  sourceEntityId:string,targetEntityId:string|null,expectedType:'MOVIE'|'SERIES',
+){
+  if(targetEntityId===sourceEntityId)throw new Error('source_and_target_must_differ');
+  const ids=targetEntityId?[sourceEntityId,targetEntityId]:[sourceEntityId];
+  const {data:entities,error:entityError}=await admin.from('entities')
+    .select('id,canonical_name,entity_type,status,slug,primary_language,country_code')
+    .in('id',ids);
+  if(entityError)throw entityError;
+  const source=entities?.find(x=>x.id===sourceEntityId);
+  const target=targetEntityId?entities?.find(x=>x.id===targetEntityId):null;
+  if(!source||source.status!=='ACTIVE'||!['MOVIE','SERIES'].includes(source.entity_type))
+    throw new Error('active_source_movie_or_series_required');
+  if(targetEntityId&&(!target||target.status!=='ACTIVE'||!['MOVIE','SERIES'].includes(target.entity_type)))
+    throw new Error('active_target_movie_or_series_required');
+  const [
+    eventsResult,releasesResult,candidatesResult,aliasesResult,
+    claimsResult,followersResult,relationshipsResult,resolutionsResult
+  ]=await Promise.all([
+    admin.from('events').select('id,primary_entity_id,event_type,status,headline')
+      .in('primary_entity_id',ids).limit(250),
+    admin.from('ott_releases')
+      .select('id,entity_id,provider_id,territory,release_type,release_date,date_precision,state,evidence_status')
+      .in('entity_id',ids).limit(150),
+    admin.from('entity_discovery_candidates')
+      .select('id,promoted_entity_id,proposed_name,status')
+      .in('promoted_entity_id',ids).limit(150),
+    admin.from('entity_aliases').select('entity_id,alias,alias_type')
+      .in('entity_id',ids).limit(150),
+    admin.from('claims').select('subject_entity_id',{count:'exact',head:false})
+      .in('subject_entity_id',ids).limit(250),
+    admin.from('user_entity_follows').select('entity_id,active')
+      .in('entity_id',ids).limit(250),
+    admin.from('source_entity_relationship_proposals').select('entity_id',{count:'exact',head:false})
+      .in('entity_id',ids).limit(250),
+    admin.from('entity_resolution_results').select('entity_id',{count:'exact',head:false})
+      .in('entity_id',ids).limit(250),
+  ]);
+  for(const result of [eventsResult,releasesResult,candidatesResult,aliasesResult,
+    claimsResult,followersResult,relationshipsResult,resolutionsResult]){
+    if(result.error)throw result.error;
+  }
+  const events=eventsResult.data??[];
+  const releases=releasesResult.data??[];
+  const candidates=candidatesResult.data??[];
+  const aliases=aliasesResult.data??[];
+  const follows=followersResult.data??[];
+  const eventIds=events.map(e=>e.id);
+  const deliveryResult=eventIds.length
+    ? await admin.from('alert_deliveries').select('event_id,status,sent_at')
+      .in('event_id',eventIds).limit(300)
+    : {data:[],error:null};
+  if(deliveryResult.error)throw deliveryResult.error;
+  const deliveries=deliveryResult.data??[];
+  const referenceScanComplete=
+    events.length<250 && releases.length<150 && candidates.length<150 &&
+    aliases.length<150 && (claimsResult.data??[]).length<250 &&
+    follows.length<250 && (relationshipsResult.data??[]).length<250 &&
+    (resolutionsResult.data??[]).length<250 && deliveries.length<300;
+
+  const infoFor=(entityId:string)=>({
+    activeEvents:events.filter(e=>e.primary_entity_id===entityId&&e.status==='ACTIVE').length,
+    historicalEvents:events.filter(e=>e.primary_entity_id===entityId).length,
+    ottReleaseRows:releases.filter(o=>o.entity_id===entityId).length,
+    promotedCandidates:candidates.filter(c=>c.promoted_entity_id===entityId).length,
+    aliases:aliases.filter(a=>a.entity_id===entityId).map(a=>a.alias),
+    claims:(claimsResult.data??[]).filter(x=>x.subject_entity_id===entityId).length,
+    activeFollowers:follows.filter(x=>x.entity_id===entityId&&x.active).length,
+    relationshipProposals:(relationshipsResult.data??[]).filter(x=>x.entity_id===entityId).length,
+    resolutionLinks:(resolutionsResult.data??[]).filter(x=>x.entity_id===entityId).length,
+    alertDeliveries:deliveries.filter(d=>events.some(e=>e.id===d.event_id&&e.primary_entity_id===entityId)).length,
+    sentAlerts:deliveries.filter(d=>d.sent_at&&events.some(e=>e.id===d.event_id&&e.primary_entity_id===entityId)).length,
+    releaseRows:releases.filter(o=>o.entity_id===entityId).map(o=>({
+      id:o.id,providerId:o.provider_id,territory:o.territory,
+      releaseType:o.release_type,date:o.release_date,precision:o.date_precision,
+      state:o.state,evidenceStatus:o.evidence_status,
+    })),
+    eventSamples:events.filter(e=>e.primary_entity_id===entityId).slice(0,10).map(e=>({
+      id:e.id,type:e.event_type,status:e.status,headline:e.headline,
+    })),
+  });
+  const risk=assessCorrectionRisk(
+    source as CorrectionEntity,target as CorrectionEntity|null,expectedType,
+    releases as CorrectionRelease[],
+  );
+  if(!referenceScanComplete)risk.warnings.push('One or more reference queries hit their cap: impact counts may be incomplete');
+  return {generatedAt:new Date().toISOString(),referenceScanComplete,
+    expectedType,source,target,
+    sourceImpact:infoFor(sourceEntityId),
+    targetImpact:targetEntityId?infoFor(targetEntityId):null,
+    risk};
+}
+
 async function entitySearch(query: string) {
   const q = query.trim();
   if (q.length < 2) return { items: [] };
@@ -498,6 +594,11 @@ Deno.serve(async (request): Promise<Response> => {
     if (action === 'officialArticleReviewQueue') return json(200, await officialArticleReviewQueue(Number(body.limit ?? 50)));
     if (action === 'pendingCatalogueReviewQueue') return json(200, await pendingCatalogueReviewQueue(Number(body.limit ?? 50)));
     if (action === 'activeCatalogueQualityAudit') return json(200, await activeCatalogueQualityAudit(Number(body.limit ?? 50)));
+    if (action === 'catalogueCorrectionImpactPreview'){
+      if(!validUuid(body.sourceEntityId) || (body.targetEntityId!=null&&!validUuid(body.targetEntityId))) return json(400,{error:'invalid_entity_id'});
+      if(body.expectedType!=='MOVIE'&&body.expectedType!=='SERIES')return json(400,{error:'invalid_expected_type'});
+      return json(200,await catalogueCorrectionImpactPreview(body.sourceEntityId,body.targetEntityId??null,body.expectedType));
+    }
     if(action === 'submitProducerEvidenceLead'){
       if(!validUuid(body.candidateId)) return json(400,{error:'invalid_candidate_id'});
       const sourceUrl=typeof body.sourceUrl==='string'?body.sourceUrl.trim():'';
