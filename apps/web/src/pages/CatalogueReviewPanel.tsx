@@ -86,7 +86,17 @@ export function CatalogueReviewPanel() {
               <span>{item.evidence_count} evidence item(s)</span>
               <span>{item.source_count} source identit{item.source_count===1?'y':'ies'}</span>
               <span>{item.first_party_source_count} first-party identit{item.first_party_source_count===1?'y':'ies'}</span>
+              <span className={item.owner_count_complete&&item.independent_owner_count<2?'text-amber-300':'text-zinc-300'}>
+                {item.owner_count_complete
+                  ? item.independent_owner_count+' distinct source owner group'+(item.independent_owner_count===1?'':'s')
+                  : 'Owner grouping incomplete — review manually'}
+              </span>
             </div>
+            <p className="mt-2 text-xs leading-5 text-zinc-500">
+              Owner groups use the registered corporate parent where available, otherwise the source organization.
+              Multiple feeds from one owner count as one group. This does not establish independent verification
+              of the title, publication rights, release date, or approval eligibility.
+            </p>
             <details className="mt-3 rounded-lg border border-zinc-800 p-3">
               <summary className="cursor-pointer text-xs font-medium text-sky-300">Inspect retained source evidence ({item.evidence.length})</summary>
               {item.evidence.length===0
