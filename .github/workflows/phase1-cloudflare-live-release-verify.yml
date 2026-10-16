@@ -1,0 +1,82 @@
+name: CineRelay Cloudflare Console Live Release Verification
+
+on:
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      console_url:
+        description: Existing private CineRelay Cloudflare Pages HTTPS origin
+        required: true
+        default: https://cinerelay-console.pages.dev
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  historical-cloudflare-url-probe:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Read-only probe of historical CineRelay Pages address
+        shell: bash
+        run: |
+          # The historical project address is unconfirmed and may be stale.
+          # Do not claim any Cloudflare deployment from this probe alone.
+          set -uo pipefail
+          url='https://cinerelay-console.pages.dev'
+          result="$(curl --silent --show-error --location --max-time 15 \
+            --output /tmp/cinerelay-page --write-out '%{http_code}' "$url/" 2>/tmp/cinerelay-curl-error)"
+          status="$?"
+          echo "Historical Cloudflare Pages URL: $url"
+          echo "curl exit: $status / HTTP status: $result"
+          if [[ "$status" -ne 0 ]]; then
+            echo "::warning::Historical console DNS/HTTP could not be independently verified"
+            head -c 250 /tmp/cinerelay-curl-error || true
+            exit 0
+          fi
+          if [[ "$result" == "200" ]] && grep -iq 'CineRelay Console' /tmp/cinerelay-page; then
+            echo "Observed CineRelay HTML shell at historical host (NOT proof of current release)"
+          else
+            echo "::warning::Historical console host does not serve expected CineRelay HTML (HTTP $result)"
+          fi
+          status_manifest="$(curl --silent --show-error --location --max-time 10 \
+            --output /tmp/cinerelay-manifest --write-out '%{http_code}' "$url/release-info.json" || true)"
+          echo "Current release manifest HTTP status: $status_manifest"
+          if [[ "$status_manifest" == "200" ]]; then
+            node -e "const fs=require('fs');try{const x=JSON.parse(fs.readFileSync('/tmp/cinerelay-manifest','utf8')); console.log('Deployment application:',String(x.app).slice(0,90),'commit:',String(x.commit).slice(0,45));}catch{console.log('No valid release JSON (possibly an old SPA fallback)')}"
+          fi
+      - name: Inspect deployed first-party JS bundles for catalogue feature markers
+        shell: bash
+        run: |
+          set -u
+          node apps/web/scripts/probe-existing-console.mjs https://cinerelay-console.pages.dev || \
+            echo "::warning::Unable to inspect live JS features; Cloudflare project may have changed"
+
+  verify-existing-cloudflare-console:
+    if: github.event_name == 'workflow_dispatch'
+    name: Verify live frontend SHA and safe routes
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify current main commit is actually deployed to the existing console
+        env:
+          LIVE_CONSOLE_URL: ${{ inputs.console_url }}
+          EXPECTED_SHA: ${{ github.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "${GITHUB_REF_NAME}" != "main" ]]; then
+            echo "::error::Run verification from main only, not ${GITHUB_REF_NAME}"
+            exit 1
+          fi
+          node apps/web/scripts/verify-live-console.mjs "$LIVE_CONSOLE_URL" "$EXPECTED_SHA"

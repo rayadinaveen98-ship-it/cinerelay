@@ -43,6 +43,9 @@ jobs:
           set -euo pipefail
           test -f apps/web/dist/_redirects
           test -f apps/web/dist/_headers
+          test -f apps/web/dist/release-info.json
+          EXPECTED_RELEASE_SHA="$GITHUB_SHA" node -e "const fs=require('fs');const r=JSON.parse(fs.readFileSync('apps/web/dist/release-info.json','utf8'));if(r.app!=='cinerelay-operator-console'||r.commit!==process.env.EXPECTED_RELEASE_SHA||r.source!=='github-actions')process.exit(1);console.log('PASS: nonsecret web release manifest matches checked out CI commit')"
+          grep -F '/release-info.json' apps/web/dist/_headers
           grep -F '/* /index.html 200' apps/web/dist/_redirects
           grep -F 'Content-Security-Policy:' apps/web/dist/_headers
           grep -R -F "$VITE_SUPABASE_URL" apps/web/dist/assets --include='*.js'
