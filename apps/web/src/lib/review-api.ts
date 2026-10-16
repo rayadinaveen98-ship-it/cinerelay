@@ -141,6 +141,8 @@ const PendingCatalogueQueueSchema = z.object({
     evidence_count: z.coerce.number(),
     source_count: z.coerce.number(),
     first_party_source_count: z.coerce.number(),
+    independent_owner_count: z.coerce.number(),
+    owner_count_complete: z.boolean(),
     primary_language: z.string().nullable(),
     country_code: z.string().nullable(),
     metadata: z.record(z.string(),z.unknown()),
