@@ -91,7 +91,7 @@ jobs:
       - name: Test official article typed-review extraction
         run: deno test --config supabase/functions/process-raw-item-worker/deno.json supabase/functions/process-raw-item-worker/article-entity-suggestions.test.ts supabase/functions/process-raw-item-worker/reviewed-article-freshness.test.ts
       - name: Test official operator review ordering and archival labels
-        run: deno test apps/web/src/lib/article-review-utils.test.ts
+        run: deno test supabase/tests/unit/article-review-utils.test.ts
       - name: Type-check youtube-fallback-worker
         run: deno check --config supabase/functions/youtube-fallback-worker/deno.json supabase/functions/youtube-fallback-worker/index.ts
       - name: Type-check youtube-source-admin

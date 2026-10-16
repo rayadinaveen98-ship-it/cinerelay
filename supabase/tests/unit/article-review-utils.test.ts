@@ -1,4 +1,4 @@
-import {isIdentityOnlyWebArticle,prioritizePendingSuggestions} from './article-review-utils.ts';
+import {isIdentityOnlyWebArticle,prioritizePendingSuggestions} from '../../../apps/web/src/lib/article-review-utils.ts';
 
 Deno.test('undated or historical operator review is identity-only',()=>{
  const now=new Date('2026-10-16T04:00:00Z');
