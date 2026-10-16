@@ -25,7 +25,7 @@ jobs:
 
           # Intentionally NO Supabase publishable key, access token, cookies
           # or privileged secrets. Verify BOTH operator read-only endpoints.
-          for action in pendingCatalogueReviewQueue activeCatalogueQualityAudit; do
+          for action in pendingCatalogueReviewQueue activeCatalogueQualityAudit catalogueCorrectionImpactPreview; do
             payload="$(printf '{"action":"%s","limit":1}' "$action")"
             code="$(curl --silent --show-error --max-time 20 --retry 1 \
               --request POST -H 'content-type: application/json' \
