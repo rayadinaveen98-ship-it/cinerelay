@@ -19,6 +19,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 3
     steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
       - name: Read-only probe of historical CineRelay Pages address
         shell: bash
         run: |
@@ -47,6 +51,12 @@ jobs:
           if [[ "$status_manifest" == "200" ]]; then
             node -e "const fs=require('fs');try{const x=JSON.parse(fs.readFileSync('/tmp/cinerelay-manifest','utf8')); console.log('Deployment application:',String(x.app).slice(0,90),'commit:',String(x.commit).slice(0,45));}catch{console.log('No valid release JSON (possibly an old SPA fallback)')}"
           fi
+      - name: Inspect deployed first-party JS bundles for catalogue feature markers
+        shell: bash
+        run: |
+          set -u
+          node apps/web/scripts/probe-existing-console.mjs https://cinerelay-console.pages.dev || \
+            echo "::warning::Unable to inspect live JS features; Cloudflare project may have changed"
 
   verify-existing-cloudflare-console:
     if: github.event_name == 'workflow_dispatch'
