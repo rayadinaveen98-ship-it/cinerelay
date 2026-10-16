@@ -99,6 +99,8 @@ jobs:
         run: deno test supabase/tests/unit/catalogue-owner-groups.test.ts
       - name: Test active catalogue impact audit
         run: deno test supabase/tests/unit/active-catalogue-audit.test.ts
+      - name: Test correction impact and OTT collision safeguards
+        run: deno test supabase/tests/unit/catalogue-correction-impact.test.ts
       - name: Type-check youtube-fallback-worker
         run: deno check --config supabase/functions/youtube-fallback-worker/deno.json supabase/functions/youtube-fallback-worker/index.ts
       - name: Type-check youtube-source-admin
