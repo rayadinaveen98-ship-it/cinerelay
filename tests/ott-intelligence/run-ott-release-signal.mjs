@@ -269,6 +269,10 @@ const promotionalFragments = [
     title: 'Please watch! #Euphoria Telugu Full Movie Streaming Now on Prime Video',
     source: { authorityTier: 1, role: 'OTT_PLATFORM', name: 'Prime Video India' },
   },
+  {
+    title: 'నాది miss అయింది doctor🤪#MisterMiddleClass Movie | Streaming Now on Prime Video',
+    source: { authorityTier: 1, role: 'OTT_PLATFORM', name: 'Prime Video India' },
+  },
 ];
 for (const item of promotionalFragments) {
   const got = extractOttMovieReleaseSignal({

@@ -1,7 +1,7 @@
 begin;
 
 create extension if not exists pgtap with schema extensions;
-select plan(14);
+select plan(15);
 
 select ok(public.automated_ott_candidate_title_looks_canonical('#Love'), 'standalone hashtag movie name allowed');
 select ok(public.automated_ott_candidate_title_looks_canonical('కాంతార'), 'Telugu-script movie name allowed');
@@ -13,6 +13,7 @@ select ok(not public.automated_ott_candidate_title_looks_canonical('Aasha OTT re
 select ok(not public.automated_ott_candidate_title_looks_canonical('After King, this top studio'), 'editorial studio headline rejected');
 select ok(not public.automated_ott_candidate_title_looks_canonical('Sharanya Pradeep Byte about Karmakhya'), 'interview byte caption rejected');
 select ok(not public.automated_ott_candidate_title_looks_canonical('వద్దు ! #Euphoria Telugu Full'), 'embedded promoted hashtag rejected');
+select ok(not public.automated_ott_candidate_title_looks_canonical('నాది miss అయింది doctor🤪#MisterMiddleClass'), 'emoji-attached inline hashtag rejected');
 
 insert into public.entity_discovery_candidates
   (id, proposed_entity_type, proposed_name, normalized_name, confidence, status, metadata)
