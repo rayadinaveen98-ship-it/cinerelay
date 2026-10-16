@@ -228,17 +228,36 @@ async function pendingCatalogueReviewQueue(limit: number) {
   const raws = new Map((rawResult.data ?? []).map(x => [x.id,x]));
   const identities = new Map((identityResult.data ?? []).map(x => [x.id,x]));
   const sourceIds = [...new Set((identityResult.data ?? []).map(x => x.source_id))];
-  const sourceResult = sourceIds.length
-    ? await admin.from('sources').select('id,display_name,source_role').in('id', sourceIds)
-    : { data: [], error: null };
+  const [sourceResult,ownerResult] = await Promise.all([
+    sourceIds.length
+      ? admin.from('sources').select('id,display_name,source_role').in('id', sourceIds)
+      : Promise.resolve({ data: [], error: null }),
+    sourceIds.length
+      ? admin.from('source_corporate_owner_memberships').select('source_id,owner_id').in('source_id', sourceIds)
+      : Promise.resolve({ data: [], error: null }),
+  ]);
   if (sourceResult.error) throw sourceResult.error;
+  if (ownerResult.error) throw ownerResult.error;
   const sources = new Map((sourceResult.data ?? []).map(x => [x.id,x]));
+  const owners = new Map((ownerResult.data ?? []).map(x => [x.source_id,x.owner_id]));
 
   const grouped = new Map<string,Array<Record<string,unknown>>>();
+  const ownerGroups = new Map<string,Set<string>>();
   for (const evidence of evidences ?? []) {
     const raw = raws.get(evidence.raw_item_id);
     const identity = identities.get(evidence.source_identity_id);
     const source = identity ? sources.get(identity.source_id) : null;
+    // Mirror the DB's corporate-owner grouping: a known common parent is
+    // one corroborating group, however many channel/feed identities it has.
+    // Unknown parents fall back to source IDs, not identities.
+    if (identity) {
+      const key = owners.has(identity.source_id)
+        ? 'corp:' + String(owners.get(identity.source_id))
+        : 'source:' + String(identity.source_id);
+      const groups = ownerGroups.get(evidence.candidate_id) ?? new Set<string>();
+      groups.add(key);
+      ownerGroups.set(evidence.candidate_id,groups);
+    }
     const list = grouped.get(evidence.candidate_id) ?? [];
     list.push({
       id: evidence.id,
@@ -259,6 +278,9 @@ async function pendingCatalogueReviewQueue(limit: number) {
     generatedAt: new Date().toISOString(),
     items: candidates.map(candidate => ({
       ...candidate,
+      independent_owner_count: ownerGroups.get(candidate.id)?.size ?? 0,
+      owner_count_complete: (evidences ?? []).length < 1000 &&
+        (grouped.get(candidate.id)?.length ?? 0) >= candidate.evidence_count,
       evidence: grouped.get(candidate.id) ?? [],
     })),
   };
