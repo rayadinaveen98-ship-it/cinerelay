@@ -156,7 +156,21 @@ async function officialArticleReviewQueue(limit: number) {
         .in('id',candidateIds)
     : {data:[],error:null};
   if(suggestions.error) throw suggestions.error;
-  const candidateMap=new Map((suggestions.data??[]).map(x=>[x.id,x]));
+  const leads = candidateIds.length
+    ? await admin.from('operator_producer_evidence_leads')
+        .select('id,candidate_id,source_url,claimed_owner_name,evidence_note,status,created_at,counts_toward_approval')
+        .in('candidate_id',candidateIds).order('created_at',{ascending:false}).limit(200)
+    : {data:[],error:null};
+  if(leads.error) throw leads.error;
+  const leadMap=new Map<string,Array<Record<string,unknown>>>();
+  for(const lead of leads.data??[]){
+    const items=leadMap.get(lead.candidate_id)??[];
+    items.push(lead);
+    leadMap.set(lead.candidate_id,items);
+  }
+  const candidateMap=new Map((suggestions.data??[]).map(x=>[x.id,{
+    ...x, producerEvidenceLeads:leadMap.get(x.id)??[],
+  }]));
   const items=raws.flatMap(raw=>{
     const identity=identities.get(raw.source_identity_id);
     const source=identity?sources.get(identity.source_id):null;
@@ -235,6 +249,19 @@ Deno.serve(async (request): Promise<Response> => {
     if (action === 'bootstrap') return json(200, await reviewBootstrap(Number(body.limit ?? 100)));
     if (action === 'entitySearch') return json(200, await entitySearch(typeof body.query === 'string' ? body.query : ''));
     if (action === 'officialArticleReviewQueue') return json(200, await officialArticleReviewQueue(Number(body.limit ?? 50)));
+    if(action === 'submitProducerEvidenceLead'){
+      if(!validUuid(body.candidateId)) return json(400,{error:'invalid_candidate_id'});
+      const sourceUrl=typeof body.sourceUrl==='string'?body.sourceUrl.trim():'';
+      const ownerName=typeof body.claimedOwnerName==='string'?body.claimedOwnerName.trim():'';
+      const evidenceNote=typeof body.evidenceNote==='string'?body.evidenceNote.trim():'';
+      if(sourceUrl.length>650||ownerName.length>120||evidenceNote.length>1200)
+        return json(400,{error:'producer_evidence_input_too_long'});
+      const result=await rpcAction('operator_submit_producer_evidence_lead',{
+        p_actor_id:auth.user.id,p_candidate_id:body.candidateId,
+        p_source_url:sourceUrl,p_claimed_owner_name:ownerName,p_evidence_note:evidenceNote,
+      });
+      return json(200,{ok:true,result});
+    }
 
     const reason = reasonOf(body.reason);
     if (!reason && ['resolveRawItem', 'clearResolutionOverride', 'suppressEvent', 'reclassifyEvent', 'mergeEvents'].includes(action)) {
