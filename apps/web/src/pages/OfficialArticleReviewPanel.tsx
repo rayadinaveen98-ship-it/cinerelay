@@ -79,6 +79,22 @@ function OfficialArticleCard({item}:{item:Article}) {
         Catalogue approval requires 2 independent source owners and confidence of at least 0.85.
         {typed.confidence < 0.85 ? ' Confidence is currently below that threshold.' : ''}
       </p>
+      {Boolean(typed.metadata.externalProductionCorroboration) &&
+        typeof typed.metadata.externalProductionCorroboration === 'object' &&
+        !Array.isArray(typed.metadata.externalProductionCorroboration) &&
+        <div className="mt-3 rounded-lg border border-sky-900/50 bg-sky-950/20 p-3">
+          <p className="text-xs font-semibold uppercase tracking-wide text-sky-300">Producer-side corroboration located · External only</p>
+          <p className="mt-2 font-medium text-zinc-200">{String((typed.metadata.externalProductionCorroboration as Record<string,unknown>).producer ?? 'Production company')}</p>
+          <p className="mt-1 text-xs leading-5 text-zinc-300">{String((typed.metadata.externalProductionCorroboration as Record<string,unknown>).verificationNote ?? '')}</p>
+          <p className="mt-1 text-xs leading-5 text-amber-200">{String((typed.metadata.externalProductionCorroboration as Record<string,unknown>).identityAndReleaseCaveat ?? '')}</p>
+          {typeof (typed.metadata.externalProductionCorroboration as Record<string,unknown>).producerOwnedEvidenceUrl === 'string' &&
+           /^https:\/\/(www\.)?linkedin\.com\//.test(String((typed.metadata.externalProductionCorroboration as Record<string,unknown>).producerOwnedEvidenceUrl)) &&
+           <a className="mt-2 inline-block text-xs text-sky-300 hover:underline" target="_blank" rel="noopener noreferrer"
+             href={String((typed.metadata.externalProductionCorroboration as Record<string,unknown>).producerOwnedEvidenceUrl)}>
+             Open original producer page ↗
+           </a>}
+          <p className="mt-2 text-xs text-zinc-400">Not collected by a CineRelay connector. Does not count toward independent-owner approval or trigger publication.</p>
+        </div>}
       {typeof typed.metadata.seasonNumber==='number'&&<p className="mt-1 text-xs text-zinc-400">Season {typed.metadata.seasonNumber} mentioned in evidence</p>}
       {typeof typed.metadata.proposedReleaseDate==='string'&&<p className="mt-1 text-xs text-amber-300">Suggested release date {typed.metadata.proposedReleaseDate} — unverified; do not publish without reviewing primary evidence</p>}
       <button type="button" onClick={()=>{setTitle(typed.proposed_name);setEntityType(typed.proposed_entity_type);setEntityId('');}} className="mt-3 rounded-lg border border-amber-700 px-3 py-2 text-xs text-amber-200 hover:bg-amber-950/40">Copy suggested name into review form (not approval)</button>
