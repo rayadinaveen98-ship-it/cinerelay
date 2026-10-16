@@ -30,7 +30,7 @@ function safeName(raw: string): string | null {
   const name = raw.trim().replace(/^[\u201c\u201d\u2018\u2019"' ]+|[\u201c\u201d\u2018\u2019"' ]+$/g, '')
     .replace(/\s+/g, ' ');
   if (name.length < 3 || name.length > 72 || !/^[\p{Lu}\p{N}]/u.test(name)) return null;
-  if (/\b(documentary|trailer|announcement|everything|what|when|where|watch|new|latest|release date|how to|movie|film|series|prime video|netflix)\b/i.test(name)) return null;
+  if (/\b(documentary|trailer|announcement|everything|what|when|where|watch|release date|how to|movie|film|series|prime video|netflix)\b/i.test(name)) return null;
   if (/[!?<>]/.test(name)) return null;
   return name;
 }
