@@ -386,11 +386,7 @@ private fun OttReleaseSectionV066(
 private fun OttCompactCardV080(release: OttRelease, onClick: () -> Unit) {
     val confirmed = release.evidenceStatus == "CONFIRMED"
     val status = if (confirmed) "Confirmed" else prettyOttV054(release.evidenceStatus)
-    val dateLabel = when {
-        release.releaseDate != null -> ottDatePrimaryV054(release) + " " + ottDateSecondaryV054(release)
-        release.state == "RELEASED" -> "Available now · date unknown"
-        else -> "Date to be announced"
-    }
+    val dateLabel = ottDisplayDateV081(release.releaseDate, release.datePrecision, release.state)
     Surface(
         color = OttPanel,
         shape = RoundedCornerShape(CineEditorial.CardRadius),
@@ -430,8 +426,8 @@ private fun OttCompactListRowV080(release:OttRelease,modifier:Modifier=Modifier,
             Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(5.dp)){
                 Text(release.entity.name,color=OttText,fontSize=CineEditorial.CardTitle,lineHeight=22.sp,fontWeight=FontWeight.Bold,
                     maxLines=2,overflow=TextOverflow.Ellipsis)
-                Text(release.provider.name+" • "+ottDatePrimaryV054(release)+" "+ottDateSecondaryV054(release),
-                    color=OttMuted,fontSize=12.sp)
+                Text(release.provider.name+" • "+ottDisplayDateV081(release.releaseDate, release.datePrecision, release.state),
+                    color=OttMuted,fontSize=CineEditorial.Metadata)
                 Text(if(release.evidenceStatus=="CONFIRMED")"Confirmed" else prettyOttV054(release.evidenceStatus),
                     color=if(release.evidenceStatus=="CONFIRMED")OttGreen else OttAmber,fontSize = CineEditorial.Metadata)
             }
@@ -687,16 +683,37 @@ private fun ottWeekendLabelV060(start: String?, end: String?): String {
     return if (startDate == endDate) startDate.format(formatter) else "${startDate.format(formatter)} – ${endDate.format(formatter)}"
 }
 
-private fun ottDatePrimaryV054(release: OttRelease): String {
-    val date = release.releaseDate ?: return if (release.state == "RELEASED") "NOW" else "TBA"
-    return runCatching { LocalDate.parse(date).dayOfMonth.toString() }.getOrDefault("—")
+private fun ottDatePrimaryV054(release: OttRelease): String =
+    ottDateTilePartsV081(release.releaseDate, release.datePrecision, release.state).first
+
+private fun ottDateSecondaryV054(release: OttRelease): String =
+    ottDateTilePartsV081(release.releaseDate, release.datePrecision, release.state).second
+
+/** Date precision is evidence, not an invitation to invent a calendar day. */
+internal fun ottDateTilePartsV081(dateIso: String?, precision: String?, state: String): Pair<String, String> {
+    val date = dateIso?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
+    val month = date?.format(DateTimeFormatter.ofPattern("MMM", Locale.ENGLISH))?.uppercase(Locale.ENGLISH)
+    return when {
+        date == null || precision == null || precision.equals("TBA", ignoreCase = true) ->
+            (if (state == "RELEASED") "NOW" else "TBA") to "DATE UNKNOWN"
+        precision.equals("DAY", ignoreCase = true) -> date.dayOfMonth.toString() to (month ?: "—")
+        precision.equals("MONTH", ignoreCase = true) -> (month ?: "TBA") to date.year.toString()
+        precision.equals("YEAR", ignoreCase = true) -> date.year.toString() to "YEAR ONLY"
+        else -> "TBA" to "DATE UNKNOWN"
+    }
 }
 
-private fun ottDateSecondaryV054(release: OttRelease): String {
-    val date = release.releaseDate ?: return "DATE UNKNOWN"
-    return runCatching {
-        LocalDate.parse(date).format(DateTimeFormatter.ofPattern("MMM", Locale.ENGLISH)).uppercase(Locale.ENGLISH)
-    }.getOrDefault("DATE")
+internal fun ottDisplayDateV081(dateIso: String?, precision: String?, state: String): String {
+    val date = dateIso?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
+    if (date == null || precision == null) {
+        return if (state == "RELEASED") "Available now · date unknown" else "Date to be announced"
+    }
+    return when (precision.uppercase(Locale.ENGLISH)) {
+        "DAY" -> date.format(DateTimeFormatter.ofPattern("d MMM yyyy", Locale.ENGLISH))
+        "MONTH" -> date.format(DateTimeFormatter.ofPattern("MMM yyyy", Locale.ENGLISH)) + " · day TBA"
+        "YEAR" -> date.year.toString() + " · month TBA"
+        else -> if (state == "RELEASED") "Available now · date unknown" else "Date to be announced"
+    }
 }
 
 private fun formatOttDateV054(value: String): String = runCatching {
