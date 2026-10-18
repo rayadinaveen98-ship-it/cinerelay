@@ -2,6 +2,7 @@ package com.cinerelay.app.ui
 
 import android.content.Intent
 import android.net.Uri
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -75,6 +76,9 @@ fun NotificationDetailV055(
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
+    // The story is an overlay, not a full navigation-root replacement.
+    // System Back must dismiss it instead of exiting the app.
+    BackHandler(onBack = onBack)
 
     MaterialTheme(
         colorScheme = darkColorScheme(
