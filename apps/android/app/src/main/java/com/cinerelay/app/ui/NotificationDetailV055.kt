@@ -92,20 +92,7 @@ fun NotificationDetailV055(
             Scaffold(
                 containerColor = DetailInk,
                 topBar = {
-                    TopAppBar(
-                        colors = TopAppBarDefaults.topAppBarColors(containerColor = DetailInk),
-                        navigationIcon = {
-                            IconButton(onClick = onBack) {
-                                Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = DetailText)
-                            }
-                        },
-                        title = {
-                            Column {
-                                Text("CINERELAY", color = DetailGold, fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 1.5.sp)
-                                Text("Story", color = DetailText, fontSize = 20.sp, fontWeight = FontWeight.Bold)
-                            }
-                        },
-                    )
+                    CineScreenHeader(title = "Story", onBack = onBack)
                 },
             ) { padding ->
                 when {
