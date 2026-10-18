@@ -385,7 +385,6 @@ private fun SourceRow(
 }
 
 @Composable
-@Composable
 private fun SourceAvatar(source: SourceDirectoryItem, size: Dp = 42.dp) {
     val initials = source.name
         .split(' ')
