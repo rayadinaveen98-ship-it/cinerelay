@@ -56,7 +56,10 @@ class OnThisDayClient(
                     .getOrElse { throw ApiException("Cinema history returned an invalid response", response.code) }
                 val selectedDate = json.optString("selectedDate").takeIf { it.isNotBlank() }
                     ?: throw ApiException("Cinema history date is missing", response.code)
+                // An unavailable or malformed response is an error, not an empty day.
+                // Only an actual [] from the history endpoint means no known releases.
                 val rows = json.optJSONArray("movies")
+                    ?: throw ApiException("Cinema history response was incomplete", response.code)
                 val movies = buildList {
                     if (rows != null) {
                         for (index in 0 until rows.length()) {
