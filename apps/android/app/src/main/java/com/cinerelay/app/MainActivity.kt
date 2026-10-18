@@ -338,6 +338,7 @@ class MainActivity : ComponentActivity() {
                                 onSelectLanguage = ottViewModel::selectLanguage,
                                 onSelectContentType = ottViewModel::selectContentType,
                                 onSelectEvidence = ottViewModel::selectEvidence,
+                                onClearFilters = ottViewModel::clearFilters,
                                 modifier = Modifier.fillMaxSize(),
                             )
                         }
