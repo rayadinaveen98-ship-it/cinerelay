@@ -151,31 +151,40 @@ fun OttReleasesV054(
                 }
             }else Scaffold(
                 containerColor = OttInk,
-                topBar = {
-                    TopAppBar(
-                        colors = TopAppBarDefaults.topAppBarColors(containerColor = OttInk),
-                        title = {
-                            Column {
-                                Text("CINERELAY  /  OTT", color = OttGold, fontSize = CineEditorial.Metadata, fontWeight = FontWeight.Bold, letterSpacing = 1.2.sp)
-                                Text("Streaming guide", color = OttText, fontSize = CineEditorial.PageTitle, fontWeight = FontWeight.Bold)
-                            }
-                        },
-                        actions = {
-                            IconButton(onClick = onRefresh, enabled = !state.loading) {
-                                if (state.loading) CircularProgressIndicator(Modifier.size(19.dp), strokeWidth = 2.dp, color = OttGold)
-                                else Icon(Icons.Default.Refresh, contentDescription = "Refresh OTT releases", tint = OttMuted)
-                            }
-                        },
-                    )
-                },
+                topBar = {},
             ) { padding ->
                 LazyColumn(
                     state=landingListState,
                     modifier = Modifier.fillMaxSize().padding(padding),
-                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 118.dp),
-                    verticalArrangement = Arrangement.spacedBy(14.dp),
+                    contentPadding = PaddingValues(start = CineEditorial.Gutter, end = CineEditorial.Gutter, top = 0.dp, bottom = 118.dp),
+                    verticalArrangement = Arrangement.spacedBy(24.dp),
                 ) {
+                    item {
+                        EditorialMastheadV2(
+                            section = "STREAMING JOURNAL / INDIA",
+                            title = "The streaming edit.",
+                            subtitle = "New releases at a glance. Original sources, clearer dates, fewer surprises.",
+                            actions = {
+                                IconButton(onClick = onRefresh, enabled = !state.loading) {
+                                    if (state.loading) CircularProgressIndicator(
+                                        Modifier.size(19.dp), strokeWidth = 2.dp, color = OttGold,
+                                    ) else Icon(Icons.Default.Refresh,
+                                        contentDescription = "Refresh OTT releases", tint = OttMuted)
+                                }
+                            },
+                        )
+                    }
                     item { OttOverviewV069(state, onOpenCategory = { openedCategory = it }) }
+                    item {
+                        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            items(OttLanguages, key = { it.first ?: "all" }) { (code, label) ->
+                                OttChipV054(
+                                    if (code == null) "All" else label,
+                                    state.language == code,
+                                ) { onSelectLanguage(code) }
+                            }
+                        }
+                    }
 
                     item {
                         OttFiltersV060(
@@ -258,17 +267,11 @@ fun OttReleasesV054(
 
 @Composable
 private fun OttOverviewV069(state: OttUiState, onOpenCategory: (String) -> Unit) {
-    Column(
-        Modifier.fillMaxWidth().padding(vertical = 4.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        Text("Find what is available, when, and on which platform.", color = OttMuted, fontSize = CineEditorial.Body)
-        LazyRow(horizontalArrangement = Arrangement.spacedBy(9.dp)) {
-            item { OttCountPillV060("Weekend", state.weekendItems.size) { onOpenCategory("weekend") } }
-            item { OttCountPillV060("Today", state.todayItems.size) { onOpenCategory("today") } }
-            item { OttCountPillV060("Streaming", state.nowStreamingItems.size) { onOpenCategory("streaming") } }
-            item { OttCountPillV060("Next 30 days", state.upcomingItems.size) { onOpenCategory("upcoming") } }
-        }
+    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        item { OttCountPillV060("Weekend", state.weekendItems.size) { onOpenCategory("weekend") } }
+        item { OttCountPillV060("Today", state.todayItems.size) { onOpenCategory("today") } }
+        item { OttCountPillV060("Streaming", state.nowStreamingItems.size) { onOpenCategory("streaming") } }
+        item { OttCountPillV060("Next 30d", state.upcomingItems.size) { onOpenCategory("upcoming") } }
     }
 }
 
@@ -276,14 +279,15 @@ private fun OttOverviewV069(state: OttUiState, onOpenCategory: (String) -> Unit)
 private fun OttCountPillV060(label: String, count: Int, onClick: () -> Unit) {
     Surface(
         color = OttPanel,
-        shape = RoundedCornerShape(16.dp),
-        modifier = Modifier.heightIn(min = CineEditorial.TargetSize).clickable(enabled = count > 0, onClick = onClick),
+        shape = RoundedCornerShape(13.dp),
+        modifier = Modifier.width(89.dp).heightIn(min = 80.dp).clickable(enabled = count > 0, onClick = onClick),
     ) {
-        Row(Modifier.padding(horizontal = 13.dp, vertical = 10.dp),
-            horizontalArrangement = Arrangement.spacedBy(7.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text(count.toString(), color = if (count > 0) OttGold else OttMuted,
-                fontSize = 16.sp, fontWeight = FontWeight.Bold)
-            Text(label, color = OttText, fontSize = CineEditorial.Metadata, fontWeight = FontWeight.Medium)
+        Column(
+            Modifier.padding(11.dp),
+            verticalArrangement = Arrangement.spacedBy(5.dp),
+        ) {
+            EditorialDisplayV2(count.toString().padStart(2, '0'), size = 22, lines = 1)
+            Text(label, color = OttMuted, fontSize = 10.sp, maxLines = 1)
         }
     }
 }
@@ -365,55 +369,55 @@ private fun OttFiltersV060(
 
 @Composable
 private fun OttReleaseSectionV066(
-    eyebrow:String,title:String,subtitle:String,items:List<OttRelease>,emptyMessage:String,
-    onSeeAll:()->Unit,onOpenRelease:(OttRelease)->Unit
-){
-    Column(Modifier.fillMaxWidth(),verticalArrangement=Arrangement.spacedBy(10.dp)){
-        DiscoverySectionHeadingV080(title,subtitle,items.size,onSeeAll)
-        if(items.isEmpty()){
-            Text(emptyMessage,color=OttMuted,fontSize=CineEditorial.Body,lineHeight=18.sp,
-                modifier=Modifier.padding(horizontal=16.dp,vertical=12.dp))
-        }else{
-            LazyRow(contentPadding=PaddingValues(horizontal=16.dp),horizontalArrangement=Arrangement.spacedBy(12.dp)){
-                items(items.take(12),key={it.id}){release->
-                    OttCompactCardV080(release){onOpenRelease(release)}
+    eyebrow: String,
+    title: String,
+    subtitle: String,
+    items: List<OttRelease>,
+    emptyMessage: String,
+    onSeeAll: () -> Unit,
+    onOpenRelease: (OttRelease) -> Unit,
+) {
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(11.dp)) {
+        EditorialSectionV2(eyebrow, title, trailing = {
+            TextButton(onClick = onSeeAll, enabled = items.isNotEmpty()) {
+                Text("See all →", color = if (items.isNotEmpty()) OttGold else OttMuted, fontSize = 12.sp)
+            }
+        })
+        Text(subtitle, color = OttMuted, fontSize = 12.sp, maxLines = 2,
+            overflow = TextOverflow.Ellipsis)
+        if (items.isEmpty()) {
+            Text(emptyMessage, color = OttMuted, fontSize = CineEditorial.Body,
+                lineHeight = 19.sp, modifier = Modifier.padding(vertical = 16.dp))
+        } else {
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                items(items.take(12), key = { it.id }) { release ->
+                    OttCompactCardV080(release) { onOpenRelease(release) }
                 }
             }
         }
     }
 }
+
 @Composable
 private fun OttCompactCardV080(release: OttRelease, onClick: () -> Unit) {
     val confirmed = release.evidenceStatus == "CONFIRMED"
     val status = if (confirmed) "Confirmed" else prettyOttV054(release.evidenceStatus)
     val dateLabel = ottDisplayDateV081(release.releaseDate, release.datePrecision, release.state)
-    Surface(
-        color = OttPanel,
-        shape = RoundedCornerShape(CineEditorial.CardRadius),
-        modifier = Modifier.width(236.dp).clickable(onClick = onClick),
+    Column(
+        Modifier.width(159.dp).clickable(onClick = onClick),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(9.dp)) {
-                OttProviderMarkV066(release.provider)
-                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text(release.provider.name, color = OttText, fontSize = CineEditorial.Metadata,
-                        fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    Text(dateLabel, color = OttMuted, fontSize = CineEditorial.Metadata,
-                        maxLines = 2, overflow = TextOverflow.Ellipsis)
-                }
-            }
-            Text(release.entity.name, color = OttText, fontSize = CineEditorial.CardTitle, lineHeight = 22.sp,
-                fontWeight = FontWeight.Bold, minLines = 1, maxLines = 2, overflow = TextOverflow.Ellipsis)
-            HorizontalDivider(color = OttLine)
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(if (release.entity.type.uppercase(Locale.ENGLISH) in setOf("SERIES", "SEASON")) "Series" else "Movie",
-                    color = OttGold, fontSize = CineEditorial.Metadata, fontWeight = FontWeight.Medium,
-                    modifier = Modifier.weight(1f))
-                Text(status, color = if (confirmed) OttGreen else OttAmber,
-                    fontSize = CineEditorial.Metadata, fontWeight = FontWeight.Bold,
-                    maxLines = 1, overflow = TextOverflow.Ellipsis)
-            }
-        }
+        EditorialArtworkV2(
+            url = null, // OTT feed has no official poster URL. Never synthesize artwork.
+            title = release.entity.name,
+            label = release.provider.name,
+            modifier = Modifier.fillMaxWidth().height(190.dp),
+        )
+        EditorialDisplayV2(release.entity.name, size = 18, lines = 2)
+        Text(dateLabel, color = OttMuted, fontSize = 11.sp,
+            maxLines = 2, overflow = TextOverflow.Ellipsis)
+        Text(status, color = if (confirmed) OttGreen else OttAmber, fontSize = 11.sp,
+            fontWeight = FontWeight.Bold)
     }
 }
 
