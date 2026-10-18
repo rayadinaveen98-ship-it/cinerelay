@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.sizeIn
+import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ChevronRight
@@ -25,52 +26,46 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 /**
- * Screen-level editorial header shared by discovery, history and utility screens.
- * Actions are passed by the hosting screen to preserve their current behavior.
+ * Consistent V2 page layout for sources, search, settings, archive, story detail,
+ * and nested See All pages. This deliberately changes hierarchy, not just colors.
  */
 @Composable
 internal fun CineScreenHeader(
     title: String,
     subtitle: String? = null,
-    eyebrow: String = "CINERELAY",
+    eyebrow: String = "CINERELAY / THE EDITORIAL EDITION",
     onBack: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
     actions: @Composable RowScope.() -> Unit = {},
 ) {
-    Row(
-        modifier = modifier.fillMaxWidth().padding(
-            start = if (onBack != null) 4.dp else CineEditorial.Gutter,
+    Column(
+        modifier.fillMaxWidth().padding(
+            start = if (onBack != null) 6.dp else CineEditorial.Gutter,
             end = CineEditorial.Gutter,
-            top = 18.dp,
-            bottom = 12.dp,
+            top = 16.dp, bottom = 16.dp,
         ),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalAlignment = Alignment.CenterVertically,
+        verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        if (onBack != null) {
-            IconButton(onClick = onBack, modifier = Modifier.size(CineEditorial.TargetSize)) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = CineEditorial.Text)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            if (onBack != null) {
+                IconButton(onClick = onBack, modifier = Modifier.size(CineEditorial.TargetSize)) {
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = "Back", tint = CineEditorial.Text)
+                }
             }
+            EditorialEyebrowV2(eyebrow,
+                modifier = if (onBack != null) Modifier.weight(1f) else Modifier.weight(1f))
+            actions()
         }
-        Column(
-            modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(3.dp),
-        ) {
-            Text(eyebrow, color = CineEditorial.Accent, fontSize = CineEditorial.Metadata,
-                fontWeight = FontWeight.Bold, letterSpacing = 1.sp,
-                maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text(title, color = CineEditorial.Text, fontSize = CineEditorial.PageTitle,
-                fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis)
-            if (!subtitle.isNullOrBlank()) {
-                Text(subtitle, color = CineEditorial.Muted, fontSize = CineEditorial.Metadata,
-                    maxLines = 2, overflow = TextOverflow.Ellipsis)
-            }
+        EditorialDisplayV2(title, size = 29, lines = 2)
+        if (!subtitle.isNullOrBlank()) {
+            Text(subtitle, color = CineEditorial.Muted,
+                fontSize = 13.sp, lineHeight = 19.sp,
+                maxLines = 3, overflow = TextOverflow.Ellipsis)
         }
-        actions()
     }
 }
 
-/** Reusable section anatomy for rails, lists, and See All destinations. */
 @Composable
 internal fun CineSectionHeader(
     title: String,
@@ -79,29 +74,26 @@ internal fun CineSectionHeader(
     onSeeAll: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
-    Row(
-        modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(title, color = CineEditorial.Text, fontSize = CineEditorial.SectionTitle,
-                fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis)
-            if (subtitle.isNotBlank()) {
-                Text(subtitle, color = CineEditorial.Muted, fontSize = CineEditorial.Metadata,
-                    maxLines = 2, overflow = TextOverflow.Ellipsis)
+    Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            EditorialDisplayV2(title, modifier = Modifier.weight(1f), size = 23, lines = 2)
+            if (onSeeAll != null) {
+                TextButton(onClick = onSeeAll,
+                    enabled = count == null || count > 0,
+                    modifier = Modifier.sizeIn(minHeight = CineEditorial.TargetSize)) {
+                    Text(if (count == null) "See all" else "See all ($count)",
+                        color = if (count == 0) CineEditorial.Muted else CineEditorial.Accent,
+                        fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    Spacer(Modifier.width(4.dp))
+                    Icon(Icons.Default.ChevronRight, contentDescription = null,
+                        tint = CineEditorial.Accent, modifier = Modifier.size(16.dp))
+                }
             }
         }
-        if (onSeeAll != null) {
-            TextButton(onClick = onSeeAll, enabled = count == null || count > 0,
-                modifier = Modifier.sizeIn(minHeight = CineEditorial.TargetSize)) {
-                val label = if (count == null) "See all" else "See all ($count)"
-                Text(label, color = if (count == 0) CineEditorial.Muted else CineEditorial.Accent,
-                    fontSize = CineEditorial.Metadata, fontWeight = FontWeight.SemiBold,
-                    maxLines = 1)
-                Icon(Icons.Default.ChevronRight, contentDescription = null,
-                    tint = CineEditorial.Accent, modifier = Modifier.size(18.dp))
-            }
+        if (subtitle.isNotBlank()) {
+            Text(subtitle, color = CineEditorial.Muted,
+                fontSize = 12.sp, lineHeight = 18.sp,
+                maxLines = 2, overflow = TextOverflow.Ellipsis)
         }
     }
 }
