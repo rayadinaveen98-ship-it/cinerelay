@@ -72,41 +72,32 @@ class ConsumerViewModelV055(application: Application) : AndroidViewModel(applica
         }
     }
 
+    /**
+     * Fetch one date only. The old implementation made a redundant, language-filtered
+     * request on every visit; the Worker expects human-readable language names, not
+     * the user's ISO language code. Its D1 backing store is quota-limited.
+     */
     fun loadOnThisDay(force: Boolean = false, date: String? = null) {
+        val requestDate = date?.trim()?.takeIf { it.isNotBlank() }
+            ?: java.time.LocalDate.now(java.time.ZoneId.of("Asia/Kolkata")).toString()
         val current = _state.value
         if (current.onThisDayLoading) return
-        if (!force && date == null && current.onThisDayDate != null && current.onThisDayMovies.isNotEmpty()) return
+        if (!force && current.onThisDayDate == requestDate &&
+            (current.onThisDayMovies.isNotEmpty() || current.onThisDayError == null)
+        ) return
 
         viewModelScope.launch {
-            _state.value = _state.value.copy(onThisDayLoading = true, onThisDayError = null)
+            val prior = _state.value
+            _state.value = prior.copy(
+                onThisDayLoading = true,
+                onThisDayDate = requestDate,
+                onThisDayMovies = if (prior.onThisDayDate == requestDate)
+                    prior.onThisDayMovies else emptyList(),
+                onThisDayError = null,
+            )
             runCatching {
                 withContext(Dispatchers.IO) {
-                    coroutineScope {
-                        val preferredLanguage = _state.value.personalization?.favoriteLanguages
-                            ?.firstOrNull()
-                            ?.trim()
-                            ?.lowercase()
-                            ?.takeIf { it.isNotBlank() }
-                            ?: "te"
-                        val allRequest = async {
-                            runCatching { onThisDay.load(date = date, limit = 60) }
-                        }
-                        val preferredRequest = async {
-                            runCatching { onThisDay.load(date = date, language = preferredLanguage, limit = 40) }.getOrNull()
-                        }
-                        val allSnapshot = allRequest.await().getOrElse { error ->
-                            preferredRequest.await() ?: throw error
-                        }
-                        val preferredSnapshot = preferredRequest.await()
-                        val merged = buildList {
-                            preferredSnapshot?.movies?.let(::addAll)
-                            addAll(allSnapshot.movies)
-                        }.distinctBy { it.id }.take(100)
-                        OnThisDaySnapshot(
-                            selectedDate = allSnapshot.selectedDate,
-                            movies = merged,
-                        )
-                    }
+                    onThisDay.load(date = requestDate, limit = 100)
                 }
             }.onSuccess { snapshot ->
                 _state.value = _state.value.copy(
@@ -115,10 +106,10 @@ class ConsumerViewModelV055(application: Application) : AndroidViewModel(applica
                     onThisDayMovies = snapshot.movies,
                     onThisDayError = null,
                 )
-            }.onFailure {
+            }.onFailure { error ->
                 _state.value = _state.value.copy(
                     onThisDayLoading = false,
-                    onThisDayError = "Cinema history is temporarily unavailable.",
+                    onThisDayError = "Cinema history couldn't load right now. Please retry later.",
                 )
             }
         }
