@@ -154,14 +154,17 @@ fun RadarV058(
             modifier = modifier.fillMaxSize().background(RadarInk58),
         ) {
             Column(Modifier.fillMaxSize()) {
-                CineScreenHeader(
-                    title = "Radar",
-                    subtitle = "Evidence-backed opportunities for creators",
+                EditorialMastheadV2(
+                    section = "SIGNAL DESK / FRESH STORIES",
+                    title = "The radar.",
+                    subtitle = "A calm, prioritized view of noteworthy updates, with evidence always in reach.",
+                    modifier = Modifier.padding(horizontal = CineEditorial.Gutter),
                     actions = {
                         IconButton(onClick = onRefresh, enabled = !state.loading) {
-                            if (state.loading) CircularProgressIndicator(
-                                Modifier.size(19.dp), strokeWidth = 2.dp, color = RadarGold58,
-                            ) else Icon(Icons.Default.Refresh, contentDescription = "Refresh Radar", tint = RadarMuted58)
+                            if (state.loading) CircularProgressIndicator(Modifier.size(19.dp),
+                                strokeWidth = 2.dp, color = RadarGold58)
+                            else Icon(Icons.Default.Refresh,
+                                contentDescription = "Refresh Radar", tint = RadarMuted58)
                         }
                     },
                 )
@@ -184,8 +187,8 @@ fun RadarV058(
                 } else {
                     LazyColumn(
                         state=landingListState,
-                        contentPadding = PaddingValues(start = 18.dp, end = 18.dp, top = 6.dp, bottom = 110.dp),
-                        verticalArrangement = Arrangement.spacedBy(13.dp),
+                        contentPadding = PaddingValues(start = CineEditorial.Gutter, end = CineEditorial.Gutter, top = 8.dp, bottom = 110.dp),
+                        verticalArrangement = Arrangement.spacedBy(24.dp),
                     ) {
                         item {
                             RadarSummaryV066(
@@ -195,8 +198,11 @@ fun RadarV058(
                             )
                         }
                         if(actionable.isNotEmpty()){
-                            item{DiscoverySectionHeadingV080("Cover now","Fresh, evidence-backed opportunities",
-                                actionable.size,onSeeAll={openedLane="cover"})}
+                            item{EditorialSectionV2("OPPORTUNITIES / PRIORITY","Cover now",modifier=Modifier.padding(horizontal=0.dp),trailing={
+                                    androidx.compose.material3.TextButton(onClick={openedLane="cover"}) {
+                                        Text("See all →",color=RadarGold58,fontSize=12.sp)
+                                    }
+                                })}
                             item{LazyRow(contentPadding=PaddingValues(horizontal=16.dp),
                                 horizontalArrangement=Arrangement.spacedBy(12.dp)){
                                 items(actionable.take(10),key={it.id}){event->
@@ -206,8 +212,11 @@ fun RadarV058(
                             }}
                         }
                         if(freshSourceOpportunities.isNotEmpty()){
-                            item{DiscoverySectionHeadingV080("Fresh source signals","Official activity worth checking",
-                                freshSourceOpportunities.size,onSeeAll={openedLane="fresh"})}
+                            item{EditorialSectionV2("SOURCE ACTIVITY / NEW","Fresh source signals",modifier=Modifier.padding(horizontal=0.dp),trailing={
+                                    androidx.compose.material3.TextButton(onClick={openedLane="fresh"}) {
+                                        Text("See all →",color=RadarGold58,fontSize=12.sp)
+                                    }
+                                })}
                             item{LazyRow(contentPadding=PaddingValues(horizontal=16.dp),
                                 horizontalArrangement=Arrangement.spacedBy(12.dp)){
                                 items(freshSourceOpportunities.take(10),key={it.signal.id}){opportunity->
@@ -219,8 +228,11 @@ fun RadarV058(
                             }}
                         }
                         if(watchlist.isNotEmpty()){
-                            item{DiscoverySectionHeadingV080("Keep watching","Developing and contextual stories",
-                                watchlist.size,onSeeAll={openedLane="watch"})}
+                            item{EditorialSectionV2("DEVELOPING / MONITOR","Keep watching",modifier=Modifier.padding(horizontal=0.dp),trailing={
+                                    androidx.compose.material3.TextButton(onClick={openedLane="watch"}) {
+                                        Text("See all →",color=RadarGold58,fontSize=12.sp)
+                                    }
+                                })}
                             item{LazyRow(contentPadding=PaddingValues(horizontal=16.dp),
                                 horizontalArrangement=Arrangement.spacedBy(12.dp)){
                                 items(watchlist.take(10),key={it.id}){event->
@@ -238,49 +250,34 @@ fun RadarV058(
 }
 
 @Composable
-private fun RadarPreviewCardV080(label:String,headline:String,score:Int,source:String?,onClick:()->Unit){
-    Surface(color=RadarPanel58,shape=RoundedCornerShape(DiscoveryUiV080.CardRadius),
-        modifier=Modifier.width(DiscoveryUiV080.CardWidth).clickable(onClick=onClick)){
-        Column(Modifier.padding(14.dp),verticalArrangement=Arrangement.spacedBy(10.dp)){
-            Row(horizontalArrangement=Arrangement.spacedBy(8.dp),verticalAlignment=Alignment.CenterVertically){
-                Text(label,color=RadarGold58,fontSize=12.sp,fontWeight=FontWeight.Bold,
-                    modifier=Modifier.weight(1f),maxLines=1,overflow=TextOverflow.Ellipsis)
-                Text(score.toString(),color=RadarGold58,fontSize=16.sp,fontWeight=FontWeight.Black)
+private fun RadarPreviewCardV080(
+    label: String, headline: String, score: Int, source: String?, onClick: () -> Unit,
+) {
+    Surface(color = RadarPanel58, shape = RoundedCornerShape(17.dp),
+        modifier = Modifier.width(272.dp).clickable(onClick = onClick)) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(11.dp)) {
+            EditorialEyebrowV2(label)
+            EditorialDisplayV2(headline, size = 20, lines = 3)
+            Text(source?.takeIf { it.isNotBlank() } ?: "Source details available",
+                color = RadarMuted58, fontSize = 12.sp, maxLines = 2,
+                overflow = TextOverflow.Ellipsis)
+            androidx.compose.material3.HorizontalDivider(color = CineEditorial.Outline)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("SIGNAL SCORE ${score}", color = RadarGold58, fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                Text("Open evidence →", color = RadarMuted58, fontSize = 11.sp)
             }
-            Text(headline,color=RadarText58,fontSize=16.sp,lineHeight=21.sp,
-                fontWeight=FontWeight.SemiBold,maxLines=3,overflow=TextOverflow.Ellipsis,
-                modifier=Modifier.height(67.dp))
-            Text(source?.takeIf{it.isNotBlank()}?:"Open evidence",color=RadarMuted58,fontSize=12.sp,
-                maxLines=1,overflow=TextOverflow.Ellipsis)
         }
     }
 }
 
 @Composable
 private fun RadarSummaryV066(actionableCount: Int, sourceOpportunityCount: Int, totalCount: Int) {
-    Surface(color = RadarPanel58, shape = RoundedCornerShape(18.dp), modifier = Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(15.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    Text("LIVE INTELLIGENCE", color = RadarGold58, fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 1.0.sp)
-                    Text("${actionableCount + sourceOpportunityCount} things worth checking", color = RadarText58, fontSize = 18.sp, fontWeight = FontWeight.Bold)
-                }
-                Surface(color = RadarGreen58.copy(alpha = 0.10f), shape = RoundedCornerShape(50)) {
-                    Row(Modifier.padding(horizontal = 9.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Box(Modifier.size(6.dp).clip(CircleShape).background(RadarGreen58))
-                        Spacer(Modifier.width(5.dp))
-                        Text("1 min", color = RadarGreen58, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                    }
-                }
-            }
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                RadarSummaryStatV066(actionableCount.toString(), "Ranked", Modifier.weight(1f))
-                RadarSummaryStatV066(sourceOpportunityCount.toString(), "Fresh signals", Modifier.weight(1f))
-                RadarSummaryStatV066((totalCount - actionableCount - sourceOpportunityCount).coerceAtLeast(0).toString(), "Watchlist", Modifier.weight(1f))
-            }
-            Text("Ranked by freshness and evidence. See all opens complete lists.", color = RadarMuted58, fontSize = 12.sp, lineHeight = 17.sp)
-        }
-    }
+    EditorialBriefV2(
+        kicker = "OPPORTUNITY PULSE / UPDATED REGULARLY",
+        title = "${actionableCount + sourceOpportunityCount} fresh signals",
+        description = "${actionableCount} prioritized · ${sourceOpportunityCount} fresh source activities · ${(totalCount - actionableCount - sourceOpportunityCount).coerceAtLeast(0)} on the watchlist.",
+    )
 }
 
 @Composable
