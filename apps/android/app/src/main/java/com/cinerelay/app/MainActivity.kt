@@ -250,7 +250,7 @@ class MainActivity : ComponentActivity() {
                         val personalization = consumerState.personalization!!
                         if (
                             state.tab == AppTab.LIVE && state.authMode == null &&
-                            !historyVisible && !ottVisible && !settingsVisible && !searchState.visible
+                            !historyVisible && !ottVisible
                         ) {
                             CineRelayHomeV058(
                                 state = state,
@@ -274,16 +274,13 @@ class MainActivity : ComponentActivity() {
                                 modifier = Modifier.fillMaxSize(),
                             )
                         } else if (
-                            !historyVisible && !ottVisible && !settingsVisible &&
-                            !searchState.visible && state.tab != AppTab.RADAR &&
+                            !historyVisible && !ottVisible && state.tab != AppTab.RADAR &&
                             state.tab != AppTab.FOLLOWING
                         ) {
                             CineRelayRootV049(viewModel)
                         }
 
                         if (
-                            !settingsVisible &&
-                            !searchState.visible &&
                             !ottVisible &&
                             !historyVisible &&
                             state.tab == AppTab.FOLLOWING &&
@@ -300,8 +297,6 @@ class MainActivity : ComponentActivity() {
                         }
 
                         if (
-                            !settingsVisible &&
-                            !searchState.visible &&
                             !ottVisible &&
                             !historyVisible &&
                             state.tab == AppTab.RADAR &&
@@ -328,7 +323,7 @@ class MainActivity : ComponentActivity() {
                             )
                         }
 
-                        if (!settingsVisible && !searchState.visible && ottVisible && !historyVisible && state.authMode == null) {
+                        if (ottVisible && !historyVisible && state.authMode == null) {
                             OttReleasesV054(
                                 state = ottState,
                                 onRefresh = ottViewModel::refresh,
@@ -342,7 +337,7 @@ class MainActivity : ComponentActivity() {
                             )
                         }
 
-                        if (!settingsVisible && !searchState.visible && historyVisible && state.authMode == null) {
+                        if (historyVisible && state.authMode == null) {
                             OnThisDayV057(
                                 state = consumerState,
                                 onBack = { historyVisible = false },
