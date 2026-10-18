@@ -61,15 +61,15 @@ import com.cinerelay.app.data.UniversalStreamingResult
 import com.cinerelay.app.data.UniversalTitleResult
 import com.cinerelay.app.data.UniversalUpdateResult
 
-private val SearchInk56 = Color(0xFF0D0F13)
-private val SearchPanel56 = Color(0xFF171A20)
-private val SearchRaised56 = Color(0xFF20242C)
-private val SearchLine56 = Color(0xFF333946)
-private val SearchText56 = Color(0xFFF6F3EC)
-private val SearchMuted56 = Color(0xFFADB3BD)
-private val SearchGold56 = Color(0xFFE8C56D)
-private val SearchGreen56 = Color(0xFF73D6A5)
-private val SearchRed56 = Color(0xFFF08079)
+private val SearchInk56 = CineEditorial.Background
+private val SearchPanel56 = CineEditorial.Surface
+private val SearchRaised56 = CineEditorial.Raised
+private val SearchLine56 = CineEditorial.Outline
+private val SearchText56 = CineEditorial.Text
+private val SearchMuted56 = CineEditorial.Muted
+private val SearchGold56 = CineEditorial.Accent
+private val SearchGreen56 = CineEditorial.Confirmed
+private val SearchRed56 = CineEditorial.Error
 
 @Composable
 fun UniversalSearchV056(
@@ -107,9 +107,9 @@ fun UniversalSearchV056(
                     }
                     Spacer(Modifier.width(4.dp))
                     Column(Modifier.weight(1f)) {
-                        Text("CINERELAY", color = SearchGold56, fontSize = 9.sp, fontWeight = FontWeight.Black, letterSpacing = 1.6.sp)
-                        Text(if (state.hub == null) "Search" else state.hub.entity.name, color = SearchText56, fontSize = 24.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        if (state.hub == null) Text("Movies, updates, channels & streaming", color = SearchMuted56, fontSize = 11.sp)
+                        Text("CINERELAY", color = SearchGold56, fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 1.6.sp)
+                        Text(if (state.hub == null) "Search" else state.hub.entity.name, color = SearchText56, fontSize = 26.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        if (state.hub == null) Text("Movies, updates, channels & streaming", color = SearchMuted56, fontSize = 12.sp)
                     }
                 }
 
@@ -127,7 +127,7 @@ fun UniversalSearchV056(
                         singleLine = true,
                         leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = SearchGold56) },
                         placeholder = { Text("Search Irumudi, Sony LIV, trailers…", color = SearchMuted56) },
-                        textStyle = androidx.compose.ui.text.TextStyle(color = SearchText56, fontSize = 17.sp, fontWeight = FontWeight.Medium),
+                        textStyle = androidx.compose.ui.text.TextStyle(color = SearchText56, fontSize = 18.sp, fontWeight = FontWeight.Medium),
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                         keyboardActions = KeyboardActions(onSearch = {
                             keyboard?.hide()
@@ -143,7 +143,7 @@ fun UniversalSearchV056(
                             unfocusedTextColor = SearchText56,
                         ),
                         shape = RoundedCornerShape(18.dp),
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 18.dp),
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = CineEditorial.Gutter),
                     )
 
                     if (state.loading) {
@@ -156,7 +156,7 @@ fun UniversalSearchV056(
                     }
 
                     state.error?.let {
-                        Text(it, color = SearchRed56, fontSize = 12.sp, modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp))
+                        Text(it, color = SearchRed56, fontSize = 12.sp, modifier = Modifier.padding(horizontal = CineEditorial.Gutter, vertical = 8.dp))
                     }
 
                     UniversalSearchResultsV056(
@@ -184,25 +184,25 @@ private fun UniversalSearchResultsV056(
     when {
         state.query.trim().length < 2 -> {
             Column(
-                modifier = modifier.fillMaxWidth().padding(horizontal = 22.dp, vertical = 34.dp),
+                modifier = modifier.fillMaxWidth().padding(horizontal = CineEditorial.Gutter, vertical = 34.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 Icon(Icons.Default.Search, contentDescription = null, tint = SearchGold56, modifier = Modifier.size(36.dp))
                 Spacer(Modifier.height(12.dp))
-                Text("Search all of CineRelay", color = SearchText56, fontSize = 19.sp, fontWeight = FontWeight.Bold)
+                Text("Search all of CineRelay", color = SearchText56, fontSize = 20.sp, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.height(6.dp))
-                Text("Find a movie or series, recent updates, official channels and streaming information.", color = SearchMuted56, fontSize = 13.sp, lineHeight = 19.sp)
+                Text("Find a movie or series, recent updates, official channels and streaming information.", color = SearchMuted56, fontSize = 14.sp, lineHeight = 19.sp)
             }
         }
         result == null -> Spacer(modifier)
         !state.hasAnyResult && !state.loading -> {
             Column(
-                modifier = modifier.fillMaxWidth().padding(horizontal = 22.dp, vertical = 36.dp),
+                modifier = modifier.fillMaxWidth().padding(horizontal = CineEditorial.Gutter, vertical = 36.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 Text("Nothing found yet", color = SearchText56, fontSize = 20.sp, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.height(7.dp))
-                Text("Try another spelling or a movie, actor, channel or streaming platform name.", color = SearchMuted56, fontSize = 13.sp, lineHeight = 19.sp)
+                Text("Try another spelling or a movie, actor, channel or streaming platform name.", color = SearchMuted56, fontSize = 14.sp, lineHeight = 19.sp)
             }
         }
         else -> {
@@ -252,7 +252,7 @@ private fun UniversalSearchResultsV056(
 
 @Composable
 private fun SearchSectionTitleV056(title: String) {
-    Text(title, color = SearchText56, fontSize = 18.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 18.dp))
+    Text(title, color = SearchText56, fontSize = 18.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = CineEditorial.Gutter))
 }
 
 @Composable
@@ -268,11 +268,11 @@ private fun SearchTitleCardV056(item: UniversalTitleResult, onClick: () -> Unit)
                     Icon(Icons.Default.Movie, contentDescription = null, tint = SearchGold56)
                 }
             }
-            Text(item.name, color = SearchText56, fontSize = 15.sp, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            Text(item.name, color = SearchText56, fontSize = 16.sp, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis)
             Text(
                 listOfNotNull(friendlyTypeV056(item.type), friendlyLanguageV056(item.primaryLanguage)).joinToString(" • "),
                 color = SearchMuted56,
-                fontSize = 10.sp,
+                fontSize = 12.sp,
                 maxLines = 1,
             )
         }
@@ -284,7 +284,7 @@ private fun SearchUpdateCardV056(item: UniversalUpdateResult, onClick: () -> Uni
     Surface(
         color = SearchPanel56,
         shape = RoundedCornerShape(18.dp),
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 18.dp).clickable(onClick = onClick),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = CineEditorial.Gutter).clickable(onClick = onClick),
     ) {
         Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
             if (!item.thumbnailUrl.isNullOrBlank()) {
@@ -297,9 +297,9 @@ private fun SearchUpdateCardV056(item: UniversalUpdateResult, onClick: () -> Uni
                 Spacer(Modifier.width(12.dp))
             }
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
-                Text(item.source.name ?: "Movie update", color = SearchGold56, fontSize = 10.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+                Text(item.source.name ?: "Movie update", color = SearchGold56, fontSize = 12.sp, fontWeight = FontWeight.Bold, maxLines = 1)
                 Text(item.title, color = SearchText56, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, maxLines = 3, overflow = TextOverflow.Ellipsis)
-                Text(friendlyLanguageV056(item.languageCode), color = SearchMuted56, fontSize = 10.sp)
+                Text(friendlyLanguageV056(item.languageCode), color = SearchMuted56, fontSize = 12.sp)
             }
         }
     }
@@ -308,7 +308,7 @@ private fun SearchUpdateCardV056(item: UniversalUpdateResult, onClick: () -> Uni
 @Composable
 private fun SearchChannelRowV056(item: UniversalChannelResult, onClick: () -> Unit) {
     Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 18.dp).clip(RoundedCornerShape(18.dp)).background(SearchPanel56).clickable(onClick = onClick).padding(13.dp),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = CineEditorial.Gutter).clip(RoundedCornerShape(18.dp)).background(SearchPanel56).clickable(onClick = onClick).padding(13.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (!item.artworkUrl.isNullOrBlank()) {
@@ -325,10 +325,10 @@ private fun SearchChannelRowV056(item: UniversalChannelResult, onClick: () -> Un
         }
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
-            Text(item.name, color = SearchText56, fontSize = 15.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text(item.handle ?: friendlyRoleV056(item.role), color = SearchMuted56, fontSize = 11.sp, maxLines = 1)
+            Text(item.name, color = SearchText56, fontSize = 16.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(item.handle ?: friendlyRoleV056(item.role), color = SearchMuted56, fontSize = 12.sp, maxLines = 1)
         }
-        Text("View", color = SearchGold56, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+        Text("View", color = SearchGold56, fontSize = 12.sp, fontWeight = FontWeight.Bold)
     }
 }
 
@@ -337,7 +337,7 @@ private fun SearchStreamingRowV056(item: UniversalStreamingResult, onClick: () -
     Surface(
         color = SearchPanel56,
         shape = RoundedCornerShape(18.dp),
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 18.dp).clickable(onClick = onClick),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = CineEditorial.Gutter).clickable(onClick = onClick),
     ) {
         Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
             Surface(color = SearchGold56.copy(alpha = 0.12f), shape = RoundedCornerShape(12.dp), modifier = Modifier.size(44.dp)) {
@@ -345,11 +345,11 @@ private fun SearchStreamingRowV056(item: UniversalStreamingResult, onClick: () -
             }
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
-                Text(item.title, color = SearchText56, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                Text(item.title, color = SearchText56, fontSize = 16.sp, fontWeight = FontWeight.Bold)
                 Text(
                     listOfNotNull(item.providerName, item.releaseDate ?: friendlyReleaseStateV056(item.state)).joinToString(" • "),
                     color = SearchMuted56,
-                    fontSize = 11.sp,
+                    fontSize = 12.sp,
                 )
             }
             if (item.evidenceStatus == "CONFIRMED") {
@@ -372,10 +372,10 @@ private fun UniversalHubV056(
         verticalArrangement = Arrangement.spacedBy(18.dp),
     ) {
         item {
-            Surface(color = SearchPanel56, shape = RoundedCornerShape(22.dp), modifier = Modifier.fillMaxWidth()) {
+            Surface(color = SearchPanel56, shape = RoundedCornerShape(20.dp), modifier = Modifier.fillMaxWidth()) {
                 Row(Modifier.padding(18.dp), verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
-                        Text(hub.entity.name, color = SearchText56, fontSize = 27.sp, fontWeight = FontWeight.Bold)
+                        Text(hub.entity.name, color = SearchText56, fontSize = 26.sp, fontWeight = FontWeight.Bold)
                         Text(
                             listOfNotNull(friendlyTypeV056(hub.entity.type), friendlyLanguageV056(hub.entity.primaryLanguage)).joinToString(" • "),
                             color = SearchMuted56,
@@ -394,25 +394,25 @@ private fun UniversalHubV056(
         }
 
         if (hub.ottReleases.isNotEmpty()) {
-            item { Text("Streaming", color = SearchText56, fontSize = 19.sp, fontWeight = FontWeight.Bold) }
+            item { Text("Streaming", color = SearchText56, fontSize = 20.sp, fontWeight = FontWeight.Bold) }
             items(hub.ottReleases, key = { it.id }) { release ->
                 Surface(color = SearchPanel56, shape = RoundedCornerShape(18.dp), modifier = Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text(release.provider.name, color = SearchGold56, fontSize = 13.sp, fontWeight = FontWeight.Bold)
-                        Text(release.releaseDate ?: friendlyReleaseStateV056(release.state), color = SearchText56, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
-                        Text(if (release.evidenceStatus == "CONFIRMED") "Confirmed" else "Reported", color = SearchMuted56, fontSize = 11.sp)
+                        Text(release.provider.name, color = SearchGold56, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                        Text(release.releaseDate ?: friendlyReleaseStateV056(release.state), color = SearchText56, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+                        Text(if (release.evidenceStatus == "CONFIRMED") "Confirmed" else "Reported", color = SearchMuted56, fontSize = 12.sp)
                     }
                 }
             }
         }
 
         if (hub.events.isNotEmpty()) {
-            item { Text("Story timeline", color = SearchText56, fontSize = 19.sp, fontWeight = FontWeight.Bold) }
+            item { Text("Story timeline", color = SearchText56, fontSize = 20.sp, fontWeight = FontWeight.Bold) }
             items(hub.events, key = { it.id }) { event ->
                 Surface(color = SearchPanel56, shape = RoundedCornerShape(18.dp), modifier = Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Text(friendlyVerificationV056(event.verificationState), color = SearchGold56, fontSize = 10.sp, fontWeight = FontWeight.Bold)
-                        Text(event.headline, color = SearchText56, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                        Text(friendlyVerificationV056(event.verificationState), color = SearchGold56, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        Text(event.headline, color = SearchText56, fontSize = 16.sp, fontWeight = FontWeight.Bold)
                         event.summary?.let { Text(it, color = SearchMuted56, fontSize = 12.sp, lineHeight = 18.sp, maxLines = 4, overflow = TextOverflow.Ellipsis) }
                     }
                 }
@@ -420,11 +420,11 @@ private fun UniversalHubV056(
         }
 
         if (hub.activity.isNotEmpty()) {
-            item { Text("Latest updates", color = SearchText56, fontSize = 19.sp, fontWeight = FontWeight.Bold) }
+            item { Text("Latest updates", color = SearchText56, fontSize = 20.sp, fontWeight = FontWeight.Bold) }
             items(hub.activity, key = { it.rawItemId }) { activity ->
                 Surface(color = SearchPanel56, shape = RoundedCornerShape(18.dp), modifier = Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
-                        Text(activity.source.name ?: "Source", color = SearchGold56, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                        Text(activity.source.name ?: "Source", color = SearchGold56, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                         Text(activity.title ?: "Update", color = SearchText56, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
                     }
                 }

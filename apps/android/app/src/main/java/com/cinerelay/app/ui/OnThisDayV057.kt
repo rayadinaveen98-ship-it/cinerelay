@@ -57,13 +57,13 @@ import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 import java.util.Locale
 
-private val HistoryInk = Color(0xFF0C0E12)
-private val HistoryPanel = Color(0xFF171A20)
-private val HistoryRaised = Color(0xFF20242C)
-private val HistoryText = Color(0xFFF5F2EA)
-private val HistoryMuted = Color(0xFFA8ADB7)
-private val HistoryGold = Color(0xFFE8C56D)
-private val HistoryGreen = Color(0xFF73D6A5)
+private val HistoryInk = CineEditorial.Background
+private val HistoryPanel = CineEditorial.Surface
+private val HistoryRaised = CineEditorial.Raised
+private val HistoryText = CineEditorial.Text
+private val HistoryMuted = CineEditorial.Muted
+private val HistoryGold = CineEditorial.Accent
+private val HistoryGreen = CineEditorial.Confirmed
 
 @Composable
 fun OnThisDayV057(
@@ -135,8 +135,8 @@ fun OnThisDayV057(
                             Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = HistoryText)
                         }
                         Column(Modifier.weight(1f)) {
-                            Text("INDIAN CINEMA HISTORY", color = HistoryGold, fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 1.5.sp)
-                            Text("Today in Cinema", color = HistoryText, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+                            Text("INDIAN CINEMA HISTORY", color = HistoryGold, fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 1.5.sp)
+                            Text("Today in cinema", color = HistoryText, fontSize = CineEditorial.PageTitle, fontWeight = FontWeight.Bold)
                         }
                         TextButton(onClick = onToday) {
                             Icon(Icons.Default.Today, contentDescription = null, tint = HistoryGold, modifier = Modifier.size(17.dp))
@@ -175,16 +175,16 @@ fun OnThisDayV057(
                         item {
                             Surface(
                                 color = HistoryPanel,
-                                shape = RoundedCornerShape(24.dp),
-                                modifier = Modifier.fillMaxWidth().padding(horizontal = 18.dp),
+                                shape = RoundedCornerShape(20.dp),
+                                modifier = Modifier.fillMaxWidth().padding(horizontal = CineEditorial.Gutter),
                             ) {
                                 Column(
-                                    modifier = Modifier.padding(horizontal = 22.dp, vertical = 30.dp),
+                                    modifier = Modifier.padding(horizontal = CineEditorial.Gutter, vertical = 30.dp),
                                     horizontalAlignment = Alignment.CenterHorizontally,
                                 ) {
                                     Box(Modifier.size(9.dp).clip(CircleShape).background(HistoryGold))
                                     Spacer(Modifier.height(12.dp))
-                                    Text("Nothing found for this date yet", color = HistoryText, fontSize = 19.sp, fontWeight = FontWeight.Bold)
+                                    Text("Nothing found for this date yet", color = HistoryText, fontSize = 20.sp, fontWeight = FontWeight.Bold)
                                     Spacer(Modifier.height(7.dp))
                                     Text(
                                         "We don’t have a confirmed release for this date yet. Try another day or use the quick jumps.",
@@ -232,13 +232,13 @@ private fun HistoryPreviewCardV080(movie:OnThisDayMovie,onClick:()->Unit){
                     AsyncImage(model=art,contentDescription=movie.title,contentScale=ContentScale.Crop,
                         modifier=Modifier.fillMaxSize())
                 }else{
-                    Text(movie.releaseYear.toString(),color=HistoryGold,fontSize=22.sp,fontWeight=FontWeight.Bold)
+                    Text(movie.releaseYear.toString(),color=HistoryGold,fontSize=20.sp,fontWeight=FontWeight.Bold)
                 }
             }
             Text(movie.title,color=HistoryText,fontSize=14.sp,lineHeight=18.sp,fontWeight=FontWeight.SemiBold,
                 maxLines=2,overflow=TextOverflow.Ellipsis,modifier=Modifier.height(38.dp))
             Text(listOfNotNull(movie.language,movie.countryCode).joinToString(" • "),
-                color=HistoryMuted,fontSize=11.sp,maxLines=1,overflow=TextOverflow.Ellipsis)
+                color=HistoryMuted,fontSize=12.sp,maxLines=1,overflow=TextOverflow.Ellipsis)
         }
     }
 }
@@ -257,7 +257,7 @@ private fun HistoryDateHeroV060(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp)
-            .clip(RoundedCornerShape(22.dp))
+            .clip(RoundedCornerShape(20.dp))
             .background(
                 Brush.linearGradient(
                     listOf(
@@ -283,7 +283,7 @@ private fun HistoryDateHeroV060(
                     Text(
                         selected.format(DateTimeFormatter.ofPattern("MMMM", Locale.ENGLISH)).uppercase(Locale.ENGLISH),
                         color = HistoryText,
-                        fontSize = 13.sp,
+                        fontSize = 14.sp,
                         fontWeight = FontWeight.Black,
                         letterSpacing = 1.5.sp,
                     )
@@ -315,8 +315,8 @@ private fun HistoryDateHeroV060(
 private fun HistoryStatV060(label: String, value: String, modifier: Modifier = Modifier) {
     Surface(color = HistoryInk.copy(alpha = 0.52f), shape = RoundedCornerShape(16.dp), modifier = modifier) {
         Column(Modifier.padding(vertical = 9.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(value, color = HistoryText, fontSize = 15.sp, fontWeight = FontWeight.Black)
-            Text(label, color = HistoryMuted, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+            Text(value, color = HistoryText, fontSize = 16.sp, fontWeight = FontWeight.Black)
+            Text(label, color = HistoryMuted, fontSize = 12.sp, fontWeight = FontWeight.Bold)
         }
     }
 }
@@ -332,10 +332,10 @@ private fun HistoryQuickJumpV060(
         Text(
             "QUICK JUMP",
             color = HistoryMuted,
-            fontSize = 8.sp,
+            fontSize = 12.sp,
             fontWeight = FontWeight.Black,
             letterSpacing = 1.2.sp,
-            modifier = Modifier.padding(horizontal = 20.dp),
+            modifier = Modifier.padding(horizontal = CineEditorial.Gutter),
         )
         LazyRow(
             contentPadding = PaddingValues(horizontal = 18.dp),
@@ -357,21 +357,21 @@ private fun HistoryJumpChipV060(label: String, selected: Boolean, onClick: () ->
         shape = RoundedCornerShape(50),
         modifier = Modifier.clickable(onClick = onClick),
     ) {
-        Text(label, fontSize = 10.sp, fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium, modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp))
+        Text(label, fontSize = 12.sp, fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium, modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp))
     }
 }
 
 @Composable
 private fun HistoryYearHeaderV060(year: Int, selectedYear: Int, count: Int) {
     Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 2.dp),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = CineEditorial.Gutter, vertical = 2.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(year.toString(), color = HistoryGold, fontSize = 22.sp, fontWeight = FontWeight.Black)
+        Text(year.toString(), color = HistoryGold, fontSize = 20.sp, fontWeight = FontWeight.Black)
         Spacer(Modifier.width(9.dp))
         Column(Modifier.weight(1f)) {
-            Text(if (year == selectedYear) "This year" else "${selectedYear - year} years ago", color = HistoryText, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
-            Text("$count release${if (count == 1) "" else "s"} on this date", color = HistoryMuted, fontSize = 9.sp)
+            Text(if (year == selectedYear) "This year" else "${selectedYear - year} years ago", color = HistoryText, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+            Text("$count release${if (count == 1) "" else "s"} on this date", color = HistoryMuted, fontSize = 12.sp)
         }
         Box(Modifier.size(7.dp).clip(CircleShape).background(HistoryGreen))
     }
@@ -379,7 +379,7 @@ private fun HistoryYearHeaderV060(year: Int, selectedYear: Int, count: Int) {
 
 @Composable
 private fun OnThisDayMovieRowV070(movie: OnThisDayMovie, modifier: Modifier = Modifier) {
-    Surface(color = HistoryPanel, shape = RoundedCornerShape(22.dp), modifier = modifier.fillMaxWidth()) {
+    Surface(color = HistoryPanel, shape = RoundedCornerShape(20.dp), modifier = modifier.fillMaxWidth()) {
         Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
             Box(
                 modifier = Modifier.size(width = 82.dp, height = 118.dp).clip(RoundedCornerShape(16.dp)).background(HistoryRaised),
@@ -406,7 +406,7 @@ private fun OnThisDayMovieRowV070(movie: OnThisDayMovie, modifier: Modifier = Mo
                     shape = RoundedCornerShape(50),
                     modifier = Modifier.align(Alignment.BottomStart).padding(7.dp),
                 ) {
-                    Text(movie.releaseYear.toString(), color = HistoryGold, fontSize = 8.sp, fontWeight = FontWeight.Black, modifier = Modifier.padding(horizontal = 7.dp, vertical = 4.dp))
+                    Text(movie.releaseYear.toString(), color = HistoryGold, fontSize = 12.sp, fontWeight = FontWeight.Black, modifier = Modifier.padding(horizontal = 7.dp, vertical = 4.dp))
                 }
             }
             Spacer(Modifier.width(14.dp))
@@ -414,7 +414,7 @@ private fun OnThisDayMovieRowV070(movie: OnThisDayMovie, modifier: Modifier = Mo
                 Text(
                     movie.title,
                     color = HistoryText,
-                    fontSize = 17.sp,
+                    fontSize = 18.sp,
                     lineHeight = 21.sp,
                     fontWeight = FontWeight.Bold,
                     maxLines = 3,
@@ -426,20 +426,20 @@ private fun OnThisDayMovieRowV070(movie: OnThisDayMovie, modifier: Modifier = Mo
                         Text(
                             nativeTitle,
                             color = HistoryMuted,
-                            fontSize = 10.sp,
+                            fontSize = 12.sp,
                             lineHeight = 14.sp,
                             maxLines = 2,
                             overflow = TextOverflow.Ellipsis,
                         )
                     }
                 val meta = listOfNotNull(movie.language, movie.countryCode).filter { it.isNotBlank() }.joinToString(" • ")
-                if (meta.isNotBlank()) Text(meta, color = HistoryMuted, fontSize = 10.sp)
+                if (meta.isNotBlank()) Text(meta, color = HistoryMuted, fontSize = 12.sp)
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
                     Surface(color = HistoryGold.copy(alpha = 0.10f), shape = RoundedCornerShape(50)) {
                         Text(
                             when(movie.yearsAgo){0->"Released today";1->"1 year ago today";else->movie.yearsAgo.toString()+" years ago today"},
                             color = HistoryGold,
-                            fontSize = 9.sp,
+                            fontSize = 12.sp,
                             fontWeight = FontWeight.Bold,
                             modifier = Modifier.padding(horizontal = 9.dp, vertical = 5.dp),
                         )
@@ -453,7 +453,7 @@ private fun OnThisDayMovieRowV070(movie: OnThisDayMovie, modifier: Modifier = Mo
                             Text(
                                 historyVerificationLabelV070(status),
                                 color = if (verified) HistoryGreen else HistoryMuted,
-                                fontSize = 8.sp,
+                                fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold,
                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp),
                             )

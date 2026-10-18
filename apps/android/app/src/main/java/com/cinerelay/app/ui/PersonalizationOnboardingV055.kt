@@ -51,14 +51,14 @@ import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import com.cinerelay.app.data.PersonalizationSource
 
-private val PersonalInk = Color(0xFF0D0F13)
-private val PersonalPanel = Color(0xFF171A20)
-private val PersonalRaised = Color(0xFF20242C)
-private val PersonalText = Color(0xFFF4F1EA)
-private val PersonalMuted = Color(0xFFA8ADB7)
-private val PersonalGold = Color(0xFFE8C56D)
-private val PersonalGreen = Color(0xFF73D6A5)
-private val PersonalRed = Color(0xFFF08079)
+private val PersonalInk = CineEditorial.Background
+private val PersonalPanel = CineEditorial.Surface
+private val PersonalRaised = CineEditorial.Raised
+private val PersonalText = CineEditorial.Text
+private val PersonalMuted = CineEditorial.Muted
+private val PersonalGold = CineEditorial.Accent
+private val PersonalGreen = CineEditorial.Confirmed
+private val PersonalRed = CineEditorial.Error
 
 @Composable
 fun PersonalizationOnboardingV055(
@@ -94,12 +94,12 @@ fun PersonalizationOnboardingV055(
                 }
                 step == 0 -> {
                     Column(
-                        Modifier.fillMaxSize().padding(horizontal = 22.dp, vertical = 28.dp),
+                        Modifier.fillMaxSize().padding(horizontal = CineEditorial.Gutter, vertical = 28.dp),
                         verticalArrangement = Arrangement.spacedBy(16.dp),
                     ) {
                         Spacer(Modifier.height(16.dp))
                         Text("Make CineRelay yours", color = PersonalGold, fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 1.5.sp)
-                        Text("Which cinema do you follow?", color = PersonalText, fontSize = 30.sp, fontWeight = FontWeight.Bold, lineHeight = 34.sp)
+                        Text("Which cinema do you follow?", color = PersonalText, fontSize = 32.sp, fontWeight = FontWeight.Bold, lineHeight = 34.sp)
                         Text("Pick the languages you care about. These choices shape your Home screen, not your notification settings.", color = PersonalMuted, fontSize = 14.sp, lineHeight = 21.sp)
 
                         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -166,7 +166,7 @@ fun PersonalizationOnboardingV055(
                                 Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = PersonalText)
                             }
                             Column(Modifier.weight(1f)) {
-                                Text(if (showAllChannels) "All official channels" else "Recommended for you", color = PersonalText, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+                                Text(if (showAllChannels) "All official channels" else "Recommended for you", color = PersonalText, fontSize = 26.sp, fontWeight = FontWeight.Bold)
                                 Text(
                                     if (showAllChannels) "Browse all ${personalization.availableSources.size} official YouTube channels"
                                     else "Five balanced picks for your cinema languages. You can browse every channel anytime.",
@@ -183,7 +183,7 @@ fun PersonalizationOnboardingV055(
                                 singleLine = true,
                                 leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
                                 placeholder = { Text("Search channels", color = PersonalMuted) },
-                                modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp),
+                                modifier = Modifier.fillMaxWidth().padding(horizontal = CineEditorial.Gutter, vertical = 8.dp),
                                 shape = RoundedCornerShape(16.dp),
                             )
                         } else {
@@ -194,15 +194,15 @@ fun PersonalizationOnboardingV055(
                                 Text(
                                     languageLabels,
                                     color = PersonalGold,
-                                    fontSize = 11.sp,
+                                    fontSize = 12.sp,
                                     fontWeight = FontWeight.Bold,
-                                    modifier = Modifier.padding(horizontal = 22.dp, vertical = 6.dp),
+                                    modifier = Modifier.padding(horizontal = CineEditorial.Gutter, vertical = 6.dp),
                                 )
                             }
                         }
 
                         Row(
-                            modifier = Modifier.fillMaxWidth().padding(horizontal = 22.dp, vertical = 4.dp),
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = CineEditorial.Gutter, vertical = 4.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Text(
@@ -221,7 +221,7 @@ fun PersonalizationOnboardingV055(
                                 Text(
                                     if (showAllChannels) "Show recommended" else "See all ${personalization.availableSources.size} channels",
                                     color = PersonalGold,
-                                    fontSize = 11.sp,
+                                    fontSize = 12.sp,
                                     fontWeight = FontWeight.Bold,
                                 )
                             }
@@ -242,12 +242,12 @@ fun PersonalizationOnboardingV055(
                         }
 
                         state.personalizationError?.let {
-                            Text(it, color = PersonalRed, fontSize = 12.sp, modifier = Modifier.padding(horizontal = 22.dp, vertical = 6.dp))
+                            Text(it, color = PersonalRed, fontSize = 12.sp, modifier = Modifier.padding(horizontal = CineEditorial.Gutter, vertical = 6.dp))
                         }
                         Button(
                             onClick = onSave,
                             enabled = state.selectedSourceIds.isNotEmpty() && !state.personalizationBusy,
-                            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 16.dp),
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = CineEditorial.Gutter, vertical = 16.dp),
                             colors = ButtonDefaults.buttonColors(containerColor = PersonalGold, contentColor = Color(0xFF241C09)),
                             contentPadding = PaddingValues(vertical = 15.dp),
                         ) {
@@ -296,8 +296,8 @@ private fun FavoriteSourceRowV055(
             }
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
-                Text(source.name, color = PersonalText, fontSize = 15.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text(source.handle ?: friendlySourceRoleV055(source.role), color = PersonalMuted, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(source.name, color = PersonalText, fontSize = 16.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(source.handle ?: friendlySourceRoleV055(source.role), color = PersonalMuted, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
             Box(
                 Modifier.size(24.dp).clip(CircleShape)

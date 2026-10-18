@@ -56,16 +56,16 @@ import java.time.Duration
 import java.time.Instant
 import java.util.Locale
 
-private val RadarInk58 = Color(0xFF0D0F13)
-private val RadarPanel58 = Color(0xFF171A20)
-private val RadarRaised58 = Color(0xFF20242C)
-private val RadarText58 = Color(0xFFF4F1EA)
-private val RadarMuted58 = Color(0xFFA8ADB7)
-private val RadarGold58 = Color(0xFFE8C56D)
-private val RadarGreen58 = Color(0xFF73D6A5)
-private val RadarAmber58 = Color(0xFFF0B862)
-private val RadarRed58 = Color(0xFFF08079)
-private val RadarBlue58 = Color(0xFF8CB9FF)
+private val RadarInk58 = CineEditorial.Background
+private val RadarPanel58 = CineEditorial.Surface
+private val RadarRaised58 = CineEditorial.Raised
+private val RadarText58 = CineEditorial.Text
+private val RadarMuted58 = CineEditorial.Muted
+private val RadarGold58 = CineEditorial.Accent
+private val RadarGreen58 = CineEditorial.Confirmed
+private val RadarAmber58 = CineEditorial.Developing
+private val RadarRed58 = CineEditorial.Error
+private val RadarBlue58 = CineEditorial.Info
 
 private data class RawRadarOpportunityV059(
     val signal: NewsroomSignal,
@@ -158,14 +158,14 @@ fun RadarV058(
                     modifier = Modifier.fillMaxWidth().padding(start = 22.dp, end = 10.dp, top = 24.dp, bottom = 10.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Surface(color = RadarGold58.copy(alpha = 0.12f), shape = RoundedCornerShape(14.dp), modifier = Modifier.size(48.dp)) {
+                    Surface(color = RadarGold58.copy(alpha = 0.12f), shape = RoundedCornerShape(12.dp), modifier = Modifier.size(48.dp)) {
                         Box(contentAlignment = Alignment.Center) { Icon(Icons.Default.AutoAwesome, contentDescription = null, tint = RadarGold58) }
                     }
                     Spacer(Modifier.width(13.dp))
                     Column(Modifier.weight(1f)) {
-                        Text("CINERELAY", color = RadarGold58, fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 1.5.sp)
-                        Text("Radar", color = RadarText58, fontSize = 26.sp, fontWeight = FontWeight.Bold)
-                        Text("What is worth covering now · rescored every minute", color = RadarMuted58, fontSize = 13.sp)
+                        Text("CINERELAY", color = RadarGold58, fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 1.5.sp)
+                        Text("Radar", color = RadarText58, fontSize = CineEditorial.PageTitle, fontWeight = FontWeight.Bold)
+                        Text("Evidence-backed opportunities for creators", color = RadarMuted58, fontSize = CineEditorial.Body)
                     }
                     IconButton(onClick = onRefresh, enabled = !state.loading) {
                         if (state.loading) CircularProgressIndicator(Modifier.size(19.dp), strokeWidth = 2.dp, color = RadarGold58)
@@ -184,9 +184,9 @@ fun RadarV058(
                             Box(contentAlignment = Alignment.Center) { Icon(Icons.Default.TrendingUp, contentDescription = null, tint = RadarGold58, modifier = Modifier.size(30.dp)) }
                         }
                         Spacer(Modifier.height(18.dp))
-                        Text("Radar is scanning", color = RadarText58, fontSize = 21.sp, fontWeight = FontWeight.Bold)
+                        Text("Radar is scanning", color = RadarText58, fontSize = 20.sp, fontWeight = FontWeight.Bold)
                         Spacer(Modifier.height(7.dp))
-                        Text("CineRelay keeps rescoring trailers, casting, release changes, OTT, production activity and other creator-worthy signals as evidence arrives.", color = RadarMuted58, fontSize = 13.sp, lineHeight = 19.sp)
+                        Text("CineRelay keeps rescoring trailers, casting, release changes, OTT, production activity and other creator-worthy signals as evidence arrives.", color = RadarMuted58, fontSize = 14.sp, lineHeight = 19.sp)
                     }
                 } else {
                     LazyColumn(
@@ -250,7 +250,7 @@ private fun RadarPreviewCardV080(label:String,headline:String,score:Int,source:S
         modifier=Modifier.width(DiscoveryUiV080.CardWidth).clickable(onClick=onClick)){
         Column(Modifier.padding(14.dp),verticalArrangement=Arrangement.spacedBy(10.dp)){
             Row(horizontalArrangement=Arrangement.spacedBy(8.dp),verticalAlignment=Alignment.CenterVertically){
-                Text(label,color=RadarGold58,fontSize=11.sp,fontWeight=FontWeight.Bold,
+                Text(label,color=RadarGold58,fontSize=12.sp,fontWeight=FontWeight.Bold,
                     modifier=Modifier.weight(1f),maxLines=1,overflow=TextOverflow.Ellipsis)
                 Text(score.toString(),color=RadarGold58,fontSize=16.sp,fontWeight=FontWeight.Black)
             }
@@ -265,18 +265,18 @@ private fun RadarPreviewCardV080(label:String,headline:String,score:Int,source:S
 
 @Composable
 private fun RadarSummaryV066(actionableCount: Int, sourceOpportunityCount: Int, totalCount: Int) {
-    Surface(color = RadarPanel58, shape = RoundedCornerShape(20.dp), modifier = Modifier.fillMaxWidth()) {
+    Surface(color = RadarPanel58, shape = RoundedCornerShape(18.dp), modifier = Modifier.fillMaxWidth()) {
         Column(Modifier.padding(15.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
-                    Text("LIVE INTELLIGENCE", color = RadarGold58, fontSize = 9.sp, fontWeight = FontWeight.Black, letterSpacing = 1.0.sp)
-                    Text("${actionableCount + sourceOpportunityCount} things worth checking", color = RadarText58, fontSize = 17.sp, fontWeight = FontWeight.Bold)
+                    Text("LIVE INTELLIGENCE", color = RadarGold58, fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 1.0.sp)
+                    Text("${actionableCount + sourceOpportunityCount} things worth checking", color = RadarText58, fontSize = 18.sp, fontWeight = FontWeight.Bold)
                 }
                 Surface(color = RadarGreen58.copy(alpha = 0.10f), shape = RoundedCornerShape(50)) {
                     Row(Modifier.padding(horizontal = 9.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
                         Box(Modifier.size(6.dp).clip(CircleShape).background(RadarGreen58))
                         Spacer(Modifier.width(5.dp))
-                        Text("1 min", color = RadarGreen58, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                        Text("1 min", color = RadarGreen58, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                     }
                 }
             }
@@ -292,10 +292,10 @@ private fun RadarSummaryV066(actionableCount: Int, sourceOpportunityCount: Int, 
 
 @Composable
 private fun RadarSummaryStatV066(value: String, label: String, modifier: Modifier = Modifier) {
-    Surface(color = RadarRaised58, shape = RoundedCornerShape(14.dp), modifier = modifier) {
+    Surface(color = RadarRaised58, shape = RoundedCornerShape(12.dp), modifier = modifier) {
         Column(Modifier.padding(vertical = 9.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             Text(value, color = RadarText58, fontSize = 16.sp, fontWeight = FontWeight.Black)
-            Text(label, color = RadarMuted58, fontSize = 8.sp, fontWeight = FontWeight.Bold)
+            Text(label, color = RadarMuted58, fontSize = 12.sp, fontWeight = FontWeight.Bold)
         }
     }
 }
@@ -304,7 +304,7 @@ private fun RadarSummaryStatV066(value: String, label: String, modifier: Modifie
 private fun RadarSectionTitleV058(title: String, subtitle: String) {
     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
         Text(title, color = RadarText58, fontSize = 18.sp, fontWeight = FontWeight.Bold)
-        Text(subtitle, color = RadarMuted58, fontSize = 10.sp)
+        Text(subtitle, color = RadarMuted58, fontSize = 12.sp)
     }
 }
 
@@ -319,17 +319,17 @@ private fun RadarOpportunityCardV066(event: EventCard, actionable: Boolean, onCl
         "FOLLOW_UP_NEEDED" -> RadarAmber58
         else -> if (actionable) RadarGold58 else RadarMuted58
     }
-    Surface(color = RadarPanel58, shape = RoundedCornerShape(22.dp), modifier = Modifier.fillMaxWidth().clickable(onClick = onClick)) {
+    Surface(color = RadarPanel58, shape = RoundedCornerShape(20.dp), modifier = Modifier.fillMaxWidth().clickable(onClick = onClick)) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(Modifier.size(8.dp).clip(CircleShape).background(accent))
                 Spacer(Modifier.width(8.dp))
-                Text(label, color = accent, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                Text(label, color = accent, fontSize = 12.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
                 RadarScorePillV066(score = radar?.score ?: 0, accent = accent, actionable = actionable)
             }
 
             event.entityName?.let {
-                Text(it, color = RadarGold58, fontSize = 11.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(it, color = RadarGold58, fontSize = 12.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
             Text(event.headline, color = RadarText58, fontSize = 18.sp, lineHeight = 23.sp, fontWeight = FontWeight.Bold, maxLines = 3, overflow = TextOverflow.Ellipsis)
             event.summary?.takeIf { it.isNotBlank() }?.let {
@@ -344,26 +344,26 @@ private fun RadarOpportunityCardV066(event: EventCard, actionable: Boolean, onCl
 
             val reasonSummary = radarReasonSummaryV066(radar?.reasons.orEmpty())
             if (reasonSummary.isNotBlank()) {
-                Surface(color = accent.copy(alpha = 0.07f), shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth()) {
+                Surface(color = accent.copy(alpha = 0.07f), shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(horizontal = 11.dp, vertical = 9.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                        Text("WHY NOW", color = accent, fontSize = 8.sp, fontWeight = FontWeight.Black, letterSpacing = 0.8.sp)
-                        Text(reasonSummary, color = RadarText58.copy(alpha = 0.82f), fontSize = 10.sp, lineHeight = 15.sp)
+                        Text("WHY NOW", color = accent, fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 0.8.sp)
+                        Text(reasonSummary, color = RadarText58.copy(alpha = 0.82f), fontSize = 12.sp, lineHeight = 15.sp)
                     }
                 }
             }
 
-            Text(radarHintV058(event, actionable), color = RadarMuted58, fontSize = 11.sp, lineHeight = 16.sp)
+            Text(radarHintV058(event, actionable), color = RadarMuted58, fontSize = 12.sp, lineHeight = 16.sp)
         }
     }
 }
 
 @Composable
 private fun RadarScorePillV066(score: Int, accent: Color, actionable: Boolean) {
-    Surface(color = accent.copy(alpha = if (actionable) 0.14f else 0.08f), shape = RoundedCornerShape(13.dp)) {
+    Surface(color = accent.copy(alpha = if (actionable) 0.14f else 0.08f), shape = RoundedCornerShape(12.dp)) {
         Row(Modifier.padding(horizontal = 9.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
             Text(score.toString(), color = accent, fontSize = 14.sp, fontWeight = FontWeight.Black)
             Spacer(Modifier.width(4.dp))
-            Text("RADAR", color = accent.copy(alpha = 0.76f), fontSize = 7.sp, fontWeight = FontWeight.Black, letterSpacing = 0.6.sp)
+            Text("RADAR", color = accent.copy(alpha = 0.76f), fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 0.6.sp)
         }
     }
 }
@@ -371,7 +371,7 @@ private fun RadarScorePillV066(score: Int, accent: Color, actionable: Boolean) {
 @Composable
 private fun RadarMetaChipV066(label: String, accent: Color) {
     Surface(color = accent.copy(alpha = 0.09f), shape = RoundedCornerShape(50)) {
-        Text(label, color = accent, fontSize = 8.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp))
+        Text(label, color = accent, fontSize = 12.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp))
     }
 }
 
@@ -384,22 +384,22 @@ private fun RawRadarOpportunityCardV066(opportunity: RawRadarOpportunityV059, on
         opportunity.score >= 60 -> RadarGreen58
         else -> RadarBlue58
     }
-    Surface(color = RadarPanel58, shape = RoundedCornerShape(22.dp), modifier = Modifier.fillMaxWidth().clickable(onClick = onClick)) {
+    Surface(color = RadarPanel58, shape = RoundedCornerShape(20.dp), modifier = Modifier.fillMaxWidth().clickable(onClick = onClick)) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(9.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(Modifier.size(8.dp).clip(CircleShape).background(accent))
                 Spacer(Modifier.width(8.dp))
-                Text(opportunity.label, color = accent, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                Text(opportunity.label, color = accent, fontSize = 12.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
                 RadarScorePillV066(opportunity.score, accent, actionable = true)
             }
-            Text(signal.title, color = RadarText58, fontSize = 17.sp, lineHeight = 22.sp, fontWeight = FontWeight.Bold, maxLines = 3, overflow = TextOverflow.Ellipsis)
+            Text(signal.title, color = RadarText58, fontSize = 18.sp, lineHeight = 22.sp, fontWeight = FontWeight.Bold, maxLines = 3, overflow = TextOverflow.Ellipsis)
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(signal.source.name ?: signal.source.handle ?: "CineRelay source", color = RadarGold58, fontSize = 11.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                Text(signal.source.name ?: signal.source.handle ?: "CineRelay source", color = RadarGold58, fontSize = 12.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
                 Spacer(Modifier.width(8.dp))
                 if ((signal.source.authorityTier ?: 99) <= 1) RadarMetaChipV066("Official", RadarGreen58)
                 else RadarMetaChipV066(radarSignalAgeV059(signal), RadarMuted58)
             }
-            Text(opportunity.hint, color = RadarMuted58, fontSize = 11.sp, lineHeight = 16.sp)
+            Text(opportunity.hint, color = RadarMuted58, fontSize = 12.sp, lineHeight = 16.sp)
         }
     }
 }

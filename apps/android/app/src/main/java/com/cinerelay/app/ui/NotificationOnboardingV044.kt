@@ -53,15 +53,15 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.cinerelay.app.data.SourceDirectoryItem
 
-private val OnboardingInk = Color(0xFF090B0F)
-private val OnboardingPanel = Color(0xFF15181E)
-private val OnboardingRaised = Color(0xFF1C2028)
-private val OnboardingLine = Color(0xFF2A303A)
-private val OnboardingText = Color(0xFFF5F1E8)
-private val OnboardingMuted = Color(0xFFA7ADB7)
-private val OnboardingGold = Color(0xFFE7C36B)
-private val OnboardingGreen = Color(0xFF72D6A4)
-private val OnboardingRed = Color(0xFFF08079)
+private val OnboardingInk = CineEditorial.Background
+private val OnboardingPanel = CineEditorial.Surface
+private val OnboardingRaised = CineEditorial.Raised
+private val OnboardingLine = CineEditorial.Outline
+private val OnboardingText = CineEditorial.Text
+private val OnboardingMuted = CineEditorial.Muted
+private val OnboardingGold = CineEditorial.Accent
+private val OnboardingGreen = CineEditorial.Confirmed
+private val OnboardingRed = CineEditorial.Error
 
 @Composable
 fun NotificationOnboardingV044(
@@ -176,7 +176,7 @@ private fun OnboardingProgress(step: Int, onBack: () -> Unit) {
                 ) {}
             }
         }
-        Text("${step + 1}/4", color = OnboardingMuted, fontSize = 10.sp, modifier = Modifier.padding(end = 12.dp))
+        Text("${step + 1}/4", color = OnboardingMuted, fontSize = 12.sp, modifier = Modifier.padding(end = 12.dp))
     }
 }
 
@@ -189,12 +189,12 @@ private fun WelcomeStep(sourceCount: Int, onContinue: () -> Unit) {
         Spacer(Modifier.weight(0.35f))
         BrandOrb()
         Spacer(Modifier.height(22.dp))
-        Text("CINERELAY", color = OnboardingGold, fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 2.sp)
+        Text("CINERELAY", color = OnboardingGold, fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 2.sp)
         Spacer(Modifier.height(8.dp))
         Text(
             "Every official update.\nOne cinema feed.",
             color = OnboardingText,
-            fontSize = 30.sp,
+            fontSize = 32.sp,
             lineHeight = 36.sp,
             fontWeight = FontWeight.Bold,
         )
@@ -239,8 +239,8 @@ private fun SourceSelectionStep(
     }
 
     Column(Modifier.fillMaxSize()) {
-        Column(Modifier.padding(horizontal = 20.dp)) {
-            Text("Choose who can notify you", color = OnboardingText, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+        Column(Modifier.padding(horizontal = CineEditorial.Gutter)) {
+            Text("Choose who can notify you", color = OnboardingText, fontSize = 26.sp, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(5.dp))
             Text(
                 "CineRelay still monitors every source. Only the channels you check here can send upload notifications.",
@@ -271,7 +271,7 @@ private fun SourceSelectionStep(
             Text(
                 "${selectedIds.size} selected",
                 color = if (selectedIds.isEmpty()) OnboardingMuted else OnboardingGreen,
-                fontSize = 11.sp,
+                fontSize = 12.sp,
                 fontWeight = FontWeight.Bold,
             )
         }
@@ -292,7 +292,7 @@ private fun SourceSelectionStep(
         }
 
         Surface(color = OnboardingInk, modifier = Modifier.fillMaxWidth()) {
-            Column(Modifier.padding(horizontal = 20.dp, vertical = 12.dp)) {
+            Column(Modifier.padding(horizontal = CineEditorial.Gutter, vertical = 12.dp)) {
                 PrimaryOnboardingButton(
                     text = if (selectedIds.isEmpty()) "Select at least one source" else "Continue with ${selectedIds.size}",
                     onClick = onContinue,
@@ -325,7 +325,7 @@ private fun SelectableSourceRow(
                 Text(
                     source.name,
                     color = OnboardingText,
-                    fontSize = 13.sp,
+                    fontSize = 14.sp,
                     fontWeight = FontWeight.Bold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -333,7 +333,7 @@ private fun SelectableSourceRow(
                 Text(
                     listOfNotNull(prettyRole(source.role), source.handle).filter { it.isNotBlank() }.joinToString(" • "),
                     color = OnboardingMuted,
-                    fontSize = 9.sp,
+                    fontSize = 12.sp,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -357,8 +357,8 @@ private fun ContentTypeStep(
     onSetShorts: (Boolean) -> Unit,
     onContinue: () -> Unit,
 ) {
-    Column(Modifier.fillMaxSize().padding(horizontal = 22.dp, vertical = 18.dp)) {
-        Text("What should interrupt you?", color = OnboardingText, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+    Column(Modifier.fillMaxSize().padding(horizontal = CineEditorial.Gutter, vertical = 18.dp)) {
+        Text("What should interrupt you?", color = OnboardingText, fontSize = 26.sp, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(7.dp))
         Text("These choices apply only to the sources you selected.", color = OnboardingMuted, fontSize = 12.sp)
         Spacer(Modifier.height(24.dp))
@@ -384,7 +384,7 @@ private fun ContentTypeStep(
             Text(
                 "CineRelay will never use channels you did not select to create upload notifications.",
                 color = OnboardingGreen,
-                fontSize = 11.sp,
+                fontSize = 12.sp,
                 lineHeight = 17.sp,
                 modifier = Modifier.padding(14.dp),
             )
@@ -412,7 +412,7 @@ private fun PreferenceSwitch(
             Column(Modifier.weight(1f)) {
                 Text(title, color = OnboardingText, fontSize = 14.sp, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.height(3.dp))
-                Text(body, color = OnboardingMuted, fontSize = 10.sp, lineHeight = 15.sp)
+                Text(body, color = OnboardingMuted, fontSize = 12.sp, lineHeight = 15.sp)
             }
             Switch(
                 checked = checked,
@@ -453,7 +453,7 @@ private fun PermissionStep(
             lineHeight = 18.sp,
         )
         Spacer(Modifier.height(22.dp))
-        Surface(color = OnboardingPanel, shape = RoundedCornerShape(20.dp), modifier = Modifier.fillMaxWidth()) {
+        Surface(color = OnboardingPanel, shape = RoundedCornerShape(18.dp), modifier = Modifier.fillMaxWidth()) {
             Column(Modifier.padding(16.dp)) {
                 SummaryLine("Selected channels", selectedCount.toString())
                 HorizontalDivider(color = OnboardingLine, modifier = Modifier.padding(vertical = 10.dp))
@@ -466,12 +466,12 @@ private fun PermissionStep(
         if (saving) {
             CircularProgressIndicator(color = OnboardingGold, strokeWidth = 2.dp)
             Spacer(Modifier.height(15.dp))
-            Text("Saving your notification desk…", color = OnboardingMuted, fontSize = 11.sp)
+            Text("Saving your notification desk…", color = OnboardingMuted, fontSize = 12.sp)
         } else {
             PrimaryOnboardingButton("Enable notifications", onEnableNotifications)
             Spacer(Modifier.height(6.dp))
             TextButton(onClick = onNotNow) {
-                Text("Not now — save my sources only", color = OnboardingMuted, fontSize = 11.sp)
+                Text("Not now — save my sources only", color = OnboardingMuted, fontSize = 12.sp)
             }
         }
     }
@@ -480,7 +480,7 @@ private fun PermissionStep(
 @Composable
 private fun SummaryLine(label: String, value: String) {
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Text(label, color = OnboardingMuted, fontSize = 11.sp, modifier = Modifier.weight(1f))
+        Text(label, color = OnboardingMuted, fontSize = 12.sp, modifier = Modifier.weight(1f))
         Text(value, color = OnboardingText, fontSize = 12.sp, fontWeight = FontWeight.Bold)
     }
 }
@@ -490,9 +490,9 @@ private fun InlineOnboardingError(message: String) {
     Surface(
         color = OnboardingRed.copy(alpha = 0.10f),
         shape = RoundedCornerShape(12.dp),
-        modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp).fillMaxWidth(),
+        modifier = Modifier.padding(horizontal = CineEditorial.Gutter, vertical = 4.dp).fillMaxWidth(),
     ) {
-        Text(message, color = OnboardingRed, fontSize = 10.sp, modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp))
+        Text(message, color = OnboardingRed, fontSize = 12.sp, modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp))
     }
 }
 
@@ -507,16 +507,16 @@ private fun PrimaryOnboardingButton(text: String, onClick: () -> Unit, enabled: 
             disabledContainerColor = OnboardingLine,
             disabledContentColor = OnboardingMuted,
         ),
-        shape = RoundedCornerShape(15.dp),
+        shape = RoundedCornerShape(16.dp),
         modifier = Modifier.fillMaxWidth().height(52.dp),
     ) {
-        Text(text, fontSize = 13.sp, fontWeight = FontWeight.Black)
+        Text(text, fontSize = 14.sp, fontWeight = FontWeight.Black)
     }
 }
 
 @Composable
 private fun BrandOrb() {
-    Surface(color = OnboardingGold.copy(alpha = 0.08f), shape = RoundedCornerShape(24.dp), modifier = Modifier.size(82.dp)) {
+    Surface(color = OnboardingGold.copy(alpha = 0.08f), shape = RoundedCornerShape(20.dp), modifier = Modifier.size(82.dp)) {
         Box(contentAlignment = Alignment.Center) {
             Icon(
                 painter = androidx.compose.ui.res.painterResource(com.cinerelay.app.R.drawable.ic_cinerelay_mark),
@@ -538,7 +538,7 @@ private fun InitialsOrb(name: String) {
         .ifBlank { "CR" }
     Surface(color = OnboardingGold.copy(alpha = 0.10f), shape = CircleShape, modifier = Modifier.size(38.dp)) {
         Box(contentAlignment = Alignment.Center) {
-            Text(initials, color = OnboardingGold, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+            Text(initials, color = OnboardingGold, fontSize = 12.sp, fontWeight = FontWeight.Bold)
         }
     }
 }

@@ -42,15 +42,15 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.cinerelay.app.R
 
-private val AuthInk = Color(0xFF090B0F)
-private val AuthPanel = Color(0xFF15181E)
-private val AuthRaised = Color(0xFF1C2028)
-private val AuthLine = Color(0xFF2A303A)
-private val AuthText = Color(0xFFF5F1E8)
-private val AuthMuted = Color(0xFFA7ADB7)
-private val AuthGold = Color(0xFFE7C36B)
-private val AuthGreen = Color(0xFF72D6A4)
-private val AuthRed = Color(0xFFF08079)
+private val AuthInk = CineEditorial.Background
+private val AuthPanel = CineEditorial.Surface
+private val AuthRaised = CineEditorial.Raised
+private val AuthLine = CineEditorial.Outline
+private val AuthText = CineEditorial.Text
+private val AuthMuted = CineEditorial.Muted
+private val AuthGold = CineEditorial.Accent
+private val AuthGreen = CineEditorial.Confirmed
+private val AuthRed = CineEditorial.Error
 
 @Composable
 fun FirstRunAuthV050(
@@ -99,12 +99,12 @@ private fun WelcomeGateV050(
         Spacer(Modifier.weight(0.5f))
         AuthBrandMarkV050(76.dp)
         Spacer(Modifier.height(22.dp))
-        Text("CINERELAY", color = AuthGold, fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 2.2.sp)
+        Text("CINERELAY", color = AuthGold, fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 2.2.sp)
         Spacer(Modifier.height(9.dp))
         Text(
             "Cinema intelligence,\nstraight from the source.",
             color = AuthText,
-            fontSize = 31.sp,
+            fontSize = 32.sp,
             lineHeight = 37.sp,
             fontWeight = FontWeight.Bold,
         )
@@ -125,14 +125,14 @@ private fun WelcomeGateV050(
         }
         notice?.takeIf { it.isNotBlank() }?.let {
             Spacer(Modifier.height(12.dp))
-            Text(it, color = AuthGreen, fontSize = 11.sp)
+            Text(it, color = AuthGreen, fontSize = 12.sp)
         }
         Spacer(Modifier.weight(1f))
         Button(
             onClick = onSignIn,
             colors = ButtonDefaults.buttonColors(containerColor = AuthGold, contentColor = AuthInk),
             modifier = Modifier.fillMaxWidth().height(52.dp),
-            shape = RoundedCornerShape(15.dp),
+            shape = RoundedCornerShape(16.dp),
         ) {
             Icon(Icons.Default.Lock, contentDescription = null, modifier = Modifier.size(17.dp))
             Spacer(Modifier.width(7.dp))
@@ -142,12 +142,12 @@ private fun WelcomeGateV050(
         OutlinedButton(
             onClick = onCreateAccount,
             modifier = Modifier.fillMaxWidth().height(52.dp),
-            shape = RoundedCornerShape(15.dp),
+            shape = RoundedCornerShape(16.dp),
         ) {
             Text("Create account", color = AuthText, fontWeight = FontWeight.Bold)
         }
         Spacer(Modifier.height(8.dp))
-        Text("No guest newsroom in this build.", color = AuthMuted, fontSize = 10.sp)
+        Text("No guest newsroom in this build.", color = AuthMuted, fontSize = 12.sp)
     }
 }
 
@@ -158,7 +158,7 @@ private fun AuthPromiseV050(title: String, body: String) {
         Spacer(Modifier.width(10.dp))
         Column {
             Text(title, color = AuthText, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-            Text(body, color = AuthMuted, fontSize = 10.sp, lineHeight = 15.sp)
+            Text(body, color = AuthMuted, fontSize = 12.sp, lineHeight = 15.sp)
         }
     }
 }
@@ -182,14 +182,14 @@ private fun AuthFormV050(
             .fillMaxSize()
             .statusBarsPadding()
             .navigationBarsPadding()
-            .padding(horizontal = 22.dp, vertical = 10.dp),
+            .padding(horizontal = CineEditorial.Gutter, vertical = 10.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = onBack, enabled = !busy) {
                 Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = AuthText)
             }
             Spacer(Modifier.width(4.dp))
-            Text("CINERELAY", color = AuthGold, fontSize = 10.sp, fontWeight = FontWeight.Black, letterSpacing = 1.8.sp)
+            Text("CINERELAY", color = AuthGold, fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 1.8.sp)
         }
 
         Spacer(Modifier.weight(0.35f))
@@ -207,7 +207,7 @@ private fun AuthFormV050(
             if (create) "Your first login will continue into source and notification setup."
             else "Sign in to restore your source choices, follows and alert preferences.",
             color = AuthMuted,
-            fontSize = 13.sp,
+            fontSize = 14.sp,
             lineHeight = 19.sp,
         )
         Spacer(Modifier.height(22.dp))
@@ -235,11 +235,11 @@ private fun AuthFormV050(
 
         notice?.takeIf { it.isNotBlank() }?.let {
             Spacer(Modifier.height(11.dp))
-            Text(it, color = AuthGreen, fontSize = 11.sp, lineHeight = 16.sp)
+            Text(it, color = AuthGreen, fontSize = 12.sp, lineHeight = 16.sp)
         }
         error?.takeIf { it.isNotBlank() }?.let {
             Spacer(Modifier.height(11.dp))
-            Text(it, color = AuthRed, fontSize = 11.sp, lineHeight = 16.sp)
+            Text(it, color = AuthRed, fontSize = 12.sp, lineHeight = 16.sp)
         }
 
         Spacer(Modifier.height(18.dp))
@@ -250,7 +250,7 @@ private fun AuthFormV050(
             enabled = !busy,
             colors = ButtonDefaults.buttonColors(containerColor = AuthGold, contentColor = AuthInk),
             modifier = Modifier.fillMaxWidth().height(52.dp),
-            shape = RoundedCornerShape(15.dp),
+            shape = RoundedCornerShape(16.dp),
         ) {
             if (busy) CircularProgressIndicator(Modifier.size(19.dp), strokeWidth = 2.dp, color = AuthInk)
             else Text(if (create) "Create account" else "Sign in", fontWeight = FontWeight.Bold)
@@ -261,7 +261,7 @@ private fun AuthFormV050(
             if (create) "After account creation, CineRelay may ask you to confirm your email before signing in."
             else "After sign-in, CineRelay checks whether onboarding is already complete before opening Home.",
             color = AuthMuted,
-            fontSize = 10.sp,
+            fontSize = 12.sp,
             lineHeight = 15.sp,
         )
         Spacer(Modifier.weight(1f))

@@ -38,7 +38,7 @@ import kotlin.math.sin
 private const val WelcomePreferencesNameV023 = "cinerelay_welcome"
 private const val WelcomeVersionKeyV023 = "last_played_version"
 private const val WelcomeDurationMsV023 = 2_950
-private val WelcomeRedV023 = Color(0xFFE3282F)
+private val WelcomeRedV023 = CineEditorial.Accent
 
 internal object WelcomeVersionGateV023 {
     fun shouldPlay(lastPlayedVersion: String?, currentVersion: String): Boolean =
@@ -174,7 +174,7 @@ fun CineRelayWelcomeV058(
                 Text(
                     text = "CineRelay",
                     color = Color.White,
-                    fontSize = 42.sp,
+                    fontSize = 36.sp,
                     fontFamily = FontFamily.Serif,
                     fontWeight = FontWeight.Medium,
                     letterSpacing = 0.4.sp,
@@ -199,13 +199,13 @@ fun CineRelayWelcomeV058(
                     contentAlignment = Alignment.Center,
                     modifier = Modifier
                         .size(32.dp)
-                        .clip(RoundedCornerShape(9.dp))
+                        .clip(RoundedCornerShape(8.dp))
                         .background(Color.White),
                 ) {
                     Text(
                         text = "C",
                         color = Color.Black,
-                        fontSize = 19.sp,
+                        fontSize = 20.sp,
                         fontFamily = FontFamily.Serif,
                         fontWeight = FontWeight.Bold,
                     )
@@ -213,7 +213,7 @@ fun CineRelayWelcomeV058(
                 Text(
                     text = "CineRelay",
                     color = Color.White,
-                    fontSize = 34.sp,
+                    fontSize = 32.sp,
                     fontFamily = FontFamily.Serif,
                     fontWeight = FontWeight.Medium,
                     letterSpacing = 0.25.sp,

@@ -43,14 +43,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-private val SettingsInk55 = Color(0xFF0D0F13)
-private val SettingsPanel55 = Color(0xFF171A20)
-private val SettingsRaised55 = Color(0xFF20242C)
-private val SettingsText55 = Color(0xFFF4F1EA)
-private val SettingsMuted55 = Color(0xFFA8ADB7)
-private val SettingsGold55 = Color(0xFFE8C56D)
-private val SettingsGreen55 = Color(0xFF73D6A5)
-private val SettingsRed55 = Color(0xFFF08079)
+private val SettingsInk55 = CineEditorial.Background
+private val SettingsPanel55 = CineEditorial.Surface
+private val SettingsRaised55 = CineEditorial.Raised
+private val SettingsText55 = CineEditorial.Text
+private val SettingsMuted55 = CineEditorial.Muted
+private val SettingsGold55 = CineEditorial.Accent
+private val SettingsGreen55 = CineEditorial.Confirmed
+private val SettingsRed55 = CineEditorial.Error
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -95,8 +95,8 @@ fun SettingsV055(
                     },
                     title = {
                         Column {
-                            Text("CINERELAY", color = SettingsGold55, fontSize = 9.sp, fontWeight = FontWeight.Black, letterSpacing = 1.5.sp)
-                            Text("Settings", color = SettingsText55, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+                            Text("CINERELAY", color = SettingsGold55, fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 1.5.sp)
+                            Text("Settings", color = SettingsText55, fontSize = CineEditorial.PageTitle, fontWeight = FontWeight.Bold)
                         }
                     },
                 )
@@ -143,12 +143,12 @@ fun SettingsV055(
                                 Icon(Icons.Default.Notifications, contentDescription = null, tint = SettingsGold55, modifier = Modifier.size(24.dp))
                                 Spacer(Modifier.width(12.dp))
                                 Column(Modifier.weight(1f)) {
-                                    Text("Movie update alerts", color = SettingsText55, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                                    Text("Movie update alerts", color = SettingsText55, fontSize = 16.sp, fontWeight = FontWeight.Bold)
                                     Text(
                                         if (notificationState.masterEnabled) "On for ${notificationState.selectedSourceIds.size} channels"
                                         else "Paused — your channel choices are kept",
                                         color = if (notificationState.masterEnabled) SettingsGreen55 else SettingsMuted55,
-                                        fontSize = 11.sp,
+                                        fontSize = 12.sp,
                                     )
                                 }
                                 Switch(
@@ -170,7 +170,7 @@ fun SettingsV055(
                                 subtitle = if (notificationState.includeShorts) "Included in alerts" else "Not included",
                             )
                             notificationState.error?.let {
-                                Text(it, color = SettingsRed55, fontSize = 11.sp, modifier = Modifier.padding(horizontal = 15.dp, vertical = 8.dp))
+                                Text(it, color = SettingsRed55, fontSize = 12.sp, modifier = Modifier.padding(horizontal = 15.dp, vertical = 8.dp))
                             }
                         }
                     }
@@ -222,8 +222,8 @@ private fun SettingsSectionV055(
     content: @Composable () -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(title, color = SettingsMuted55, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.1.sp, modifier = Modifier.padding(horizontal = 4.dp))
-        Surface(color = SettingsPanel55, shape = RoundedCornerShape(20.dp), modifier = Modifier.fillMaxWidth()) {
+        Text(title, color = SettingsMuted55, fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.1.sp, modifier = Modifier.padding(horizontal = 4.dp))
+        Surface(color = SettingsPanel55, shape = RoundedCornerShape(18.dp), modifier = Modifier.fillMaxWidth()) {
             Column { content() }
         }
     }
@@ -243,8 +243,8 @@ private fun SettingsActionRowV055(
         BoxIconV055(icon)
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
-            Text(title, color = SettingsText55, fontSize = 15.sp, fontWeight = FontWeight.Bold)
-            Text(subtitle, color = SettingsMuted55, fontSize = 11.sp, lineHeight = 16.sp)
+            Text(title, color = SettingsText55, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+            Text(subtitle, color = SettingsMuted55, fontSize = 12.sp, lineHeight = 16.sp)
         }
         Icon(Icons.Default.ChevronRight, contentDescription = null, tint = SettingsMuted55)
     }
@@ -263,8 +263,8 @@ private fun SettingsInfoRowV055(
         BoxIconV055(icon)
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
-            Text(title, color = SettingsText55, fontSize = 15.sp, fontWeight = FontWeight.Bold)
-            Text(subtitle, color = SettingsMuted55, fontSize = 11.sp, lineHeight = 16.sp)
+            Text(title, color = SettingsText55, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+            Text(subtitle, color = SettingsMuted55, fontSize = 12.sp, lineHeight = 16.sp)
         }
     }
 }
