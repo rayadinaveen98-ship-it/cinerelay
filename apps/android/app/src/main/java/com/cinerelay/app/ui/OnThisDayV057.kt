@@ -127,23 +127,20 @@ fun OnThisDayV057(
                 verticalArrangement = Arrangement.spacedBy(14.dp),
             ) {
                 item {
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(start = 8.dp, end = 12.dp, top = 18.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        IconButton(onClick = onBack) {
-                            Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = HistoryText)
-                        }
-                        Column(Modifier.weight(1f)) {
-                            Text("INDIAN CINEMA HISTORY", color = HistoryGold, fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 1.5.sp)
-                            Text("Today in cinema", color = HistoryText, fontSize = CineEditorial.PageTitle, fontWeight = FontWeight.Bold)
-                        }
-                        TextButton(onClick = onToday) {
-                            Icon(Icons.Default.Today, contentDescription = null, tint = HistoryGold, modifier = Modifier.size(17.dp))
-                            Spacer(Modifier.width(5.dp))
-                            Text("Today", color = HistoryGold, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                        }
-                    }
+                    CineScreenHeader(
+                        eyebrow = "INDIAN CINEMA HISTORY",
+                        title = "Today in cinema",
+                        onBack = onBack,
+                        actions = {
+                            TextButton(onClick = onToday) {
+                                Icon(Icons.Default.Today, contentDescription = null,
+                                    tint = HistoryGold, modifier = Modifier.size(18.dp))
+                                Spacer(Modifier.width(5.dp))
+                                Text("Today", color = HistoryGold, fontSize = CineEditorial.Metadata,
+                                    fontWeight = FontWeight.Bold)
+                            }
+                        },
+                    )
                 }
 
                 item {
