@@ -134,6 +134,7 @@ class OttViewModelV054(application: Application) : AndroidViewModel(application)
                 val weekendItems = mergeOttWeekendReleasesV080(
                     todayFeed.items, upcomingFeed.items, releasedFeed.items, weekend,
                     releaseId = { it.id }, releaseDate = { it.releaseDate },
+                    datePrecision = { it.datePrecision },
                 )
                 val todayIds = todayFeed.items.mapTo(mutableSetOf()) { it.id }
                 val nowStreamingItems = releasedFeed.items
@@ -143,7 +144,6 @@ class OttViewModelV054(application: Application) : AndroidViewModel(application)
                             .thenBy { it.entity.name },
                     )
                     .distinctBy { it.id }
-                    .take(30)
                 val upcomingItems = upcomingFeed.items.filter { release ->
                     val date = release.releaseDate?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
                     date != null &&
@@ -255,10 +255,12 @@ internal fun <T> mergeOttWeekendReleasesV080(
     weekend: Pair<LocalDate, LocalDate>?,
     releaseId: (T) -> String,
     releaseDate: (T) -> String?,
+    datePrecision: (T) -> String? = { "DAY" },
 ): List<T> {
     val (start, end) = weekend ?: return emptyList()
     return (today + upcoming + released)
         .filter { item ->
+            if (datePrecision(item)?.equals("DAY", ignoreCase = true) != true) return@filter false
             val date = releaseDate(item)?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
             date != null && !date.isBefore(start) && !date.isAfter(end)
         }
