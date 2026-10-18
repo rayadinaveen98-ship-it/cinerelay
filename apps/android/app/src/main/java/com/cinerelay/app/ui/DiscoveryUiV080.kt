@@ -24,21 +24,21 @@ import androidx.compose.ui.unit.sp
 
 /** Compact discovery hierarchy shared by OTT, Radar, and Indian cinema history. */
 internal object DiscoveryUiV080 {
-    val Gold = Color(0xFFE8C56D)
-    val Text = Color(0xFFF5F2EA)
-    val Muted = Color(0xFFA8ADB7)
-    val Panel = Color(0xFF171A20)
-    val Raised = Color(0xFF20242C)
-    val Gutter = 16.dp
+    val Gold = CineEditorial.Accent
+    val Text = CineEditorial.Text
+    val Muted = CineEditorial.Muted
+    val Panel = CineEditorial.Surface
+    val Raised = CineEditorial.Raised
+    val Gutter = CineEditorial.Gutter
     val CardWidth = 236.dp
-    val CardRadius = 18.dp
+    val CardRadius = CineEditorial.CardRadius
 }
 @Composable
 internal fun DiscoverySectionHeadingV080(title:String,subtitle:String,count:Int,onSeeAll:()->Unit){
     Row(Modifier.fillMaxWidth().padding(horizontal=DiscoveryUiV080.Gutter),
         verticalAlignment=Alignment.CenterVertically){
         Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(3.dp)){
-            Text(title,color=DiscoveryUiV080.Text,fontSize=19.sp,fontWeight=FontWeight.Bold,
+            Text(title,color=DiscoveryUiV080.Text,fontSize=CineEditorial.SectionTitle,fontWeight=FontWeight.Bold,
                 maxLines=2,overflow=TextOverflow.Ellipsis)
             if(subtitle.isNotBlank()) Text(subtitle,color=DiscoveryUiV080.Muted,fontSize=12.sp,
                 maxLines=2,overflow=TextOverflow.Ellipsis)
@@ -59,7 +59,7 @@ internal fun DiscoverySubpageHeaderV080(title:String,subtitle:String,onBack:()->
             Icon(Icons.Default.ArrowBack,contentDescription="Back",tint=DiscoveryUiV080.Text)
         }
         Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(3.dp)){
-            Text(title,color=DiscoveryUiV080.Text,fontSize=23.sp,fontWeight=FontWeight.Bold,
+            Text(title,color=DiscoveryUiV080.Text,fontSize=CineEditorial.PageTitle,fontWeight=FontWeight.Bold,
                 maxLines=2,overflow=TextOverflow.Ellipsis)
             if(subtitle.isNotBlank())Text(subtitle,color=DiscoveryUiV080.Muted,fontSize=12.sp,maxLines=2)
         }
