@@ -86,20 +86,7 @@ fun SettingsV055(
     ) {
         Surface(modifier = modifier.fillMaxSize(), color = SettingsInk55) {
             Column(Modifier.fillMaxSize()) {
-                TopAppBar(
-                    colors = TopAppBarDefaults.topAppBarColors(containerColor = SettingsInk55),
-                    navigationIcon = {
-                        IconButton(onClick = onBack) {
-                            Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = SettingsText55)
-                        }
-                    },
-                    title = {
-                        Column {
-                            Text("CINERELAY", color = SettingsGold55, fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 1.5.sp)
-                            Text("Settings", color = SettingsText55, fontSize = CineEditorial.PageTitle, fontWeight = FontWeight.Bold)
-                        }
-                    },
-                )
+                CineScreenHeader(title = "Settings", onBack = onBack)
 
                 LazyColumn(
                     modifier = Modifier.weight(1f),
