@@ -71,6 +71,7 @@ fun OnThisDayV057(
     onBack: () -> Unit,
     onLoadDate: (String) -> Unit,
     onToday: () -> Unit,
+    onRetry: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val landingListState=rememberLazyListState()
@@ -165,6 +166,42 @@ fun OnThisDayV057(
                         item {
                             Box(Modifier.fillMaxWidth().height(220.dp), contentAlignment = Alignment.Center) {
                                 CircularProgressIndicator(color = HistoryGold, strokeWidth = 2.dp)
+                            }
+                        }
+                    }
+
+                    state.onThisDayError != null -> {
+                        item {
+                            Surface(
+                                color = HistoryPanel,
+                                shape = RoundedCornerShape(20.dp),
+                                modifier = Modifier.fillMaxWidth()
+                                    .padding(horizontal = CineEditorial.Gutter),
+                            ) {
+                                Column(
+                                    modifier = Modifier.padding(22.dp),
+                                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                                ) {
+                                    EditorialEyebrowV2("HISTORY SERVICE / UNAVAILABLE")
+                                    EditorialDisplayV2(
+                                        "History is temporarily unavailable.",
+                                        size = 23, lines = 3,
+                                    )
+                                    Text(
+                                        state.onThisDayError,
+                                        color = HistoryMuted, fontSize = 13.sp,
+                                        lineHeight = 19.sp,
+                                    )
+                                    TextButton(onClick = onRetry) {
+                                        Text("Try again  →", color = HistoryGold,
+                                            fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                                    }
+                                    Text(
+                                        "No films have been removed. You can still use Home, OTT and Radar.",
+                                        color = HistoryMuted, fontSize = 12.sp,
+                                        lineHeight = 17.sp,
+                                    )
+                                }
                             }
                         }
                     }
