@@ -127,17 +127,18 @@ fun OnThisDayV057(
                 verticalArrangement = Arrangement.spacedBy(14.dp),
             ) {
                 item {
-                    CineScreenHeader(
-                        eyebrow = "INDIAN CINEMA HISTORY",
-                        title = "Today in cinema",
-                        onBack = onBack,
+                    EditorialMastheadV2(
+                        section = "CINEMA / TIME MACHINE",
+                        title = "On this day.",
+                        subtitle = "A date-led journey through memorable releases, organized by year.",
+                        modifier = Modifier.padding(horizontal = CineEditorial.Gutter),
                         actions = {
+                            IconButton(onClick = onBack) {
+                                Icon(Icons.Default.ArrowBack,
+                                    contentDescription = "Back", tint = HistoryText)
+                            }
                             TextButton(onClick = onToday) {
-                                Icon(Icons.Default.Today, contentDescription = null,
-                                    tint = HistoryGold, modifier = Modifier.size(18.dp))
-                                Spacer(Modifier.width(5.dp))
-                                Text("Today", color = HistoryGold, fontSize = CineEditorial.Metadata,
-                                    fontWeight = FontWeight.Bold)
+                                Text("Today", color = HistoryGold, fontSize = 12.sp)
                             }
                         },
                     )
@@ -197,9 +198,16 @@ fun OnThisDayV057(
                     else -> {
                         grouped.forEach { (year, movies) ->
                             item(key="year:$year"){
-                                DiscoverySectionHeadingV080(year.toString(),
-                                    if(year==selected.year)"This year" else "Historical releases",
-                                    movies.size,onSeeAll={openedYear=year})
+                                EditorialSectionV2(
+                                    label = "THROUGH THE YEARS / ${movies.size} RELEASES",
+                                    title = year.toString(),
+                                    modifier = Modifier.padding(horizontal = CineEditorial.Gutter),
+                                    trailing = {
+                                        TextButton(onClick = { openedYear = year }) {
+                                            Text("See all →", color = HistoryGold, fontSize = 12.sp)
+                                        }
+                                    },
+                                )
                             }
                             item(key="year-rail:$year"){
                                 LazyRow(contentPadding=PaddingValues(horizontal=16.dp),
@@ -218,25 +226,21 @@ fun OnThisDayV057(
 }
 
 @Composable
-private fun HistoryPreviewCardV080(movie:OnThisDayMovie,onClick:()->Unit){
-    Surface(color=HistoryPanel,shape=RoundedCornerShape(DiscoveryUiV080.CardRadius),
-        modifier=Modifier.width(152.dp).clickable(onClick=onClick)){
-        Column(Modifier.padding(10.dp),verticalArrangement=Arrangement.spacedBy(8.dp)){
-            Box(Modifier.fillMaxWidth().height(150.dp).clip(RoundedCornerShape(12.dp))
-                .background(HistoryRaised),contentAlignment=Alignment.Center){
-                val art=movie.posterUrl?:movie.backdropUrl
-                if(!art.isNullOrBlank()){
-                    AsyncImage(model=art,contentDescription=movie.title,contentScale=ContentScale.Crop,
-                        modifier=Modifier.fillMaxSize())
-                }else{
-                    Text(movie.releaseYear.toString(),color=HistoryGold,fontSize=20.sp,fontWeight=FontWeight.Bold)
-                }
-            }
-            Text(movie.title,color=HistoryText,fontSize=14.sp,lineHeight=18.sp,fontWeight=FontWeight.SemiBold,
-                maxLines=2,overflow=TextOverflow.Ellipsis,modifier=Modifier.height(38.dp))
-            Text(listOfNotNull(movie.language,movie.countryCode).joinToString(" • "),
-                color=HistoryMuted,fontSize=12.sp,maxLines=1,overflow=TextOverflow.Ellipsis)
-        }
+private fun HistoryPreviewCardV080(movie: OnThisDayMovie, onClick: () -> Unit) {
+    Column(
+        modifier = Modifier.width(156.dp).clickable(onClick = onClick),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        EditorialArtworkV2(
+            url = movie.posterUrl ?: movie.backdropUrl,
+            title = movie.title,
+            modifier = Modifier.fillMaxWidth().height(172.dp),
+            label = movie.releaseYear.toString(),
+        )
+        EditorialDisplayV2(movie.title, size = 17, lines = 2)
+        Text(listOfNotNull(movie.language, movie.countryCode).joinToString(" · "),
+            color = HistoryMuted, fontSize = 11.sp,
+            maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
 
@@ -250,59 +254,45 @@ private fun HistoryDateHeroV060(
     onPrevious: () -> Unit,
     onNext: () -> Unit,
 ) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp)
-            .clip(RoundedCornerShape(20.dp))
-            .background(
-                Brush.linearGradient(
-                    listOf(
-                        HistoryGold.copy(alpha = 0.22f),
-                        HistoryPanel,
-                        HistoryRaised.copy(alpha = 0.92f),
-                    ),
-                ),
-            ),
+    Surface(
+        color = HistoryRaised,
+        shape = RoundedCornerShape(22.dp),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = CineEditorial.Gutter),
     ) {
-        Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        Column(Modifier.padding(19.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            EditorialEyebrowV2(
+                selected.format(DateTimeFormatter.ofPattern("EEEE / MMMM", Locale.ENGLISH)),
+            )
             Row(verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = onPrevious) {
-                    Icon(Icons.Default.ChevronLeft, contentDescription = "Previous day", tint = HistoryText)
-                }
-                Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
+                EditorialDisplayV2(
+                    selected.format(DateTimeFormatter.ofPattern("dd", Locale.ENGLISH)),
+                    modifier = Modifier.weight(1f), size = 68, lines = 1,
+                )
+                Column(verticalArrangement = Arrangement.spacedBy(5.dp),
+                    horizontalAlignment = Alignment.End) {
+                    Text("${movieCount} releases", color = HistoryText,
+                        fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
                     Text(
-                        selected.format(DateTimeFormatter.ofPattern("dd", Locale.ENGLISH)),
-                        color = HistoryGold,
-                        fontSize = 32.sp,
-                        fontWeight = FontWeight.Black,
-                    )
-                    Text(
-                        selected.format(DateTimeFormatter.ofPattern("MMMM", Locale.ENGLISH)).uppercase(Locale.ENGLISH),
-                        color = HistoryText,
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Black,
-                        letterSpacing = 1.5.sp,
-                    )
-                    Text(
-                        selected.format(DateTimeFormatter.ofLocalizedDate(FormatStyle.FULL)),
-                        color = HistoryMuted,
-                        fontSize = 12.sp,
-                    )
-                }
-                IconButton(onClick = onNext, enabled = selected < today) {
-                    Icon(
-                        Icons.Default.ChevronRight,
-                        contentDescription = "Next day",
-                        tint = if (selected < today) HistoryText else HistoryMuted.copy(alpha = 0.28f),
+                        if (earliestYear != null && latestYear != null)
+                            "Across ${earliestYear}–${latestYear}" else "On this date",
+                        color = HistoryMuted, fontSize = 12.sp,
                     )
                 }
             }
-
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                HistoryStatV060("Releases", movieCount.toString(), Modifier.weight(1f))
-                HistoryStatV060("Years", earliestYear?.let { earliest -> latestYear?.let { latest -> (latest - earliest + 1).coerceAtLeast(1).toString() } } ?: "—", Modifier.weight(1f))
-                HistoryStatV060("Oldest", earliestYear?.toString() ?: "—", Modifier.weight(1f))
+            androidx.compose.material3.HorizontalDivider(color = CineEditorial.Outline)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                TextButton(onClick = onPrevious, modifier = Modifier.weight(1f)) {
+                    Icon(Icons.Default.ChevronLeft, contentDescription = null, tint = HistoryText)
+                    Text("Previous day", color = HistoryText, fontSize = 12.sp)
+                }
+                TextButton(onClick = onNext, enabled = selected < today,
+                    modifier = Modifier.weight(1f)) {
+                    Text("Next day", color = if (selected < today) HistoryText else HistoryMuted,
+                        fontSize = 12.sp)
+                    Icon(Icons.Default.ChevronRight,
+                        contentDescription = null,
+                        tint = if (selected < today) HistoryText else HistoryMuted)
+                }
             }
         }
     }
