@@ -7,27 +7,28 @@ import androidx.compose.ui.unit.sp
 /**
  * Shared, design-reviewed visual primitives for the CineRelay Android editorial UI.
  *
- * Source: CineRelay Home/OTT Figma-led design proposals, October 2026.
+ * Source: approved CineRelay Editorial Edition V2 concept, October 2026.
+ * Accessible serif editorial display roles are defined in EditorialV2Components.
  * This is presentation-only; source verification, release dates and ranking
  * must always come from existing app state rather than presentation constants.
  */
 internal object CineEditorial {
-    val Background = Color(0xFF0D1015)
-    val Surface = Color(0xFF181C23)
-    val Raised = Color(0xFF232933)
-    val Outline = Color(0xFF333C49)
-    val Text = Color(0xFFF5F3EF)
-    val Muted = Color(0xFFAEB6C1)
-    val Accent = Color(0xFFE3BC70)
-    val Confirmed = Color(0xFF79CFAD)
-    val Developing = Color(0xFFF2B970)
-    val Error = Color(0xFFEB847C)
-    val Info = Color(0xFF91BAED)
+    val Background = Color(0xFF10141F)
+    val Surface = Color(0xFF19212D)
+    val Raised = Color(0xFF222C39)
+    val Outline = Color(0xFF354352)
+    val Text = Color(0xFFF6F2E9)
+    val Muted = Color(0xFFA1ADBA)
+    val Accent = Color(0xFFE7C29B)
+    val Confirmed = Color(0xFF9ADAC9)
+    val Developing = Color(0xFFEEC596)
+    val Error = Color(0xFFEC9E99)
+    val Info = Color(0xFFA9BED5)
 
-    val Gutter = 16.dp
-    val SectionGap = 24.dp
-    val CardRadius = 18.dp
-    val HeroRadius = 20.dp
+    val Gutter = 20.dp
+    val SectionGap = 28.dp
+    val CardRadius = 20.dp
+    val HeroRadius = 22.dp
     val TargetSize = 48.dp
 
     val PageTitle = 26.sp
