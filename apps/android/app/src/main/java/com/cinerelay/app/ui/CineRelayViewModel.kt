@@ -1,6 +1,7 @@
 package com.cinerelay.app.ui
 
 import android.app.Application
+import android.os.SystemClock
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.cinerelay.app.BuildConfig
@@ -12,7 +13,9 @@ import com.cinerelay.app.data.EventCard
 import com.cinerelay.app.data.NewsroomSignal
 import com.cinerelay.app.data.PushState
 import com.cinerelay.app.push.PushManager
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -54,6 +57,10 @@ class CineRelayViewModel(application: Application) : AndroidViewModel(applicatio
     private val backend = app.backendClient
     private val pushManager = PushManager(application, app.sessionStore, backend)
     private var latestNewsroomSignals: List<NewsroomSignal> = emptyList()
+    private var refreshJob: Job? = null
+    private var cacheWriteJob: Job? = null
+    private val lastLoadedElapsed = mutableMapOf<AppTab, Long>()
+    private val tabReuseWindowMs = 90_000L
 
     private val existingSession = backend.currentSession()
     private val _state = MutableStateFlow(
@@ -176,6 +183,9 @@ class CineRelayViewModel(application: Application) : AndroidViewModel(applicatio
     }
 
     fun signOut() {
+        refreshJob?.cancel()
+        cacheWriteJob?.cancel()
+        lastLoadedElapsed.clear()
         backend.signOut()
         latestNewsroomSignals = emptyList()
         _state.value = CineRelayUiState(
@@ -187,19 +197,25 @@ class CineRelayViewModel(application: Application) : AndroidViewModel(applicatio
 
     fun selectTab(tab: AppTab) {
         if (!_state.value.authenticated || _state.value.tab == tab) return
-        _state.value = _state.value.copy(tab = tab, error = null, notice = null)
+        refreshJob?.cancel()
+        _state.value = _state.value.copy(tab = tab, loading = false, error = null, notice = null)
         if (tab == AppTab.ALERTS) refreshPushState()
+        val lastLoaded = lastLoadedElapsed[tab]
+        if (lastLoaded != null &&
+            SystemClock.elapsedRealtime() - lastLoaded < tabReuseWindowMs
+        ) return
         refresh()
     }
 
     fun refresh() {
         if (!_state.value.authenticated || _state.value.loading) return
-
-        viewModelScope.launch {
+        val requestedTab = _state.value.tab
+        refreshJob?.cancel()
+        refreshJob = viewModelScope.launch {
             _state.value = _state.value.copy(loading = true, error = null)
             runCatching {
                 withContext(Dispatchers.IO) {
-                    when (_state.value.tab) {
+                    when (requestedTab) {
                         AppTab.LIVE -> {
                             coroutineScope {
                                 val youtube = async { backend.newsroom(NewsroomPlatform.YOUTUBE.name, limit = 70) }
@@ -224,6 +240,8 @@ class CineRelayViewModel(application: Application) : AndroidViewModel(applicatio
                     }
                 }
             }.onSuccess { result ->
+                if (!_state.value.authenticated || _state.value.tab != requestedTab) return@onSuccess
+                lastLoadedElapsed[requestedTab] = SystemClock.elapsedRealtime()
                 _state.value = when (result) {
                     is LoadResult.Home -> {
                         val current = _state.value
@@ -234,11 +252,16 @@ class CineRelayViewModel(application: Application) : AndroidViewModel(applicatio
                             NewsroomPlatform.X -> emptyList()
                         }
                         latestNewsroomSignals = selectedLane
-                        app.homeCache.write(
-                            userId = backend.currentSession()?.userId.orEmpty(),
-                            youtube = result.youtube,
-                            web = result.web,
-                        )
+                        // JSON serialization of full news records belongs on IO, not UI.
+                        val cacheUserId = backend.currentSession()?.userId.orEmpty()
+                        cacheWriteJob?.cancel()
+                        cacheWriteJob = viewModelScope.launch(Dispatchers.IO) {
+                            app.homeCache.write(
+                                userId = cacheUserId,
+                                youtube = result.youtube,
+                                web = result.web,
+                            )
+                        }
                         current.copy(
                             loading = false,
                             homeSignals = combined,
@@ -250,31 +273,27 @@ class CineRelayViewModel(application: Application) : AndroidViewModel(applicatio
                                 current.newsroomSourceRole,
                                 current.newsroomPlatform,
                             ),
-                            events = emptyList(),
-                            alerts = emptyList(),
                         )
                     }
                     is LoadResult.Radar -> _state.value.copy(
                         loading = false,
                         homeSignals = combineHomeSignals(result.youtube, result.web),
-                        newsroomSignals = emptyList(),
                         events = result.events,
-                        alerts = emptyList(),
                     )
                     is LoadResult.Events -> _state.value.copy(
                         loading = false,
-                        newsroomSignals = emptyList(),
                         events = result.items,
-                        alerts = emptyList(),
                     )
                     is LoadResult.Alerts -> _state.value.copy(
                         loading = false,
-                        newsroomSignals = emptyList(),
                         alerts = result.items,
-                        events = emptyList(),
                     )
                 }
-            }.onFailure(::handleFailure)
+            }.onFailure { error ->
+                if (error !is CancellationException && _state.value.tab == requestedTab) {
+                    handleFailure(error)
+                }
+            }
         }
     }
 
