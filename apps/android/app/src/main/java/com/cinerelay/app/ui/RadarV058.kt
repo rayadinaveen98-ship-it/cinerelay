@@ -36,6 +36,7 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -52,6 +53,8 @@ import androidx.compose.ui.unit.sp
 import com.cinerelay.app.data.EventCard
 import com.cinerelay.app.data.NewsroomSignal
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.time.Duration
 import java.time.Instant
 import java.util.Locale
@@ -103,8 +106,14 @@ fun RadarV058(
     val actionable = ranked.filter { it.radar?.label != null && it.radar.label != "NO_ACTION" }
     val watchlist = ranked.filter { it !in actionable }
     val canonicalRawIds = remember(ranked) { ranked.mapNotNull { it.evidence?.canonicalUrl }.toSet() }
-    val freshSourceOpportunities = remember(state.homeSignals, canonicalRawIds) {
-        buildRawRadarOpportunitiesV060(state.homeSignals, canonicalRawIds)
+    val freshSourceOpportunities by produceState(
+        initialValue = emptyList<RawRadarOpportunityV059>(),
+        key1 = state.homeSignals,
+        key2 = canonicalRawIds,
+    ) {
+        value = withContext(Dispatchers.Default) {
+            buildRawRadarOpportunitiesV060(state.homeSignals, canonicalRawIds)
+        }
     }
 
     MaterialTheme(
