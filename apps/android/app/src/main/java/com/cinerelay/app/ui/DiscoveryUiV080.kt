@@ -34,34 +34,17 @@ internal object DiscoveryUiV080 {
     val CardRadius = CineEditorial.CardRadius
 }
 @Composable
-internal fun DiscoverySectionHeadingV080(title:String,subtitle:String,count:Int,onSeeAll:()->Unit){
-    Row(Modifier.fillMaxWidth().padding(horizontal=DiscoveryUiV080.Gutter),
-        verticalAlignment=Alignment.CenterVertically){
-        Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(3.dp)){
-            Text(title,color=DiscoveryUiV080.Text,fontSize=CineEditorial.SectionTitle,fontWeight=FontWeight.Bold,
-                maxLines=2,overflow=TextOverflow.Ellipsis)
-            if(subtitle.isNotBlank()) Text(subtitle,color=DiscoveryUiV080.Muted,fontSize=12.sp,
-                maxLines=2,overflow=TextOverflow.Ellipsis)
-        }
-        TextButton(onClick=onSeeAll,enabled=count>0){
-            Text("See all ("+count+")",color=if(count>0)DiscoveryUiV080.Gold else DiscoveryUiV080.Muted,
-                fontSize=12.sp,fontWeight=FontWeight.SemiBold)
-            Icon(Icons.Default.ChevronRight,contentDescription=null,
-                tint=DiscoveryUiV080.Gold,modifier=Modifier.size(17.dp))
-        }
-    }
+internal fun DiscoverySectionHeadingV080(title: String, subtitle: String, count: Int, onSeeAll: () -> Unit) {
+    CineSectionHeader(
+        title = title,
+        subtitle = subtitle,
+        count = count,
+        onSeeAll = onSeeAll,
+        modifier = Modifier.padding(horizontal = DiscoveryUiV080.Gutter),
+    )
 }
+
 @Composable
-internal fun DiscoverySubpageHeaderV080(title:String,subtitle:String,onBack:()->Unit){
-    Row(Modifier.fillMaxWidth().padding(start=6.dp,end=16.dp,top=12.dp,bottom=12.dp),
-        verticalAlignment=Alignment.CenterVertically){
-        IconButton(onClick=onBack){
-            Icon(Icons.Default.ArrowBack,contentDescription="Back",tint=DiscoveryUiV080.Text)
-        }
-        Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(3.dp)){
-            Text(title,color=DiscoveryUiV080.Text,fontSize=CineEditorial.PageTitle,fontWeight=FontWeight.Bold,
-                maxLines=2,overflow=TextOverflow.Ellipsis)
-            if(subtitle.isNotBlank())Text(subtitle,color=DiscoveryUiV080.Muted,fontSize=12.sp,maxLines=2)
-        }
-    }
+internal fun DiscoverySubpageHeaderV080(title: String, subtitle: String, onBack: () -> Unit) {
+    CineScreenHeader(title = title, subtitle = subtitle, onBack = onBack)
 }
