@@ -177,6 +177,23 @@ class OttViewModelV054(application: Application) : AndroidViewModel(application)
         _state.value = _state.value.copy(window = window, error = null)
     }
 
+    /** Apply Reset as one state transition so filter refresh is not partially skipped. */
+    fun clearFilters() {
+        val current = _state.value
+        if (current.providerCode == null && current.language == null &&
+            current.contentType == OttContentType.ALL && current.evidence == OttEvidenceFilter.ALL
+        ) return
+        _state.value = current.copy(
+            providerCode = null,
+            language = null,
+            contentType = OttContentType.ALL,
+            evidence = OttEvidenceFilter.ALL,
+            loaded = false,
+            error = null,
+        )
+        refresh()
+    }
+
     fun selectProvider(providerCode: String?) {
         val normalized = providerCode?.takeIf { it.isNotBlank() }
         if (_state.value.providerCode == normalized) return
