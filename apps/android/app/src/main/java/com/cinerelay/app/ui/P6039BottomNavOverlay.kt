@@ -21,9 +21,9 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-private val NavInk = Color(0xFF12151A)
-private val NavGold = Color(0xFFE7C36B)
-private val NavMuted = Color(0xFFA7ADB7)
+private val NavInk = CineEditorial.Background
+private val NavGold = CineEditorial.Accent
+private val NavMuted = CineEditorial.Muted
 
 @Composable
 fun P6039BottomNavOverlay(
@@ -60,8 +60,8 @@ private fun RowScope.NavItem(
     NavigationBarItem(
         selected = selected,
         onClick = { onSelect(tab) },
-        icon = { Icon(icon, contentDescription = label, modifier = Modifier.size(22.dp)) },
-        label = { Text(label, maxLines = 1, fontSize = 10.sp) },
+        icon = { Icon(icon, contentDescription = label, modifier = Modifier.size(24.dp)) },
+        label = { Text(label, maxLines = 1, fontSize = 12.sp) },
         colors = navigationItemColors(),
     )
 }
@@ -71,8 +71,8 @@ private fun RowScope.OttNavItem(selected: Boolean, onOpenOtt: () -> Unit) {
     NavigationBarItem(
         selected = selected,
         onClick = onOpenOtt,
-        icon = { Icon(Icons.Default.PlayArrow, contentDescription = "OTT releases", modifier = Modifier.size(22.dp)) },
-        label = { Text("OTT", maxLines = 1, fontSize = 10.sp) },
+        icon = { Icon(Icons.Default.PlayArrow, contentDescription = "OTT releases", modifier = Modifier.size(24.dp)) },
+        label = { Text("OTT", maxLines = 1, fontSize = 12.sp) },
         colors = navigationItemColors(),
     )
 }
@@ -82,8 +82,8 @@ private fun RowScope.HistoryNavItem(selected: Boolean, onOpenHistory: () -> Unit
     NavigationBarItem(
         selected = selected,
         onClick = onOpenHistory,
-        icon = { Icon(Icons.Default.CalendarMonth, contentDescription = "On This Day", modifier = Modifier.size(22.dp)) },
-        label = { Text("Today", maxLines = 1, fontSize = 10.sp) },
+        icon = { Icon(Icons.Default.CalendarMonth, contentDescription = "On This Day", modifier = Modifier.size(24.dp)) },
+        label = { Text("Today", maxLines = 1, fontSize = 12.sp) },
         colors = navigationItemColors(),
     )
 }
@@ -97,10 +97,10 @@ private fun RowScope.ControlNavItem(onOpenControlRoom: () -> Unit) {
             Icon(
                 Icons.Default.AccountCircle,
                 contentDescription = "Open settings",
-                modifier = Modifier.size(22.dp),
+                modifier = Modifier.size(24.dp),
             )
         },
-        label = { Text("You", maxLines = 1, fontSize = 10.sp) },
+        label = { Text("You", maxLines = 1, fontSize = 12.sp) },
         colors = navigationItemColors(),
     )
 }

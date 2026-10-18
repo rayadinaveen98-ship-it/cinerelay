@@ -77,18 +77,18 @@ import kotlinx.coroutines.withContext
 import java.time.Duration
 import java.time.Instant
 
-private val HomeInk = Color(0xFF0D0F13)
-private val HomePanel = Color(0xFF15181E)
-private val HomeRaised = Color(0xFF1B1F27)
-private val HomeLine = Color(0xFF2A303A)
-private val HomeText = Color(0xFFF4F1EA)
-private val HomeMuted = Color(0xFFA7ADB7)
-private val HomeGold = Color(0xFFE7C36B)
-private val HomeGreen = Color(0xFF72D6A4)
-private val HomeAmber = Color(0xFFF0B862)
-private val HomeOrange = Color(0xFFFF9D63)
-private val HomeRed = Color(0xFFF08079)
-private val HomeBlue = Color(0xFF8CB9FF)
+private val HomeInk = CineEditorial.Background
+private val HomePanel = CineEditorial.Surface
+private val HomeRaised = CineEditorial.Raised
+private val HomeLine = CineEditorial.Outline
+private val HomeText = CineEditorial.Text
+private val HomeMuted = CineEditorial.Muted
+private val HomeGold = CineEditorial.Accent
+private val HomeGreen = CineEditorial.Confirmed
+private val HomeAmber = CineEditorial.Developing
+private val HomeOrange = CineEditorial.Developing
+private val HomeRed = CineEditorial.Error
+private val HomeBlue = CineEditorial.Info
 
 private val HomeColors = darkColorScheme(
     primary = HomeGold,
@@ -158,12 +158,12 @@ private fun HomeTopBarV049(state: CineRelayUiState, viewModel: CineRelayViewMode
                     Text(
                         "CINERELAY",
                         color = HomeGold,
-                        fontSize = 9.sp,
+                        fontSize = 12.sp,
                         fontWeight = FontWeight.Black,
                         letterSpacing = 1.7.sp,
                     )
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("Home", color = HomeText, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+                        Text("Home", color = HomeText, fontSize = 20.sp, fontWeight = FontWeight.Bold)
                         Spacer(Modifier.width(8.dp))
                         Surface(
                             color = HomeRaised,
@@ -176,7 +176,7 @@ private fun HomeTopBarV049(state: CineRelayUiState, viewModel: CineRelayViewMode
                                     NewsroomPlatform.X -> "X"
                                 },
                                 color = HomeMuted,
-                                fontSize = 9.sp,
+                                fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold,
                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                             )
@@ -202,7 +202,7 @@ private fun HomeTopBarV049(state: CineRelayUiState, viewModel: CineRelayViewMode
                     ),
                     contentPadding = PaddingValues(horizontal = 12.dp, vertical = 5.dp),
                 ) {
-                    Text("Sign in", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    Text("Sign in", fontSize = 12.sp, fontWeight = FontWeight.Bold)
                 }
                 Spacer(Modifier.width(7.dp))
             }
@@ -274,10 +274,10 @@ private fun HomeGuestStripV049(onCreateAccount: () -> Unit) {
             Spacer(Modifier.width(9.dp))
             Column(Modifier.weight(1f)) {
                 Text("Live newsroom is open", color = HomeText, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                Text("Create an account only when you want follows and alerts.", color = HomeMuted, fontSize = 10.sp)
+                Text("Create an account only when you want follows and alerts.", color = HomeMuted, fontSize = 12.sp)
             }
             TextButton(onClick = onCreateAccount) {
-                Text("Create account", fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                Text("Create account", fontSize = 12.sp, fontWeight = FontWeight.Bold)
             }
         }
     }
@@ -301,7 +301,7 @@ private fun HomeNewsroomCardV049(
 
     Card(
         colors = CardDefaults.cardColors(containerColor = HomePanel),
-        shape = RoundedCornerShape(22.dp),
+        shape = RoundedCornerShape(20.dp),
         modifier = Modifier.fillMaxWidth(),
     ) {
         Column {
@@ -315,7 +315,7 @@ private fun HomeNewsroomCardV049(
                     Text(
                         signal.source.name ?: signal.source.handle ?: "CineRelay source",
                         color = HomeText,
-                        fontSize = 13.sp,
+                        fontSize = 14.sp,
                         fontWeight = FontWeight.Bold,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
@@ -326,12 +326,12 @@ private fun HomeNewsroomCardV049(
                             signal.source.handle,
                         ).filter { it.isNotBlank() }.joinToString(" • "),
                         color = HomeMuted,
-                        fontSize = 9.sp,
+                        fontSize = 12.sp,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
                 }
-                Text(homeTimeAgoV049(signal.observedAt), color = HomeMuted, fontSize = 9.sp)
+                Text(homeTimeAgoV049(signal.observedAt), color = HomeMuted, fontSize = 12.sp)
             }
 
             signal.thumbnailUrl?.takeIf { it.isNotBlank() }?.let { thumbnail ->
@@ -370,7 +370,7 @@ private fun HomeNewsroomCardV049(
                                 modifier = Modifier.size(12.dp),
                             )
                             Spacer(Modifier.width(4.dp))
-                            Text(sourceBadge, color = HomeText, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                            Text(sourceBadge, color = HomeText, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                         }
                     }
                 }
@@ -401,7 +401,7 @@ private fun HomeNewsroomCardV049(
                     Text(
                         body,
                         color = HomeMuted,
-                        fontSize = 11.sp,
+                        fontSize = 12.sp,
                         lineHeight = 17.sp,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
@@ -410,17 +410,17 @@ private fun HomeNewsroomCardV049(
 
                 event?.let { canonical ->
                     Spacer(Modifier.height(12.dp))
-                    Surface(color = HomeGold.copy(alpha = 0.07f), shape = RoundedCornerShape(13.dp)) {
+                    Surface(color = HomeGold.copy(alpha = 0.07f), shape = RoundedCornerShape(12.dp)) {
                         Row(
                             modifier = Modifier.fillMaxWidth().padding(horizontal = 11.dp, vertical = 9.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Column(Modifier.weight(1f)) {
-                                Text("RESOLVED", color = HomeGold, fontSize = 8.sp, fontWeight = FontWeight.Black, letterSpacing = 1.sp)
+                                Text("RESOLVED", color = HomeGold, fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 1.sp)
                                 Text(
                                     canonical.entityName ?: "Canonical title",
                                     color = HomeText,
-                                    fontSize = 11.sp,
+                                    fontSize = 12.sp,
                                     fontWeight = FontWeight.Bold,
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis,
@@ -429,7 +429,7 @@ private fun HomeNewsroomCardV049(
                             Text(
                                 prettyHomeValueV049(canonical.eventType),
                                 color = HomeMuted,
-                                fontSize = 9.sp,
+                                fontSize = 12.sp,
                                 maxLines = 1,
                             )
                         }
@@ -448,7 +448,7 @@ private fun HomeNewsroomCardV049(
                         ) {
                             Icon(Icons.Default.OpenInNew, contentDescription = null, modifier = Modifier.size(14.dp))
                             Spacer(Modifier.width(4.dp))
-                            Text("Open", fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                            Text("Open", fontSize = 12.sp, fontWeight = FontWeight.Bold)
                         }
                     }
 
@@ -461,7 +461,7 @@ private fun HomeNewsroomCardV049(
                         ) {
                             Icon(Icons.Default.Info, contentDescription = null, modifier = Modifier.size(14.dp))
                             Spacer(Modifier.width(4.dp))
-                            Text("Evidence", fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                            Text("Evidence", fontSize = 12.sp, fontWeight = FontWeight.Bold)
                         }
                         IconButton(onClick = onFollow, modifier = Modifier.size(36.dp)) {
                             Icon(
@@ -493,7 +493,7 @@ private fun HomeSourceAvatarV049(source: NewsroomSource, size: Dp) {
         modifier = Modifier.size(size),
     ) {
         Box(contentAlignment = Alignment.Center) {
-            Text(initials, color = HomeGold, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+            Text(initials, color = HomeGold, fontSize = 12.sp, fontWeight = FontWeight.Bold)
             source.artworkUrl?.takeIf { it.isNotBlank() }?.let { url ->
                 AsyncImage(
                     model = url,
@@ -525,7 +525,7 @@ private fun HomeTinyPillV049(text: String, color: Color) {
         Text(
             text,
             color = color,
-            fontSize = 8.sp,
+            fontSize = 12.sp,
             fontWeight = FontWeight.Bold,
             modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp),
         )
@@ -555,8 +555,8 @@ private fun HomeEvidenceSheetV049(card: EventCard, onDismiss: () -> Unit) {
         containerColor = HomePanel,
         contentColor = HomeText,
     ) {
-        Column(Modifier.fillMaxWidth().padding(horizontal = 18.dp).padding(bottom = 30.dp)) {
-            Text("EVIDENCE", color = HomeGold, fontSize = 9.sp, fontWeight = FontWeight.Black, letterSpacing = 1.2.sp)
+        Column(Modifier.fillMaxWidth().padding(horizontal = CineEditorial.Gutter).padding(bottom = 30.dp)) {
+            Text("EVIDENCE", color = HomeGold, fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 1.2.sp)
             Spacer(Modifier.height(4.dp))
             Text(card.entityName ?: "CineRelay event", color = HomeText, fontSize = 20.sp, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(5.dp))
@@ -585,7 +585,7 @@ private fun HomeEvidenceBundleV049(bundle: EvidenceBundle) {
 
     Spacer(Modifier.height(12.dp))
     if (bundle.items.isEmpty()) {
-        Text("No linked evidence records yet.", color = HomeMuted, fontSize = 11.sp)
+        Text("No linked evidence records yet.", color = HomeMuted, fontSize = 12.sp)
     } else {
         bundle.items.forEachIndexed { index, item ->
             HomeEvidenceItemV049(index + 1, item) { url ->
@@ -598,12 +598,12 @@ private fun HomeEvidenceBundleV049(bundle: EvidenceBundle) {
 
 @Composable
 private fun HomeEvidenceItemV049(index: Int, item: EvidenceDetail, onOpen: (String) -> Unit) {
-    Surface(color = HomeRaised, shape = RoundedCornerShape(15.dp), modifier = Modifier.fillMaxWidth()) {
+    Surface(color = HomeRaised, shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth()) {
         Column(Modifier.padding(13.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Surface(color = HomeGold.copy(alpha = 0.12f), shape = CircleShape, modifier = Modifier.size(26.dp)) {
                     Box(contentAlignment = Alignment.Center) {
-                        Text(index.toString(), color = HomeGold, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                        Text(index.toString(), color = HomeGold, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                     }
                 }
                 Spacer(Modifier.width(8.dp))
@@ -612,7 +612,7 @@ private fun HomeEvidenceItemV049(index: Int, item: EvidenceDetail, onOpen: (Stri
                     Text(
                         listOfNotNull(item.platform, item.handle).joinToString(" • "),
                         color = HomeMuted,
-                        fontSize = 9.sp,
+                        fontSize = 12.sp,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
@@ -626,7 +626,7 @@ private fun HomeEvidenceItemV049(index: Int, item: EvidenceDetail, onOpen: (Stri
             }
             item.title?.takeIf { it.isNotBlank() }?.let { title ->
                 Spacer(Modifier.height(8.dp))
-                Text(title, color = HomeText, fontSize = 11.sp, lineHeight = 16.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                Text(title, color = HomeText, fontSize = 12.sp, lineHeight = 16.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
             }
             item.canonicalUrl?.takeIf { it.isNotBlank() }?.let { url ->
                 TextButton(
@@ -635,7 +635,7 @@ private fun HomeEvidenceItemV049(index: Int, item: EvidenceDetail, onOpen: (Stri
                 ) {
                     Icon(Icons.Default.OpenInNew, contentDescription = null, modifier = Modifier.size(13.dp))
                     Spacer(Modifier.width(4.dp))
-                    Text("Open source", fontSize = 9.sp)
+                    Text("Open source", fontSize = 12.sp)
                 }
             }
         }
@@ -647,7 +647,7 @@ private fun HomeInlineMessageV049(message: String, color: Color) {
     Text(
         message,
         color = color,
-        fontSize = 10.sp,
+        fontSize = 12.sp,
         modifier = Modifier
             .fillMaxWidth()
             .background(color.copy(alpha = 0.07f))

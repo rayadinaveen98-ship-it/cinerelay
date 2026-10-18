@@ -55,14 +55,14 @@ import kotlinx.coroutines.delay
 import java.time.Duration
 import java.time.Instant
 
-private val Home55Ink = Color(0xFF0C0E12)
-private val Home55Panel = Color(0xFF171A20)
-private val Home55Raised = Color(0xFF20242C)
-private val Home55Text = Color(0xFFF5F2EA)
-private val Home55Muted = Color(0xFFA8ADB7)
-private val Home55Gold = Color(0xFFE8C56D)
-private val Home55Green = Color(0xFF73D6A5)
-private val Home55Amber = Color(0xFFF0B862)
+private val Home55Ink = CineEditorial.Background
+private val Home55Panel = CineEditorial.Surface
+private val Home55Raised = CineEditorial.Raised
+private val Home55Text = CineEditorial.Text
+private val Home55Muted = CineEditorial.Muted
+private val Home55Gold = CineEditorial.Accent
+private val Home55Green = CineEditorial.Confirmed
+private val Home55Amber = CineEditorial.Developing
 
 private data class HomeRailV055(
     val title: String,
@@ -154,17 +154,17 @@ fun CineRelayHomeV055(
                                     state.error,
                                     color = Home55Amber,
                                     fontSize = 12.sp,
-                                    modifier = Modifier.padding(horizontal = 20.dp),
+                                    modifier = Modifier.padding(horizontal = CineEditorial.Gutter),
                                 )
                             }
                         }
 
                         if (rails.isEmpty() && !state.loading) {
                             item {
-                                Column(Modifier.fillMaxWidth().padding(horizontal = 22.dp, vertical = 30.dp)) {
+                                Column(Modifier.fillMaxWidth().padding(horizontal = CineEditorial.Gutter, vertical = 30.dp)) {
                                     Text("Nothing new right now", color = Home55Text, fontSize = 20.sp, fontWeight = FontWeight.Bold)
                                     Spacer(Modifier.height(6.dp))
-                                    Text("CineRelay is watching your favorite channels and trusted movie sources. New updates will appear here automatically.", color = Home55Muted, fontSize = 13.sp, lineHeight = 19.sp)
+                                    Text("CineRelay is watching your favorite channels and trusted movie sources. New updates will appear here automatically.", color = Home55Muted, fontSize = 14.sp, lineHeight = 19.sp)
                                 }
                             }
                         }
@@ -190,15 +190,15 @@ private fun HomeHeaderV055(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(
-            modifier = Modifier.size(45.dp).clip(RoundedCornerShape(14.dp)).background(Home55Gold.copy(alpha = 0.10f)),
+            modifier = Modifier.size(45.dp).clip(RoundedCornerShape(12.dp)).background(Home55Gold.copy(alpha = 0.10f)),
             contentAlignment = Alignment.Center,
         ) {
-            Text("C", color = Home55Gold, fontSize = 25.sp, fontWeight = FontWeight.Black)
+            Text("C", color = Home55Gold, fontSize = 26.sp, fontWeight = FontWeight.Black)
         }
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
-            Text("CINERELAY", color = Home55Gold, fontSize = 10.sp, fontWeight = FontWeight.Black, letterSpacing = 1.7.sp)
-            Text("For You", color = Home55Text, fontSize = 25.sp, fontWeight = FontWeight.Bold)
+            Text("CINERELAY", color = Home55Gold, fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 1.7.sp)
+            Text("For You", color = Home55Text, fontSize = 26.sp, fontWeight = FontWeight.Bold)
         }
         IconButton(onClick = onSearch) {
             Icon(Icons.Default.Search, contentDescription = "Search CineRelay", tint = Home55Text)
@@ -231,7 +231,7 @@ private fun HomeHeroCarouselV055(
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp)
                 .aspectRatio(1.55f)
-                .clip(RoundedCornerShape(26.dp))
+                .clip(RoundedCornerShape(20.dp))
                 .background(Home55Raised)
                 .clickable { onOpenUpdate(item) },
         ) {
@@ -256,15 +256,15 @@ private fun HomeHeroCarouselV055(
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Surface(color = Home55Gold.copy(alpha = 0.92f), shape = RoundedCornerShape(50)) {
-                        Text("FROM YOUR FAVORITES", color = Color(0xFF241C09), fontSize = 9.sp, fontWeight = FontWeight.Black, modifier = Modifier.padding(horizontal = 9.dp, vertical = 5.dp))
+                        Text("FROM YOUR FAVORITES", color = Color(0xFF241C09), fontSize = 12.sp, fontWeight = FontWeight.Black, modifier = Modifier.padding(horizontal = 9.dp, vertical = 5.dp))
                     }
                     Spacer(Modifier.width(8.dp))
-                    Text(home55TimeAgo(item.observedAt), color = Home55Text.copy(alpha = 0.78f), fontSize = 10.sp)
+                    Text(home55TimeAgo(item.observedAt), color = Home55Text.copy(alpha = 0.78f), fontSize = 12.sp)
                 }
                 Text(
                     item.title,
                     color = Home55Text,
-                    fontSize = 22.sp,
+                    fontSize = 20.sp,
                     lineHeight = 26.sp,
                     fontWeight = FontWeight.Bold,
                     maxLines = 3,
@@ -301,16 +301,16 @@ private fun HomeHeroCarouselV055(
 private fun HomeHeroEmptyV055(favoriteSources: List<PersonalizationSource>) {
     Surface(
         color = Home55Panel,
-        shape = RoundedCornerShape(24.dp),
+        shape = RoundedCornerShape(20.dp),
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
     ) {
         Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
-            Text("Your favorites are quiet right now", color = Home55Text, fontSize = 19.sp, fontWeight = FontWeight.Bold)
+            Text("Your favorites are quiet right now", color = Home55Text, fontSize = 20.sp, fontWeight = FontWeight.Bold)
             Text(
                 if (favoriteSources.isEmpty()) "Choose favorite channels to personalize this space."
                 else "The next fresh upload from your favorite channels will appear here first.",
                 color = Home55Muted,
-                fontSize = 13.sp,
+                fontSize = 14.sp,
                 lineHeight = 19.sp,
             )
         }
@@ -324,12 +324,12 @@ private fun HomeOnThisDayV057(
     onOpen: (OnThisDayMovie) -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        Column(Modifier.padding(horizontal = 20.dp)) {
-            Text("On This Day", color = Home55Text, fontSize = 19.sp, fontWeight = FontWeight.Bold)
-            Text("Movies that opened on this date in earlier years", color = Home55Muted, fontSize = 11.sp)
+        Column(Modifier.padding(horizontal = CineEditorial.Gutter)) {
+            Text("On This Day", color = Home55Text, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+            Text("Movies that opened on this date in earlier years", color = Home55Muted, fontSize = 12.sp)
         }
         if (loading && movies.isEmpty()) {
-            Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp), verticalAlignment = Alignment.CenterVertically) {
+            Row(Modifier.fillMaxWidth().padding(horizontal = CineEditorial.Gutter), verticalAlignment = Alignment.CenterVertically) {
                 CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp, color = Home55Gold)
                 Spacer(Modifier.width(10.dp))
                 Text("Looking through cinema history…", color = Home55Muted, fontSize = 12.sp)
@@ -382,7 +382,7 @@ private fun HomeOnThisDayCardV057(movie: OnThisDayMovie, onClick: () -> Unit) {
                 Text(
                     movie.releaseYear.toString(),
                     color = Color(0xFF241C09),
-                    fontSize = 10.sp,
+                    fontSize = 12.sp,
                     fontWeight = FontWeight.Black,
                     modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                 )
@@ -392,15 +392,15 @@ private fun HomeOnThisDayCardV057(movie: OnThisDayMovie, onClick: () -> Unit) {
                     modifier = Modifier.align(Alignment.Center).padding(14.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
-                    Text(movie.releaseYear.toString(), color = Home55Gold, fontSize = 30.sp, fontWeight = FontWeight.Black)
-                    movie.language?.let { Text(it, color = Home55Muted, fontSize = 10.sp) }
+                    Text(movie.releaseYear.toString(), color = Home55Gold, fontSize = 32.sp, fontWeight = FontWeight.Black)
+                    movie.language?.let { Text(it, color = Home55Muted, fontSize = 12.sp) }
                 }
             }
         }
         Text(
             movie.title,
             color = Home55Text,
-            fontSize = 13.sp,
+            fontSize = 14.sp,
             fontWeight = FontWeight.SemiBold,
             lineHeight = 17.sp,
             maxLines = 2,
@@ -409,7 +409,7 @@ private fun HomeOnThisDayCardV057(movie: OnThisDayMovie, onClick: () -> Unit) {
         Text(
             if (movie.yearsAgo == 1) "1 year ago today" else "${movie.yearsAgo} years ago today",
             color = Home55Muted,
-            fontSize = 10.sp,
+            fontSize = 12.sp,
             maxLines = 1,
         )
     }
@@ -424,9 +424,9 @@ private fun HomeRailSectionV055(
         Text(
             rail.title,
             color = Home55Text,
-            fontSize = 19.sp,
+            fontSize = 20.sp,
             fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(horizontal = 20.dp),
+            modifier = Modifier.padding(horizontal = CineEditorial.Gutter),
         )
         LazyRow(
             contentPadding = PaddingValues(horizontal = 16.dp),
@@ -449,7 +449,7 @@ private fun HomeRailCardV055(
         verticalArrangement = Arrangement.spacedBy(7.dp),
     ) {
         Box(
-            modifier = Modifier.fillMaxWidth().aspectRatio(16f / 9f).clip(RoundedCornerShape(17.dp)).background(Home55Raised),
+            modifier = Modifier.fillMaxWidth().aspectRatio(16f / 9f).clip(RoundedCornerShape(16.dp)).background(Home55Raised),
         ) {
             if (!item.thumbnailUrl.isNullOrBlank()) {
                 AsyncImage(
@@ -463,7 +463,7 @@ private fun HomeRailCardV055(
                     Text(
                         (item.source.name ?: "CineRelay").take(1).uppercase(),
                         color = Home55Gold,
-                        fontSize = 34.sp,
+                        fontSize = 32.sp,
                         fontWeight = FontWeight.Black,
                     )
                 }
@@ -476,7 +476,7 @@ private fun HomeRailCardV055(
                 Text(
                     home55StateLabel(item.state),
                     color = if (item.state == "VERIFIED") Home55Green else Home55Gold,
-                    fontSize = 9.sp,
+                    fontSize = 12.sp,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                 )
@@ -485,7 +485,7 @@ private fun HomeRailCardV055(
         Text(
             item.title,
             color = Home55Text,
-            fontSize = 13.sp,
+            fontSize = 14.sp,
             fontWeight = FontWeight.SemiBold,
             lineHeight = 17.sp,
             maxLines = 2,
@@ -495,13 +495,13 @@ private fun HomeRailCardV055(
             Text(
                 item.source.name ?: item.source.handle ?: "CineRelay source",
                 color = Home55Muted,
-                fontSize = 10.sp,
+                fontSize = 12.sp,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f),
             )
             Spacer(Modifier.width(7.dp))
-            Text(home55TimeAgo(item.observedAt), color = Home55Muted, fontSize = 9.sp)
+            Text(home55TimeAgo(item.observedAt), color = Home55Muted, fontSize = 12.sp)
         }
     }
 }

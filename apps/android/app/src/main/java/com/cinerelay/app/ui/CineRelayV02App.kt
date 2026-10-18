@@ -94,19 +94,19 @@ import kotlinx.coroutines.withContext
 import java.time.Duration
 import java.time.Instant
 
-private val V2Ink = Color(0xFF0D0F13)
-private val V2Panel = Color(0xFF15181E)
-private val V2PanelRaised = Color(0xFF1B1F27)
-private val V2Line = Color(0xFF2A303A)
-private val V2Text = Color(0xFFF4F1EA)
-private val V2Muted = Color(0xFFA7ADB7)
-private val V2Gold = Color(0xFFE7C36B)
-private val V2GoldDeep = Color(0xFF8F6B25)
-private val V2Green = Color(0xFF72D6A4)
-private val V2Amber = Color(0xFFF0B862)
-private val V2Orange = Color(0xFFFF9D63)
-private val V2Red = Color(0xFFF08079)
-private val V2Blue = Color(0xFF8CB9FF)
+private val V2Ink = CineEditorial.Background
+private val V2Panel = CineEditorial.Surface
+private val V2PanelRaised = CineEditorial.Raised
+private val V2Line = CineEditorial.Outline
+private val V2Text = CineEditorial.Text
+private val V2Muted = CineEditorial.Muted
+private val V2Gold = CineEditorial.Accent
+private val V2GoldDeep = CineEditorial.Accent
+private val V2Green = CineEditorial.Confirmed
+private val V2Amber = CineEditorial.Developing
+private val V2Orange = CineEditorial.Developing
+private val V2Red = CineEditorial.Error
+private val V2Blue = CineEditorial.Info
 
 private val V2Colors = darkColorScheme(
     primary = V2Gold,
@@ -176,8 +176,8 @@ private fun PremiumTopBar(state: CineRelayUiState, viewModel: CineRelayViewModel
                 BrandMarkV2(38.dp)
                 Spacer(Modifier.width(12.dp))
                 Column {
-                    Text("CINERELAY", color = V2Gold, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
-                    Text(tabTitleV2(state.tab), color = V2Text, fontSize = 21.sp, fontWeight = FontWeight.Bold)
+                    Text("CINERELAY", color = V2Gold, fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
+                    Text(tabTitleV2(state.tab), color = V2Text, fontSize = 20.sp, fontWeight = FontWeight.Bold)
                 }
             }
         },
@@ -227,7 +227,7 @@ private fun androidx.compose.foundation.layout.RowScope.NavV2(
         selected = selected == tab,
         onClick = { onSelect(tab) },
         icon = { Icon(icon, contentDescription = label, modifier = Modifier.size(22.dp)) },
-        label = { Text(label, maxLines = 1, fontSize = 10.sp) },
+        label = { Text(label, maxLines = 1, fontSize = 12.sp) },
         colors = NavigationBarItemDefaults.colors(
             selectedIconColor = V2Gold,
             selectedTextColor = V2Gold,
@@ -303,10 +303,10 @@ private fun GuestStripV2(viewModel: CineRelayViewModel) {
             Spacer(Modifier.width(9.dp))
             Column(Modifier.weight(1f)) {
                 Text("Guest preview", color = V2Text, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                Text("Live + Radar are open. Sign in only for follows and alerts.", color = V2Muted, fontSize = 11.sp)
+                Text("Live + Radar are open. Sign in only for follows and alerts.", color = V2Muted, fontSize = 12.sp)
             }
             TextButton(onClick = { viewModel.openAuth(AuthMode.CREATE_ACCOUNT) }) {
-                Text("Create account", fontSize = 11.sp)
+                Text("Create account", fontSize = 12.sp)
             }
         }
     }
@@ -323,7 +323,7 @@ private fun NewsroomSignalCardV2(
     val event = signal.canonicalEvent
     Card(
         colors = CardDefaults.cardColors(containerColor = V2Panel),
-        shape = RoundedCornerShape(22.dp),
+        shape = RoundedCornerShape(20.dp),
         modifier = Modifier.fillMaxWidth(),
     ) {
         Column(Modifier.padding(16.dp)) {
@@ -342,12 +342,12 @@ private fun NewsroomSignalCardV2(
                     Text(
                         listOfNotNull(signal.source.platform, signal.source.handle).joinToString(" • "),
                         color = V2Muted,
-                        fontSize = 10.sp,
+                        fontSize = 12.sp,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
                 }
-                Text(timeAgoV2(signal.observedAt), color = V2Muted, fontSize = 10.sp)
+                Text(timeAgoV2(signal.observedAt), color = V2Muted, fontSize = 12.sp)
             }
 
             Spacer(Modifier.height(14.dp))
@@ -360,15 +360,15 @@ private fun NewsroomSignalCardV2(
 
             event?.let { canonical ->
                 Spacer(Modifier.height(12.dp))
-                Surface(color = V2Gold.copy(alpha = 0.07f), shape = RoundedCornerShape(13.dp)) {
+                Surface(color = V2Gold.copy(alpha = 0.07f), shape = RoundedCornerShape(12.dp)) {
                     Column(Modifier.fillMaxWidth().padding(horizontal = 11.dp, vertical = 9.dp)) {
-                        Text("CANONICAL ENRICHMENT", color = V2Gold, fontSize = 9.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.8.sp)
+                        Text("CANONICAL ENRICHMENT", color = V2Gold, fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.8.sp)
                         Spacer(Modifier.height(3.dp))
-                        Text(canonical.entityName ?: "Resolved title", color = V2Text, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        Text(canonical.entityName ?: "Resolved title", color = V2Text, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                         Text(
                             "${prettyV2(canonical.eventType)} • ${prettyV2(canonical.verificationState)} • ${canonical.evidenceCount} linked source${if (canonical.evidenceCount == 1) "" else "s"}",
                             color = V2Muted,
-                            fontSize = 10.sp,
+                            fontSize = 12.sp,
                         )
                     }
                 }
@@ -379,14 +379,14 @@ private fun NewsroomSignalCardV2(
             Spacer(Modifier.height(10.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
-                    Text("Source observed ${timeAgoV2(signal.sourceObservedAt).ifBlank { "—" }}", color = V2Muted, fontSize = 10.sp)
-                    Text("CineRelay ingested ${timeAgoV2(signal.ingestedAt).ifBlank { "—" }}", color = V2Muted, fontSize = 10.sp)
+                    Text("Source observed ${timeAgoV2(signal.sourceObservedAt).ifBlank { "—" }}", color = V2Muted, fontSize = 12.sp)
+                    Text("CineRelay ingested ${timeAgoV2(signal.ingestedAt).ifBlank { "—" }}", color = V2Muted, fontSize = 12.sp)
                 }
                 if (event != null) {
                     TextButton(onClick = onEvidence, contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)) {
                         Icon(Icons.Default.Info, contentDescription = null, modifier = Modifier.size(15.dp))
                         Spacer(Modifier.width(4.dp))
-                        Text("Evidence", fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                        Text("Evidence", fontSize = 12.sp, fontWeight = FontWeight.Bold)
                     }
                     IconButton(onClick = onFollow, modifier = Modifier.size(38.dp)) {
                         Icon(
@@ -405,7 +405,7 @@ private fun NewsroomSignalCardV2(
                 ) {
                     Icon(Icons.Default.OpenInNew, contentDescription = null, modifier = Modifier.size(14.dp))
                     Spacer(Modifier.width(5.dp))
-                    Text("Open original source", fontSize = 10.sp)
+                    Text("Open original source", fontSize = 12.sp)
                 }
             }
         }
@@ -428,7 +428,7 @@ private fun NewsroomStateV2(value: String) {
             Text(
                 if (value == "CONFLICT_RUMOR") "Conflict / Rumor" else prettyV2(value),
                 color = color,
-                fontSize = 9.sp,
+                fontSize = 12.sp,
                 fontWeight = FontWeight.Bold,
             )
         }
@@ -445,7 +445,7 @@ private fun SignalCardV2(
     val context = LocalContext.current
     Card(
         colors = CardDefaults.cardColors(containerColor = V2Panel),
-        shape = RoundedCornerShape(22.dp),
+        shape = RoundedCornerShape(20.dp),
         modifier = Modifier.fillMaxWidth(),
     ) {
         Column(Modifier.padding(16.dp)) {
@@ -456,7 +456,7 @@ private fun SignalCardV2(
                     Text(
                         card.entityName ?: "Unresolved title",
                         color = V2Gold,
-                        fontSize = 13.sp,
+                        fontSize = 14.sp,
                         fontWeight = FontWeight.Bold,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
@@ -465,27 +465,27 @@ private fun SignalCardV2(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         VerificationV2(card.verificationState)
                         Spacer(Modifier.width(7.dp))
-                        Text(prettyV2(card.eventType), color = V2Muted, fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(prettyV2(card.eventType), color = V2Muted, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
                 }
-                Text(timeAgoV2(card.detectedAt), color = V2Muted, fontSize = 10.sp)
+                Text(timeAgoV2(card.detectedAt), color = V2Muted, fontSize = 12.sp)
             }
 
             Spacer(Modifier.height(15.dp))
-            Text(card.headline, color = V2Text, fontSize = 19.sp, fontWeight = FontWeight.SemiBold, lineHeight = 25.sp)
+            Text(card.headline, color = V2Text, fontSize = 20.sp, fontWeight = FontWeight.SemiBold, lineHeight = 25.sp)
 
             if (!card.summary.isNullOrBlank()) {
                 Spacer(Modifier.height(8.dp))
-                Text(card.summary, color = V2Muted, fontSize = 13.sp, lineHeight = 19.sp, maxLines = 3, overflow = TextOverflow.Ellipsis)
+                Text(card.summary, color = V2Muted, fontSize = 14.sp, lineHeight = 19.sp, maxLines = 3, overflow = TextOverflow.Ellipsis)
             }
 
             card.radar?.let { radar ->
                 Spacer(Modifier.height(12.dp))
                 Surface(color = V2Gold.copy(alpha = 0.08f), shape = RoundedCornerShape(12.dp)) {
                     Row(Modifier.fillMaxWidth().padding(horizontal = 11.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Text("RADAR ${radar.score}", color = V2Gold, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                        Text("RADAR ${radar.score}", color = V2Gold, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                         Spacer(Modifier.width(8.dp))
-                        Text(prettyV2(radar.label), color = V2Muted, fontSize = 10.sp)
+                        Text(prettyV2(radar.label), color = V2Muted, fontSize = 12.sp)
                     }
                 }
             }
@@ -505,7 +505,7 @@ private fun SignalCardV2(
                     Text(
                         card.evidence?.sourceName ?: "Open proof trail",
                         color = V2Muted,
-                        fontSize = 10.sp,
+                        fontSize = 12.sp,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
@@ -513,7 +513,7 @@ private fun SignalCardV2(
                 TextButton(onClick = onEvidence, contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)) {
                     Icon(Icons.Default.Info, contentDescription = null, modifier = Modifier.size(16.dp))
                     Spacer(Modifier.width(5.dp))
-                    Text("Evidence", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    Text("Evidence", fontSize = 12.sp, fontWeight = FontWeight.Bold)
                 }
                 IconButton(onClick = onFollow, modifier = Modifier.size(40.dp)) {
                     Icon(
@@ -532,7 +532,7 @@ private fun SignalCardV2(
                 ) {
                     Icon(Icons.Default.OpenInNew, contentDescription = null, modifier = Modifier.size(14.dp))
                     Spacer(Modifier.width(5.dp))
-                    Text("Open strongest source", fontSize = 10.sp)
+                    Text("Open strongest source", fontSize = 12.sp)
                 }
             }
         }
@@ -552,7 +552,7 @@ private fun EntityTileV2(card: EventCard) {
             .size(width = 54.dp, height = 62.dp)
             .background(
                 Brush.linearGradient(listOf(V2GoldDeep.copy(alpha = 0.9f), Color(0xFF2B303A))),
-                RoundedCornerShape(14.dp),
+                RoundedCornerShape(12.dp),
             ),
         contentAlignment = Alignment.Center,
     ) {
@@ -577,7 +577,7 @@ private fun VerificationV2(value: String) {
         Row(Modifier.padding(horizontal = 7.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
             Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(12.dp))
             Spacer(Modifier.width(4.dp))
-            Text(prettyV2(value), color = color, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+            Text(prettyV2(value), color = color, fontSize = 12.sp, fontWeight = FontWeight.Bold)
         }
     }
 }
@@ -614,23 +614,23 @@ private fun EvidenceSheetV2(card: EventCard, onDismiss: () -> Unit) {
         containerColor = V2Panel,
         contentColor = V2Text,
     ) {
-        Column(Modifier.fillMaxWidth().padding(horizontal = 18.dp).padding(bottom = 28.dp)) {
+        Column(Modifier.fillMaxWidth().padding(horizontal = CineEditorial.Gutter).padding(bottom = 28.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
-                    Text("EVIDENCE TRAIL", color = V2Gold, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.2.sp)
+                    Text("EVIDENCE TRAIL", color = V2Gold, fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.2.sp)
                     Text(card.entityName ?: "CineRelay event", fontSize = 20.sp, fontWeight = FontWeight.Bold)
                 }
                 IconButton(onClick = onDismiss) { Icon(Icons.Default.Close, contentDescription = "Close") }
             }
             Spacer(Modifier.height(8.dp))
-            Text(card.headline, color = V2Muted, fontSize = 13.sp, lineHeight = 19.sp)
+            Text(card.headline, color = V2Muted, fontSize = 14.sp, lineHeight = 19.sp)
             Spacer(Modifier.height(14.dp))
 
             when {
                 loading -> Row(Modifier.fillMaxWidth().padding(vertical = 24.dp), horizontalArrangement = Arrangement.Center) {
                     CircularProgressIndicator(modifier = Modifier.size(26.dp), strokeWidth = 2.dp)
                 }
-                error != null -> Text(error.orEmpty(), color = V2Red, fontSize = 13.sp)
+                error != null -> Text(error.orEmpty(), color = V2Red, fontSize = 14.sp)
                 bundle != null -> EvidenceBundleContentV2(bundle!!)
             }
         }
@@ -652,7 +652,7 @@ private fun EvidenceBundleContentV2(bundle: EvidenceBundle) {
             Text(
                 "Why only one? CineRelay currently has one canonical evidence record linked to this event. Counts are never inflated; additional sources appear only after they are ingested and linked to the same event.",
                 color = V2Muted,
-                fontSize = 11.sp,
+                fontSize = 12.sp,
                 lineHeight = 17.sp,
                 modifier = Modifier.padding(12.dp),
             )
@@ -675,7 +675,7 @@ private fun EvidenceBundleContentV2(bundle: EvidenceBundle) {
 @Composable
 private fun MetricPillV2(text: String, color: Color) {
     Surface(color = color.copy(alpha = 0.1f), shape = RoundedCornerShape(50)) {
-        Text(text, color = color, fontSize = 10.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 9.dp, vertical = 5.dp))
+        Text(text, color = color, fontSize = 12.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 9.dp, vertical = 5.dp))
     }
 }
 
@@ -687,14 +687,14 @@ private fun EvidenceItemV2(index: Int, item: EvidenceDetail, onOpen: (String) ->
                 Box(
                     Modifier.size(26.dp).background(V2Gold.copy(alpha = 0.14f), CircleShape),
                     contentAlignment = Alignment.Center,
-                ) { Text(index.toString(), color = V2Gold, fontSize = 10.sp, fontWeight = FontWeight.Bold) }
+                ) { Text(index.toString(), color = V2Gold, fontSize = 12.sp, fontWeight = FontWeight.Bold) }
                 Spacer(Modifier.width(9.dp))
                 Column(Modifier.weight(1f)) {
-                    Text(item.sourceName ?: "Unknown source", color = V2Text, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                    Text(item.sourceName ?: "Unknown source", color = V2Text, fontSize = 14.sp, fontWeight = FontWeight.Bold)
                     Text(
                         listOfNotNull(item.platform, item.handle).joinToString(" • ").ifBlank { prettyV2(item.sourceRole ?: "source") },
                         color = V2Muted,
-                        fontSize = 10.sp,
+                        fontSize = 12.sp,
                     )
                 }
                 MetricPillV2(prettyV2(item.role), roleColorV2(item.role))
@@ -706,13 +706,13 @@ private fun EvidenceItemV2(index: Int, item: EvidenceDetail, onOpen: (String) ->
             Spacer(Modifier.height(9.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
                 val tier = item.authorityTier?.let { "Tier $it" } ?: "Authority n/a"
-                Text("$tier • weight ${item.weight}", color = V2Muted, fontSize = 10.sp)
+                Text("$tier • weight ${item.weight}", color = V2Muted, fontSize = 12.sp)
                 Spacer(Modifier.weight(1f))
                 item.canonicalUrl?.takeIf { it.isNotBlank() }?.let { url ->
                     TextButton(onClick = { onOpen(url) }, contentPadding = PaddingValues(horizontal = 8.dp, vertical = 3.dp)) {
                         Icon(Icons.Default.OpenInNew, contentDescription = null, modifier = Modifier.size(13.dp))
                         Spacer(Modifier.width(4.dp))
-                        Text("Open source", fontSize = 10.sp)
+                        Text("Open source", fontSize = 12.sp)
                     }
                 }
             }
@@ -736,13 +736,13 @@ private fun LockedV2(tab: AppTab, viewModel: CineRelayViewModel) {
     ) {
         BrandMarkV2(52.dp)
         Spacer(Modifier.height(18.dp))
-        Text(if (tab == AppTab.ALERTS) "Your alerts, your device" else "Build your own signal feed", fontSize = 21.sp, fontWeight = FontWeight.Bold)
+        Text(if (tab == AppTab.ALERTS) "Your alerts, your device" else "Build your own signal feed", fontSize = 20.sp, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(8.dp))
         Text(
             if (tab == AppTab.ALERTS) "Sign in to connect a device, receive alerts and inspect delivery history."
             else "Sign in to follow films and series and collect their updates here.",
             color = V2Muted,
-            fontSize = 13.sp,
+            fontSize = 14.sp,
             lineHeight = 19.sp,
         )
         Spacer(Modifier.height(20.dp))
@@ -767,13 +767,13 @@ private fun AuthSheetV2(
     var email by remember(mode) { mutableStateOf("") }
     var password by remember(mode) { mutableStateOf("") }
     ModalBottomSheet(onDismissRequest = onDismiss, containerColor = V2Panel, contentColor = V2Text) {
-        Column(Modifier.fillMaxWidth().padding(horizontal = 22.dp).padding(bottom = 28.dp)) {
+        Column(Modifier.fillMaxWidth().padding(horizontal = CineEditorial.Gutter).padding(bottom = 28.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 BrandMarkV2(42.dp)
                 Spacer(Modifier.width(12.dp))
                 Column {
-                    Text(if (mode == AuthMode.CREATE_ACCOUNT) "Create your account" else "Welcome back", fontSize = 21.sp, fontWeight = FontWeight.Bold)
-                    Text("Following and alerts stay tied to you.", color = V2Muted, fontSize = 11.sp)
+                    Text(if (mode == AuthMode.CREATE_ACCOUNT) "Create your account" else "Welcome back", fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                    Text("Following and alerts stay tied to you.", color = V2Muted, fontSize = 12.sp)
                 }
             }
             Spacer(Modifier.height(20.dp))
@@ -820,7 +820,7 @@ private fun AlertsV2(state: CineRelayUiState, viewModel: CineRelayViewModel) {
         item {
             Surface(color = V2PanelRaised, shape = RoundedCornerShape(18.dp)) {
                 Column(Modifier.padding(16.dp)) {
-                    Text("REAL-DEVICE ALERTS", color = V2Gold, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+                    Text("REAL-DEVICE ALERTS", color = V2Gold, fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
                     Spacer(Modifier.height(5.dp))
                     Text(
                         when {
@@ -828,7 +828,7 @@ private fun AlertsV2(state: CineRelayUiState, viewModel: CineRelayViewModel) {
                             state.pushState.registered -> "This device is registered"
                             else -> "Ready to register this phone"
                         },
-                        fontSize = 17.sp,
+                        fontSize = 18.sp,
                         fontWeight = FontWeight.Bold,
                     )
                     Spacer(Modifier.height(7.dp))
@@ -854,7 +854,7 @@ private fun AlertCardV2(alert: AlertItem) {
     Card(colors = CardDefaults.cardColors(containerColor = V2Panel), shape = RoundedCornerShape(18.dp)) {
         Column(Modifier.padding(15.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(alert.deliveryKind, color = V2Gold, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                Text(alert.deliveryKind, color = V2Gold, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.width(8.dp))
                 MetricPillV2(prettyV2(alert.status), when (alert.status) {
                     "SENT" -> V2Green
@@ -863,18 +863,18 @@ private fun AlertCardV2(alert: AlertItem) {
                     else -> V2Blue
                 })
                 Spacer(Modifier.weight(1f))
-                Text(timeAgoV2(alert.createdAt), color = V2Muted, fontSize = 10.sp)
+                Text(timeAgoV2(alert.createdAt), color = V2Muted, fontSize = 12.sp)
             }
             Spacer(Modifier.height(9.dp))
-            Text(alert.event?.entityName ?: "CineRelay", color = V2Muted, fontSize = 11.sp)
-            Text(alert.event?.headline ?: "Alert event unavailable", color = V2Text, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+            Text(alert.event?.entityName ?: "CineRelay", color = V2Muted, fontSize = 12.sp)
+            Text(alert.event?.headline ?: "Alert event unavailable", color = V2Text, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
         }
     }
 }
 
 @Composable
 private fun InlineV2(message: String, color: Color) {
-    Text(message, color = color, fontSize = 11.sp, modifier = Modifier.fillMaxWidth().background(color.copy(alpha = 0.07f)).padding(horizontal = 16.dp, vertical = 8.dp))
+    Text(message, color = color, fontSize = 12.sp, modifier = Modifier.fillMaxWidth().background(color.copy(alpha = 0.07f)).padding(horizontal = 16.dp, vertical = 8.dp))
 }
 
 @Composable
@@ -882,7 +882,7 @@ private fun EmptyV2(title: String, body: String) {
     Column(Modifier.fillMaxWidth().padding(34.dp), horizontalAlignment = Alignment.CenterHorizontally) {
         BrandMarkV2(38.dp)
         Spacer(Modifier.height(13.dp))
-        Text(title, color = V2Text, fontSize = 17.sp, fontWeight = FontWeight.Bold)
+        Text(title, color = V2Text, fontSize = 18.sp, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(6.dp))
         Text(body, color = V2Muted, fontSize = 12.sp, lineHeight = 18.sp)
     }
