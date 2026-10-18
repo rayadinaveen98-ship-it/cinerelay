@@ -98,20 +98,11 @@ fun UniversalSearchV056(
     ) {
         Surface(modifier = modifier.fillMaxSize(), color = SearchInk56) {
             Column(Modifier.fillMaxSize()) {
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(start = 8.dp, end = 18.dp, top = 18.dp, bottom = 10.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = SearchText56)
-                    }
-                    Spacer(Modifier.width(4.dp))
-                    Column(Modifier.weight(1f)) {
-                        Text("CINERELAY", color = SearchGold56, fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 1.6.sp)
-                        Text(if (state.hub == null) "Search" else state.hub.entity.name, color = SearchText56, fontSize = 26.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        if (state.hub == null) Text("Movies, updates, channels & streaming", color = SearchMuted56, fontSize = 12.sp)
-                    }
-                }
+                CineScreenHeader(
+                    title = if (state.hub == null) "Search" else state.hub.entity.name,
+                    subtitle = if (state.hub == null) "Movies, updates, channels & streaming" else null,
+                    onBack = onBack,
+                )
 
                 if (state.hub != null) {
                     UniversalHubV056(
