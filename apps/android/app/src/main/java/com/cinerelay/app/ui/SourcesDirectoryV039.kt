@@ -141,60 +141,30 @@ private fun SourcesTopBar(
     onRefresh: () -> Unit,
     onBack: () -> Unit,
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 12.dp, vertical = 10.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        if (state.selectedSource != null) {
-            IconButton(onClick = onBack) {
-                Icon(Icons.Default.ArrowBack, contentDescription = "Back to sources", tint = SourcesText)
+    val selectedSource = state.selectedSource
+    val subtitle = selectedSource?.let {
+        listOfNotNull(
+            prettySourcePlatform(it.platform),
+            it.handle,
+            prettySourceRole(it.role),
+        ).joinToString(" • ")
+    } ?: "Official movie, streaming and music sources"
+    CineScreenHeader(
+        title = selectedSource?.name ?: "Sources",
+        subtitle = subtitle,
+        onBack = if (selectedSource != null) onBack else null,
+        actions = {
+            IconButton(onClick = onRefresh, enabled = !state.loading) {
+                if (state.loading) {
+                    CircularProgressIndicator(
+                        Modifier.size(19.dp), strokeWidth = 2.dp, color = SourcesGold,
+                    )
+                } else {
+                    Icon(Icons.Default.Refresh, contentDescription = "Refresh sources", tint = SourcesMuted)
+                }
             }
-        } else {
-            SourceBrandMark()
-            Spacer(Modifier.width(10.dp))
-        }
-
-        Column(Modifier.weight(1f)) {
-            Text(
-                "CINERELAY",
-                color = SourcesGold,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = 1.4.sp,
-            )
-            Text(
-                state.selectedSource?.name ?: "Sources",
-                color = SourcesText,
-                fontSize = if (state.selectedSource == null) 22.sp else 18.sp,
-                fontWeight = FontWeight.Bold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            if (state.selectedSource != null) {
-                Text(
-                    listOfNotNull(
-                        prettySourcePlatform(state.selectedSource.platform),
-                        state.selectedSource.handle,
-                        prettySourceRole(state.selectedSource.role),
-                    ).joinToString(" • "),
-                    color = SourcesMuted,
-                    fontSize = 12.sp,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-        }
-
-        IconButton(onClick = onRefresh, enabled = !state.loading) {
-            if (state.loading) {
-                CircularProgressIndicator(Modifier.size(19.dp), strokeWidth = 2.dp, color = SourcesGold)
-            } else {
-                Icon(Icons.Default.Refresh, contentDescription = "Refresh sources", tint = SourcesMuted)
-            }
-        }
-    }
+        },
+    )
 }
 
 @Composable
