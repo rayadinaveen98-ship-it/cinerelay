@@ -47,6 +47,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -63,6 +64,8 @@ import com.cinerelay.app.data.NewsroomSignal
 import com.cinerelay.app.data.PersonalizationSource
 import com.cinerelay.app.data.PersonalizationState
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.time.Duration
 import java.time.Instant
 import java.util.Locale
@@ -87,6 +90,13 @@ private data class HomeStoryV059(
 
 private data class HomeRailV058(val title: String, val items: List<HomeStoryV059>)
 
+private data class HomeDisplayProjectionV1(
+    val freshStories: List<HomeStoryV059>,
+    val favoriteSources: List<PersonalizationSource>,
+    val heroStories: List<HomeStoryV059>,
+    val rails: List<HomeRailV058>,
+)
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CineRelayHomeV058(
@@ -98,31 +108,49 @@ fun CineRelayHomeV058(
     onOpenUpdate: (NewsroomSignal) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val freshSignals = remember(state.homeSignals) { state.homeSignals.filter(::isFreshHomeSignalV058) }
-    val freshStories = remember(freshSignals) { clusterHomeStoriesV059(freshSignals) }
-    val favoriteSources = remember(personalization) {
-        personalization.availableSources.filter { it.identityId in personalization.favoriteSourceIdentityIds }
-    }
-    val favoriteSignals = remember(freshSignals, favoriteSources) {
-        freshSignals.filter { signal -> favoriteSources.any { it.matchesV058(signal) } }
-    }
-    val favoriteStories = remember(favoriteSignals) { clusterHomeStoriesV059(favoriteSignals) }
-    val heroStories = remember(favoriteStories, freshStories) {
-        val favoriteKeys = favoriteStories.map { it.key }.toSet()
-        val ranked = (favoriteStories + freshStories)
-            .distinctBy { it.key }
-            .sortedWith(
-                compareByDescending<HomeStoryV059> {
-                    homeHeroScoreV066(it, personalization.favoriteLanguages) + if (it.key in favoriteKeys) 80 else 0
-                }.thenByDescending { homeSignalInstantV059(it.representative) },
+    // Clustering compares stories pairwise and can become expensive as feeds grow.
+    // Compute the complete projection on Default, not during UI composition.
+    val projection by produceState<HomeDisplayProjectionV1?>(
+        initialValue = null,
+        key1 = state.homeSignals,
+        key2 = personalization,
+    ) {
+        value = withContext(Dispatchers.Default) {
+            val freshSignals = state.homeSignals.filter(::isFreshHomeSignalV058)
+            val freshStories = clusterHomeStoriesV059(freshSignals)
+            val favoriteSources = personalization.availableSources.filter {
+                it.identityId in personalization.favoriteSourceIdentityIds
+            }
+            val favoriteSignals = freshSignals.filter { signal ->
+                favoriteSources.any { it.matchesV058(signal) }
+            }
+            val favoriteStories = clusterHomeStoriesV059(favoriteSignals)
+            val favoriteKeys = favoriteStories.map { it.key }.toSet()
+            val ranked = (favoriteStories + freshStories)
+                .distinctBy { it.key }
+                .sortedWith(
+                    compareByDescending<HomeStoryV059> {
+                        homeHeroScoreV066(it, personalization.favoriteLanguages) +
+                            if (it.key in favoriteKeys) 80 else 0
+                    }.thenByDescending { homeSignalInstantV059(it.representative) },
+                )
+            val heroStories = ranked.filter { !it.representative.thumbnailUrl.isNullOrBlank() }
+                .take(8).ifEmpty { ranked.take(8) }
+            HomeDisplayProjectionV1(
+                freshStories = freshStories,
+                favoriteSources = favoriteSources,
+                heroStories = heroStories,
+                rails = buildHomeRailsV059(
+                    freshStories, favoriteStories, favoriteSources,
+                    personalization.favoriteLanguages,
+                ),
             )
-        ranked.filter { !it.representative.thumbnailUrl.isNullOrBlank() }
-            .take(8)
-            .ifEmpty { ranked.take(8) }
+        }
     }
-    val rails = remember(freshStories, favoriteStories, favoriteSources, personalization.favoriteLanguages) {
-        buildHomeRailsV059(freshStories, favoriteStories, favoriteSources, personalization.favoriteLanguages)
-    }
+    val freshStories = projection?.freshStories.orEmpty()
+    val favoriteSources = projection?.favoriteSources.orEmpty()
+    val heroStories = projection?.heroStories.orEmpty()
+    val rails = projection?.rails.orEmpty()
 
     var openedRail by rememberSaveable { mutableStateOf<String?>(null) }
     val selectedRail = rails.firstOrNull { it.title == openedRail }
@@ -192,7 +220,14 @@ fun CineRelayHomeV058(
                         state.error?.let { message ->
                             item { Text(message, color = CineEditorial.Error, fontSize = CineEditorial.Metadata, modifier = Modifier.padding(horizontal = 16.dp)) }
                         }
-                        if (rails.isEmpty() && !state.loading) {
+                        if (projection == null && state.homeSignals.isNotEmpty()) {
+                            item {
+                                Box(Modifier.fillMaxWidth().height(88.dp), contentAlignment = Alignment.Center) {
+                                    CircularProgressIndicator(color = Home58Gold, strokeWidth = 2.dp)
+                                }
+                            }
+                        }
+                        if (rails.isEmpty() && projection != null && !state.loading) {
                             item {
                                 Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 24.dp)) {
                                     Text("Nothing new yet", color = Home58Text, fontSize = CineEditorial.SectionTitle, fontWeight = FontWeight.Bold)
