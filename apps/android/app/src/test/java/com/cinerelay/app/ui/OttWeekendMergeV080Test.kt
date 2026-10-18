@@ -58,6 +58,25 @@ class OttWeekendMergeV080Test {
     }
 
     @Test
+    fun monthOrYearOnlyDatesCannotBecomeExactWeekendPremieres() {
+        data class PartialRelease(val id: String, val date: String?, val precision: String)
+        val actual = mergeOttWeekendReleasesV080(
+            today = listOf(PartialRelease("day", "2026-10-18", "DAY")),
+            upcoming = listOf(
+                PartialRelease("month", "2026-10-16", "MONTH"),
+                PartialRelease("year", "2026-10-16", "YEAR"),
+                PartialRelease("tba", "2026-10-16", "TBA"),
+            ),
+            released = emptyList(),
+            weekend = weekendRangeV060("2026-10-18"),
+            releaseId = { it.id },
+            releaseDate = { it.date },
+            datePrecision = { it.precision },
+        )
+        assertEquals(listOf("day"), actual.map { it.id })
+    }
+
+    @Test
     fun missingWeekendNeverInventsReleases() {
         val entries = mergeOttWeekendReleasesV080(
             today = listOf(SampleRelease("known", "2026-10-18")),
