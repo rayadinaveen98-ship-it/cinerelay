@@ -200,6 +200,9 @@ class CineRelayViewModel(application: Application) : AndroidViewModel(applicatio
         refreshJob?.cancel()
         _state.value = _state.value.copy(tab = tab, loading = false, error = null, notice = null)
         if (tab == AppTab.ALERTS) refreshPushState()
+        // SourcesDirectoryV039 owns the Following source directory and its
+        // fetch lifecycle. Fetching an extra legacy event feed is redundant.
+        if (tab == AppTab.FOLLOWING) return
         val lastLoaded = lastLoadedElapsed[tab]
         if (lastLoaded != null &&
             SystemClock.elapsedRealtime() - lastLoaded < tabReuseWindowMs
