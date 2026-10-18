@@ -76,28 +76,18 @@ fun ArchiveV058(
     MaterialTheme(colorScheme = darkColorScheme(background = ArchiveInk58, surface = ArchivePanel58, primary = ArchiveGold58)) {
         Surface(modifier.fillMaxSize(), color = ArchiveInk58) {
             Column(Modifier.fillMaxSize()) {
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(start = 10.dp, end = 10.dp, top = 24.dp, bottom = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = ArchiveText58)
-                    }
-                    Surface(color = ArchiveGold58.copy(alpha = 0.12f), shape = RoundedCornerShape(12.dp), modifier = Modifier.size(44.dp)) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(Icons.Default.Archive, contentDescription = null, tint = ArchiveGold58)
+                CineScreenHeader(
+                    title = "Archive",
+                    subtitle = "Updates from the last ${state.retentionDays} days",
+                    onBack = onBack,
+                    actions = {
+                        IconButton(onClick = onRefresh, enabled = !state.loading) {
+                            if (state.loading) CircularProgressIndicator(Modifier.size(18.dp),
+                                strokeWidth = 2.dp, color = ArchiveGold58)
+                            else Icon(Icons.Default.Refresh, contentDescription = "Refresh archive", tint = ArchiveMuted58)
                         }
-                    }
-                    Spacer(Modifier.width(12.dp))
-                    Column(Modifier.weight(1f)) {
-                        Text("Archive", color = ArchiveText58, fontSize = 26.sp, fontWeight = FontWeight.Bold)
-                        Text("Updates from the last ${state.retentionDays} days", color = ArchiveMuted58, fontSize = 12.sp)
-                    }
-                    IconButton(onClick = onRefresh, enabled = !state.loading) {
-                        if (state.loading) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp, color = ArchiveGold58)
-                        else Icon(Icons.Default.Refresh, contentDescription = "Refresh archive", tint = ArchiveMuted58)
-                    }
-                }
+                    },
+                )
 
                 OutlinedTextField(
                     value = state.query,
