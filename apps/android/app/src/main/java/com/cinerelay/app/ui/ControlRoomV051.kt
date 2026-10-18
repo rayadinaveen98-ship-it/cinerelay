@@ -100,31 +100,12 @@ fun ControlRoomV051(
 
 @Composable
 private fun ControlHeader(onBack: () -> Unit) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 8.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        IconButton(onClick = onBack) {
-            Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = ControlText)
-        }
-        Surface(
-            color = ControlGold.copy(alpha = 0.10f),
-            shape = RoundedCornerShape(12.dp),
-            modifier = Modifier.size(40.dp),
-        ) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
-                Icon(Icons.Default.Settings, contentDescription = null, tint = ControlGold, modifier = Modifier.size(22.dp))
-            }
-        }
-        Spacer(Modifier.size(10.dp))
-        Column {
-            Text("CINERELAY", color = ControlGold, fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 1.5.sp)
-            Text("Control Room", color = ControlText, fontSize = 20.sp, fontWeight = FontWeight.Bold)
-            Text("Newsroom, notifications and account", color = ControlMuted, fontSize = 12.sp)
-        }
-    }
+    CineScreenHeader(
+        title = "Your CineRelay.",
+        subtitle = "Your account, followed sources and notification preferences.",
+        eyebrow = "THE EDITORIAL EDITION / YOU",
+        onBack = onBack,
+    )
 }
 
 @Composable

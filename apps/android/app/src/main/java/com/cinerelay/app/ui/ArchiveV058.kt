@@ -146,22 +146,21 @@ private fun ArchiveCardV058(item: ConsumerUpdate, onClick: () -> Unit) {
         shape = RoundedCornerShape(18.dp),
         modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
     ) {
-        Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(
-                modifier = Modifier.size(width = 112.dp, height = 72.dp).clip(RoundedCornerShape(12.dp)).background(ArchiveRaised58),
-                contentAlignment = Alignment.Center,
-            ) {
-                if (!item.thumbnailUrl.isNullOrBlank()) {
-                    AsyncImage(model = item.thumbnailUrl, contentDescription = item.title, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
-                } else {
-                    Text((item.source.name ?: "C").take(1).uppercase(), color = ArchiveGold58, fontSize = 26.sp, fontWeight = FontWeight.Black)
-                }
-            }
-            Spacer(Modifier.width(12.dp))
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
-                Text(item.title, color = ArchiveText58, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                Text(item.source.name ?: "CineRelay source", color = ArchiveMuted58, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text(archiveDateV058(item.observedAt), color = ArchiveMuted58, fontSize = 12.sp)
+        Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(13.dp)) {
+            EditorialArtworkV2(
+                url = item.thumbnailUrl,
+                title = item.title,
+                modifier = Modifier.width(106.dp).height(116.dp),
+            )
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(9.dp)) {
+                EditorialEyebrowV2("FROM THE ARCHIVE")
+                EditorialDisplayV2(item.title, size = 17, lines = 3)
+                Text(item.source.name ?: "CineRelay source",
+                    color = ArchiveMuted58, fontSize = 11.sp, maxLines = 1,
+                    overflow = TextOverflow.Ellipsis)
+                Text(archiveDateV058(item.observedAt),
+                    color = ArchiveGold58, fontSize = 11.sp)
             }
         }
     }

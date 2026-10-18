@@ -209,7 +209,7 @@ private fun SourceUpdateDetailV055(target: ConsumerDeepLinkTarget.SourceUpdate) 
             )
         }
 
-        Text(item.title, color = DetailText, fontSize = 26.sp, fontWeight = FontWeight.Bold, lineHeight = 31.sp)
+        EditorialDisplayV2(item.title, size = 27, lines = 5)
         item.text?.takeIf { it.isNotBlank() && it != item.title }?.let {
             Text(it, color = DetailMuted, fontSize = 14.sp, lineHeight = 21.sp)
         }
@@ -260,7 +260,7 @@ private fun EventDetailHeaderV061(target: ConsumerDeepLinkTarget.Event) {
             }
         }
         event.entityName?.let { Text(it, color = DetailGold, fontSize = 14.sp, fontWeight = FontWeight.Bold) }
-        Text(event.headline, color = DetailText, fontSize = 26.sp, fontWeight = FontWeight.Bold, lineHeight = 33.sp)
+        EditorialDisplayV2(event.headline, size = 28, lines = 5)
         event.summary?.takeIf { it.isNotBlank() }?.let {
             Text(it, color = DetailMuted, fontSize = 14.sp, lineHeight = 21.sp)
         }

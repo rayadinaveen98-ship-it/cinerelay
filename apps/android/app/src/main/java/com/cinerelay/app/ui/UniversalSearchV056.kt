@@ -248,25 +248,20 @@ private fun SearchSectionTitleV056(title: String) {
 
 @Composable
 private fun SearchTitleCardV056(item: UniversalTitleResult, onClick: () -> Unit) {
-    Surface(
-        color = SearchPanel56,
-        shape = RoundedCornerShape(18.dp),
-        modifier = Modifier.width(170.dp).clickable(onClick = onClick),
+    Column(
+        modifier = Modifier.width(164.dp).clickable(onClick = onClick),
+        verticalArrangement = Arrangement.spacedBy(9.dp),
     ) {
-        Column(Modifier.padding(15.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Surface(color = SearchGold56.copy(alpha = 0.12f), shape = RoundedCornerShape(12.dp), modifier = Modifier.size(42.dp)) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(Icons.Default.Movie, contentDescription = null, tint = SearchGold56)
-                }
-            }
-            Text(item.name, color = SearchText56, fontSize = 16.sp, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis)
-            Text(
-                listOfNotNull(friendlyTypeV056(item.type), friendlyLanguageV056(item.primaryLanguage)).joinToString(" • "),
-                color = SearchMuted56,
-                fontSize = 12.sp,
-                maxLines = 1,
-            )
-        }
+        EditorialArtworkV2(
+            url = null, title = item.name,
+            modifier = Modifier.fillMaxWidth().height(182.dp),
+            label = friendlyTypeV056(item.type),
+        )
+        EditorialDisplayV2(item.name, size = 18, lines = 2)
+        Text(
+            friendlyLanguageV056(item.primaryLanguage),
+            color = SearchMuted56, fontSize = 11.sp, maxLines = 1,
+        )
     }
 }
 
@@ -289,7 +284,7 @@ private fun SearchUpdateCardV056(item: UniversalUpdateResult, onClick: () -> Uni
             }
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
                 Text(item.source.name ?: "Movie update", color = SearchGold56, fontSize = 12.sp, fontWeight = FontWeight.Bold, maxLines = 1)
-                Text(item.title, color = SearchText56, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, maxLines = 3, overflow = TextOverflow.Ellipsis)
+                EditorialDisplayV2(item.title, size = 18, lines = 3)
                 Text(friendlyLanguageV056(item.languageCode), color = SearchMuted56, fontSize = 12.sp)
             }
         }

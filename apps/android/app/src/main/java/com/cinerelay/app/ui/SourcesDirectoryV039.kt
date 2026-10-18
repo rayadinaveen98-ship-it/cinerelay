@@ -340,85 +340,51 @@ private fun SourceRow(
     Surface(
         color = SourcesPanel,
         shape = RoundedCornerShape(18.dp),
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick),
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 13.dp, vertical = 12.dp),
+            Modifier.padding(horizontal = 14.dp, vertical = 17.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            SourceAvatar(source)
-            Spacer(Modifier.width(12.dp))
-            Column(Modifier.weight(1f)) {
+            SourceAvatar(source, size = 52.dp)
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                EditorialDisplayV2(source.name, size = 18, lines = 2)
                 Text(
-                    source.name,
-                    color = SourcesText,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
+                    listOfNotNull(prettySourcePlatform(source.platform), source.handle,
+                        prettySourceRole(source.role)).joinToString(" · "),
+                    color = SourcesMuted, fontSize = 11.sp,
+                    maxLines = 2, overflow = TextOverflow.Ellipsis,
                 )
-                Spacer(Modifier.height(2.dp))
-                Text(
-                    listOfNotNull(
-                        prettySourcePlatform(source.platform),
-                        source.handle,
-                        prettySourceRole(source.role),
-                    ).joinToString(" • "),
-                    color = SourcesMuted,
-                    fontSize = 12.sp,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-
-            if (source.newCount24h > 0) {
-                Surface(
-                    color = SourcesGreen.copy(alpha = 0.12f),
-                    shape = RoundedCornerShape(50),
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 9.dp, vertical = 6.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Box(Modifier.size(6.dp).clip(CircleShape).background(SourcesGreen))
-                        Spacer(Modifier.width(6.dp))
-                        Text(
-                            "${source.newCount24h} new",
-                            color = SourcesGreen,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold,
-                        )
-                    }
+                if (source.newCount24h > 0) {
+                    Text("${source.newCount24h} new updates", color = SourcesGreen,
+                        fontSize = 11.sp, fontWeight = FontWeight.Bold)
                 }
-                Spacer(Modifier.width(2.dp))
             }
-
             if (canManageNotifications) {
                 IconButton(onClick = onToggleNotification, enabled = !notificationBusy) {
                     if (notificationBusy) {
-                        CircularProgressIndicator(Modifier.size(17.dp), strokeWidth = 2.dp, color = SourcesGold)
+                        CircularProgressIndicator(
+                            Modifier.size(17.dp), strokeWidth = 2.dp, color = SourcesGold,
+                        )
                     } else {
                         Icon(
                             Icons.Default.Notifications,
-                            contentDescription = if (notificationSelected) "Disable source notifications" else "Enable source notifications",
-                            tint = when {
-                                notificationSelected && notificationMasterEnabled -> SourcesGold
-                                notificationSelected -> SourcesAmber
-                                else -> SourcesMuted.copy(alpha = 0.55f)
-                            },
-                            modifier = Modifier.size(19.dp),
+                            contentDescription = if (notificationSelected)
+                                "Disable source notifications" else "Enable source notifications",
+                            tint = if (notificationSelected && notificationMasterEnabled) SourcesGold
+                                else if (notificationSelected) SourcesAmber else SourcesMuted,
                         )
                     }
                 }
             }
-
-            Icon(Icons.Default.KeyboardArrowRight, contentDescription = null, tint = SourcesMuted, modifier = Modifier.size(20.dp))
+            Icon(Icons.Default.KeyboardArrowRight, contentDescription = null,
+                tint = SourcesMuted, modifier = Modifier.size(19.dp))
         }
     }
 }
 
+@Composable
 @Composable
 private fun SourceAvatar(source: SourceDirectoryItem, size: Dp = 42.dp) {
     val initials = source.name

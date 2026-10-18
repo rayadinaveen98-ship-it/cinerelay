@@ -90,8 +90,8 @@ fun SettingsV055(
 
                 LazyColumn(
                     modifier = Modifier.weight(1f),
-                    contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 18.dp, vertical = 12.dp),
-                    verticalArrangement = Arrangement.spacedBy(14.dp),
+                    contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = CineEditorial.Gutter, vertical = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(22.dp),
                 ) {
                     item {
                         SettingsSectionV055(title = "Account") {
@@ -209,7 +209,8 @@ private fun SettingsSectionV055(
     content: @Composable () -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(title, color = SettingsMuted55, fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.1.sp, modifier = Modifier.padding(horizontal = 4.dp))
+        EditorialDisplayV2(title, modifier = Modifier.padding(horizontal = 4.dp),
+            size = 22, lines = 1)
         Surface(color = SettingsPanel55, shape = RoundedCornerShape(18.dp), modifier = Modifier.fillMaxWidth()) {
             Column { content() }
         }
