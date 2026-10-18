@@ -233,12 +233,12 @@ class OttViewModelV054(application: Application) : AndroidViewModel(application)
     }
 }
 
-private fun weekendRangeV060(todayIso: String?): Pair<LocalDate, LocalDate>? {
+internal fun weekendRangeV060(todayIso: String?): Pair<LocalDate, LocalDate>? {
     val today = todayIso?.let { runCatching { LocalDate.parse(it) }.getOrNull() } ?: return null
     return when (today.dayOfWeek) {
         DayOfWeek.FRIDAY -> today to today.plusDays(2)
-        DayOfWeek.SATURDAY -> today to today.plusDays(1)
-        DayOfWeek.SUNDAY -> today to today
+        DayOfWeek.SATURDAY -> today.minusDays(1) to today.plusDays(1)
+        DayOfWeek.SUNDAY -> today.minusDays(2) to today
         else -> {
             val daysToFriday = (DayOfWeek.FRIDAY.value - today.dayOfWeek.value + 7) % 7
             val friday = today.plusDays(daysToFriday.toLong())
