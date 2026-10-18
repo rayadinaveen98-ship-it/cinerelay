@@ -158,7 +158,7 @@ class MainActivity : ComponentActivity() {
             }
 
             LaunchedEffect(historyVisible, state.authenticated) {
-                if (historyVisible && state.authenticated) consumerViewModel.loadOnThisDay(force = true)
+                if (historyVisible && state.authenticated) consumerViewModel.loadOnThisDay()
             }
 
             LaunchedEffect(archiveVisible, state.authenticated) {
@@ -349,6 +349,12 @@ class MainActivity : ComponentActivity() {
                                 onBack = { historyVisible = false },
                                 onLoadDate = { date -> consumerViewModel.loadOnThisDay(force = true, date = date) },
                                 onToday = { consumerViewModel.loadOnThisDay(force = true, date = null) },
+                                onRetry = {
+                                    consumerViewModel.loadOnThisDay(
+                                        force = true,
+                                        date = consumerState.onThisDayDate,
+                                    )
+                                },
                                 modifier = Modifier.fillMaxSize(),
                             )
                         }
@@ -373,7 +379,7 @@ class MainActivity : ComponentActivity() {
                                     settingsVisible = false
                                     ottVisible = false
                                     historyVisible = true
-                                    consumerViewModel.loadOnThisDay(force = true)
+                                    consumerViewModel.loadOnThisDay()
                                 },
                                 onOpenControlRoom = {
                                     ottVisible = false
