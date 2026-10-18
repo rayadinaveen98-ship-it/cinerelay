@@ -7,7 +7,9 @@ import com.cinerelay.app.CineRelayApplication
 import com.cinerelay.app.data.ApiException
 import com.cinerelay.app.data.OttProvider
 import com.cinerelay.app.data.OttRelease
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -64,6 +66,7 @@ class OttViewModelV054(application: Application) : AndroidViewModel(application)
     private val client = app.ottCalendarClient
 
     private val _state = MutableStateFlow(OttUiState())
+    private var refreshJob: Job? = null
     val state: StateFlow<OttUiState> = _state.asStateFlow()
 
     fun load(force: Boolean = false) {
@@ -80,9 +83,10 @@ class OttViewModelV054(application: Application) : AndroidViewModel(application)
     }
 
     fun refresh() {
-        val current = _state.value
-        if (current.loading) return
-        viewModelScope.launch {
+        // A filter change must supersede an in-flight request. Otherwise an older
+        // response can overwrite the newly selected filters with stale releases.
+        refreshJob?.cancel()
+        refreshJob = viewModelScope.launch {
             _state.value = _state.value.copy(loading = true, error = null)
             val request = _state.value
             runCatching {
@@ -125,15 +129,12 @@ class OttViewModelV054(application: Application) : AndroidViewModel(application)
                 val todayIso = todayFeed.today ?: upcomingFeed.today ?: releasedFeed.today
                 val todayDate = todayIso?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
                 val weekend = weekendRangeV060(todayIso)
-                val weekendItems = if (weekend == null) {
-                    emptyList()
-                } else {
-                    upcomingFeed.items.filter { release ->
-                        val date = release.releaseDate?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
-                        date != null && !date.isBefore(weekend.first) && !date.isAfter(weekend.second)
-                    }
-                }.distinctBy { it.id }
-                val weekendIds = weekendItems.mapTo(mutableSetOf()) { it.id }
+                // On Saturdays and Sundays the API upcoming window no longer includes
+                // Friday's premieres. Include released and today feeds for the full weekend.
+                val weekendItems = mergeOttWeekendReleasesV080(
+                    todayFeed.items, upcomingFeed.items, releasedFeed.items, weekend,
+                    releaseId = { it.id }, releaseDate = { it.releaseDate },
+                )
                 val todayIds = todayFeed.items.mapTo(mutableSetOf()) { it.id }
                 val nowStreamingItems = releasedFeed.items
                     .filter { it.id !in todayIds }
@@ -146,8 +147,7 @@ class OttViewModelV054(application: Application) : AndroidViewModel(application)
                 val upcomingItems = upcomingFeed.items.filter { release ->
                     val date = release.releaseDate?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
                     date != null &&
-                        (todayDate == null || date.isAfter(todayDate)) &&
-                        release.id !in weekendIds
+                        (todayDate == null || date.isAfter(todayDate))
                 }.distinctBy { it.id }
                 val allItems = (todayFeed.items + weekendItems + nowStreamingItems + upcomingItems).distinctBy { it.id }
                 val providers = (upcomingFeed.providers + todayFeed.providers + releasedFeed.providers).distinctBy { it.code }
@@ -167,7 +167,11 @@ class OttViewModelV054(application: Application) : AndroidViewModel(application)
                     windowEnd = upcomingFeed.windowEnd,
                     error = null,
                 )
-            }.onFailure(::handleFailure)
+            }.onFailure { error ->
+                // Cancellation is expected when filters are changed in quick succession;
+                // the new request owns the loading/error state.
+                if (error !is CancellationException) handleFailure(error)
+            }
         }
     }
 
@@ -241,4 +245,22 @@ private fun weekendRangeV060(todayIso: String?): Pair<LocalDate, LocalDate>? {
             friday to friday.plusDays(2)
         }
     }
+}
+
+/** Inclusive weekend merge across API windows; shared with pure JVM regression tests. */
+internal fun <T> mergeOttWeekendReleasesV080(
+    today: List<T>,
+    upcoming: List<T>,
+    released: List<T>,
+    weekend: Pair<LocalDate, LocalDate>?,
+    releaseId: (T) -> String,
+    releaseDate: (T) -> String?,
+): List<T> {
+    val (start, end) = weekend ?: return emptyList()
+    return (today + upcoming + released)
+        .filter { item ->
+            val date = releaseDate(item)?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
+            date != null && !date.isBefore(start) && !date.isAfter(end)
+        }
+        .distinctBy(releaseId)
 }
