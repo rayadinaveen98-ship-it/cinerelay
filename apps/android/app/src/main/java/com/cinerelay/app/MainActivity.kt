@@ -194,14 +194,6 @@ class MainActivity : ComponentActivity() {
 
                     notificationRouteWaiting -> CineRelaySetupLoadingV050(Modifier.fillMaxSize())
 
-                    deepLinkVisible -> {
-                        NotificationDetailV055(
-                            state = consumerState,
-                            onBack = consumerViewModel::closeNotification,
-                            modifier = Modifier.fillMaxSize(),
-                        )
-                    }
-
                     setupResolving -> CineRelaySetupLoadingV050(Modifier.fillMaxSize())
 
                     personalizationVisible -> {
@@ -256,7 +248,10 @@ class MainActivity : ComponentActivity() {
 
                     else -> {
                         val personalization = consumerState.personalization!!
-                        if (state.tab == AppTab.LIVE && state.authMode == null && !historyVisible) {
+                        if (
+                            state.tab == AppTab.LIVE && state.authMode == null &&
+                            !historyVisible && !ottVisible && !settingsVisible && !searchState.visible
+                        ) {
                             CineRelayHomeV058(
                                 state = state,
                                 personalization = personalization,
@@ -278,7 +273,11 @@ class MainActivity : ComponentActivity() {
                                 },
                                 modifier = Modifier.fillMaxSize(),
                             )
-                        } else if (!historyVisible) {
+                        } else if (
+                            !historyVisible && !ottVisible && !settingsVisible &&
+                            !searchState.visible && state.tab != AppTab.RADAR &&
+                            state.tab != AppTab.FOLLOWING
+                        ) {
                             CineRelayRootV049(viewModel)
                         }
 
@@ -469,6 +468,17 @@ class MainActivity : ComponentActivity() {
                             )
                         }
                     }
+                }
+                // Keep the active destination composed behind story details.
+                // The old exclusive branch disposed Home/Radar on every story open,
+                // recreating its carousel, feed, image layout and scroll state on Back.
+                // Draw the detail last so it receives taps and system Back first.
+                if (state.authenticated && deepLinkVisible) {
+                    NotificationDetailV055(
+                        state = consumerState,
+                        onBack = consumerViewModel::closeNotification,
+                        modifier = Modifier.fillMaxSize(),
+                    )
                 }
             }
         }
