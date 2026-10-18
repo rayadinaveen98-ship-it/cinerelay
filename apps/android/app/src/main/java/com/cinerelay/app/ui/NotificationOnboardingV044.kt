@@ -240,7 +240,7 @@ private fun SourceSelectionStep(
 
     Column(Modifier.fillMaxSize()) {
         Column(Modifier.padding(horizontal = CineEditorial.Gutter)) {
-            Text("Choose who can notify you", color = OnboardingText, fontSize = 26.sp, fontWeight = FontWeight.Bold)
+            EditorialDisplayV2("Choose who can notify you", size = 27, lines = 3)
             Spacer(Modifier.height(5.dp))
             Text(
                 "CineRelay still monitors every source. Only the channels you check here can send upload notifications.",
@@ -358,7 +358,7 @@ private fun ContentTypeStep(
     onContinue: () -> Unit,
 ) {
     Column(Modifier.fillMaxSize().padding(horizontal = CineEditorial.Gutter, vertical = 18.dp)) {
-        Text("What should interrupt you?", color = OnboardingText, fontSize = 26.sp, fontWeight = FontWeight.Bold)
+        EditorialDisplayV2("What should interrupt you?", size = 27, lines = 3)
         Spacer(Modifier.height(7.dp))
         Text("These choices apply only to the sources you selected.", color = OnboardingMuted, fontSize = 12.sp)
         Spacer(Modifier.height(24.dp))
@@ -444,7 +444,7 @@ private fun PermissionStep(
             }
         }
         Spacer(Modifier.height(22.dp))
-        Text("Ready when you are", color = OnboardingText, fontSize = 26.sp, fontWeight = FontWeight.Bold)
+        EditorialDisplayV2("Ready when you are", size = 27, lines = 3)
         Spacer(Modifier.height(7.dp))
         Text(
             "Android will ask for notification permission next. CineRelay will use it only for the sources and upload types below.",

@@ -102,12 +102,12 @@ fun CineRelayWelcomeV058(
     }
 
     Box(
-        modifier = modifier.fillMaxSize().background(Color.Black),
+        modifier = modifier.fillMaxSize().background(CineEditorial.Background),
         contentAlignment = Alignment.Center,
     ) {
         Canvas(Modifier.fillMaxSize()) {
             if (firstScene) {
-                drawRect(Color(0xFF08090C))
+                drawRect(CineEditorial.Background)
 
                 // Diagonal projector-like spill from upper-left, intentionally restrained.
                 drawRect(
@@ -135,7 +135,7 @@ fun CineRelayWelcomeV058(
                     )
                 }
             } else {
-                drawRect(Color.Black)
+                drawRect(CineEditorial.Background)
 
                 if (!removeAnimations && p in 0.56f..0.76f) {
                     val scan = ((p - 0.56f) / 0.20f).coerceIn(0f, 1f)
@@ -181,7 +181,7 @@ fun CineRelayWelcomeV058(
                     modifier = Modifier.alpha(titleAlpha),
                 )
                 Text(
-                    text = "The signal behind the story",
+                    text = "A new frame for cinema.",
                     color = Color.White.copy(alpha = 0.74f),
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Normal,
@@ -204,7 +204,7 @@ fun CineRelayWelcomeV058(
                 ) {
                     Text(
                         text = "C",
-                        color = Color.Black,
+                        color = CineEditorial.Background,
                         fontSize = 20.sp,
                         fontFamily = FontFamily.Serif,
                         fontWeight = FontWeight.Bold,

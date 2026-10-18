@@ -99,15 +99,9 @@ private fun WelcomeGateV050(
         Spacer(Modifier.weight(0.5f))
         AuthBrandMarkV050(76.dp)
         Spacer(Modifier.height(22.dp))
-        Text("CINERELAY", color = AuthGold, fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 2.2.sp)
+        EditorialEyebrowV2("CINERELAY / THE EDITORIAL EDITION")
         Spacer(Modifier.height(9.dp))
-        Text(
-            "Cinema intelligence,\nstraight from the source.",
-            color = AuthText,
-            fontSize = 32.sp,
-            lineHeight = 37.sp,
-            fontWeight = FontWeight.Bold,
-        )
+        EditorialDisplayV2("A new frame for cinema.", size = 34, lines = 3)
         Spacer(Modifier.height(15.dp))
         Text(
             "Sign in before entering the newsroom so your source choices, follows, alerts and preferences stay tied to your account.",

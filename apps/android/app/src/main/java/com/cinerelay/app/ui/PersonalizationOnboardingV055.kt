@@ -99,7 +99,7 @@ fun PersonalizationOnboardingV055(
                     ) {
                         Spacer(Modifier.height(16.dp))
                         Text("Make CineRelay yours", color = PersonalGold, fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 1.5.sp)
-                        Text("Which cinema do you follow?", color = PersonalText, fontSize = 32.sp, fontWeight = FontWeight.Bold, lineHeight = 34.sp)
+                        EditorialDisplayV2("Which cinema do you follow?", size = 32, lines = 3)
                         Text("Pick the languages you care about. These choices shape your Home screen, not your notification settings.", color = PersonalMuted, fontSize = 14.sp, lineHeight = 21.sp)
 
                         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -166,7 +166,7 @@ fun PersonalizationOnboardingV055(
                                 Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = PersonalText)
                             }
                             Column(Modifier.weight(1f)) {
-                                Text(if (showAllChannels) "All official channels" else "Recommended for you", color = PersonalText, fontSize = 26.sp, fontWeight = FontWeight.Bold)
+                                EditorialDisplayV2(if (showAllChannels) "All official channels" else "Recommended for you", size = 28, lines = 2)
                                 Text(
                                     if (showAllChannels) "Browse all ${personalization.availableSources.size} official YouTube channels"
                                     else "Five balanced picks for your cinema languages. You can browse every channel anytime.",

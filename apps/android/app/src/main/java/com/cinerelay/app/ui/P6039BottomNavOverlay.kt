@@ -1,5 +1,6 @@
 package com.cinerelay.app.ui
 
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
@@ -10,6 +11,7 @@ import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Movie
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.Icon
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
@@ -36,8 +38,10 @@ fun P6039BottomNavOverlay(
     onOpenControlRoom: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    Column(modifier = modifier.fillMaxWidth()) {
+        HorizontalDivider(color = CineEditorial.Outline, thickness = 1.dp)
     NavigationBar(
-        modifier = modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth(),
         containerColor = NavInk,
         tonalElevation = 0.dp,
     ) {
@@ -46,6 +50,7 @@ fun P6039BottomNavOverlay(
         NavItem(AppTab.RADAR, !ottSelected && !historySelected && selected == AppTab.RADAR, Icons.Default.Movie, "Radar", onSelect)
         HistoryNavItem(historySelected, onOpenHistory)
         ControlNavItem(onOpenControlRoom)
+    }
     }
 }
 
@@ -109,7 +114,7 @@ private fun RowScope.ControlNavItem(onOpenControlRoom: () -> Unit) {
 private fun navigationItemColors() = NavigationBarItemDefaults.colors(
     selectedIconColor = NavGold,
     selectedTextColor = NavGold,
-    indicatorColor = NavGold.copy(alpha = 0.13f),
+    indicatorColor = CineEditorial.Raised,
     unselectedIconColor = NavMuted,
     unselectedTextColor = NavMuted,
 )
