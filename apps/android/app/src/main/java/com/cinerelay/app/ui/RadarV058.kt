@@ -154,24 +154,17 @@ fun RadarV058(
             modifier = modifier.fillMaxSize().background(RadarInk58),
         ) {
             Column(Modifier.fillMaxSize()) {
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(start = 22.dp, end = 10.dp, top = 24.dp, bottom = 10.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Surface(color = RadarGold58.copy(alpha = 0.12f), shape = RoundedCornerShape(12.dp), modifier = Modifier.size(48.dp)) {
-                        Box(contentAlignment = Alignment.Center) { Icon(Icons.Default.AutoAwesome, contentDescription = null, tint = RadarGold58) }
-                    }
-                    Spacer(Modifier.width(13.dp))
-                    Column(Modifier.weight(1f)) {
-                        Text("CINERELAY", color = RadarGold58, fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 1.5.sp)
-                        Text("Radar", color = RadarText58, fontSize = CineEditorial.PageTitle, fontWeight = FontWeight.Bold)
-                        Text("Evidence-backed opportunities for creators", color = RadarMuted58, fontSize = CineEditorial.Body)
-                    }
-                    IconButton(onClick = onRefresh, enabled = !state.loading) {
-                        if (state.loading) CircularProgressIndicator(Modifier.size(19.dp), strokeWidth = 2.dp, color = RadarGold58)
-                        else Icon(Icons.Default.Refresh, contentDescription = "Refresh Radar", tint = RadarMuted58)
-                    }
-                }
+                CineScreenHeader(
+                    title = "Radar",
+                    subtitle = "Evidence-backed opportunities for creators",
+                    actions = {
+                        IconButton(onClick = onRefresh, enabled = !state.loading) {
+                            if (state.loading) CircularProgressIndicator(
+                                Modifier.size(19.dp), strokeWidth = 2.dp, color = RadarGold58,
+                            ) else Icon(Icons.Default.Refresh, contentDescription = "Refresh Radar", tint = RadarMuted58)
+                        }
+                    },
+                )
 
                 if (state.loading && state.events.isEmpty() && state.homeSignals.isEmpty()) {
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator(color = RadarGold58, strokeWidth = 2.dp) }
