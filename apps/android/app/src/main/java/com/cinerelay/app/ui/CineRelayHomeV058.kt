@@ -1,5 +1,6 @@
 package com.cinerelay.app.ui
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.collectIsDraggedAsState
@@ -13,6 +14,7 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -28,12 +30,14 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Archive
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
@@ -41,6 +45,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -61,14 +66,14 @@ import java.time.Instant
 import java.util.Locale
 import kotlin.math.abs
 
-private val Home58Ink = Color(0xFF0C0E12)
-private val Home58Panel = Color(0xFF171A20)
-private val Home58Raised = Color(0xFF20242C)
-private val Home58Text = Color(0xFFF5F2EA)
-private val Home58Muted = Color(0xFFA8ADB7)
-private val Home58Gold = Color(0xFFE8C56D)
-private val Home58Green = Color(0xFF73D6A5)
-private val Home58Amber = Color(0xFFF0B862)
+private val Home58Ink = CineEditorial.Background
+private val Home58Panel = CineEditorial.Surface
+private val Home58Raised = CineEditorial.Raised
+private val Home58Text = CineEditorial.Text
+private val Home58Muted = CineEditorial.Muted
+private val Home58Gold = CineEditorial.Accent
+private val Home58Green = CineEditorial.Confirmed
+private val Home58Amber = CineEditorial.Developing
 
 private data class HomeStoryV059(
     val key: String,
@@ -117,6 +122,10 @@ fun CineRelayHomeV058(
         buildHomeRailsV059(freshStories, favoriteStories, favoriteSources, personalization.favoriteLanguages)
     }
 
+    var openedRail by rememberSaveable { mutableStateOf<String?>(null) }
+    val selectedRail = rails.firstOrNull { it.title == openedRail }
+    BackHandler(enabled = selectedRail != null) { openedRail = null }
+
     MaterialTheme(
         colorScheme = darkColorScheme(
             primary = Home58Gold,
@@ -128,65 +137,102 @@ fun CineRelayHomeV058(
             onSurfaceVariant = Home58Muted,
         ),
     ) {
-        Box(modifier = modifier.fillMaxSize().background(Home58Ink)) {
-            PullToRefreshBox(
-                isRefreshing = state.loading,
-                onRefresh = onRefresh,
-                modifier = Modifier.fillMaxSize(),
-            ) {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(bottom = 154.dp),
-                    verticalArrangement = Arrangement.spacedBy(20.dp),
+        if (selectedRail != null) {
+            Column(Modifier.fillMaxSize().background(Home58Ink)) {
+                Row(
+                    Modifier.fillMaxWidth().padding(start = 4.dp, end = 16.dp, top = 22.dp, bottom = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    item { HomeHeaderV058(state.loading, onRefresh, onSearch) }
-                    item {
-                        if (heroStories.isNotEmpty()) HomeHeroPagerV066(heroStories, onOpenUpdate)
-                        else HomeHeroEmptyV058(favoriteSources)
+                    IconButton(onClick = { openedRail = null }) {
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Back to Home", tint = Home58Text)
                     }
-                    if (state.error != null) {
-                        item { Text(state.error, color = Home58Amber, fontSize = 12.sp, modifier = Modifier.padding(horizontal = 20.dp)) }
+                    Column(Modifier.weight(1f)) {
+                        Text(selectedRail.title, color = Home58Text, fontSize = CineEditorial.SectionTitle, fontWeight = FontWeight.Bold)
+                        Text("${selectedRail.items.size} stories", color = Home58Muted, fontSize = CineEditorial.Metadata)
                     }
-                    if (rails.isEmpty() && !state.loading) {
-                        item {
-                            Column(Modifier.fillMaxWidth().padding(horizontal = 22.dp, vertical = 24.dp)) {
-                                Text("Nothing new yet", color = Home58Text, fontSize = 20.sp, fontWeight = FontWeight.Bold)
-                                Spacer(Modifier.height(6.dp))
-                                Text("Pull down to check for fresh movie and OTT updates.", color = Home58Muted, fontSize = 13.sp, lineHeight = 19.sp)
-                            }
-                        }
+                }
+                LazyColumn(
+                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 125.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    items(selectedRail.items, key = { it.key }) { story ->
+                        HomeFullStoryRowV1(story) { onOpenUpdate(story.representative) }
                     }
-                    items(rails, key = { it.title }) { rail -> HomeRailV058(rail, onOpenUpdate) }
                 }
             }
-
-            HomeArchiveFloatingV060(
-                onOpenArchive = onOpenArchive,
-                modifier = Modifier.align(Alignment.BottomStart).padding(start = 14.dp, bottom = 96.dp),
-            )
+        } else {
+            Box(modifier = modifier.fillMaxSize().background(Home58Ink)) {
+                PullToRefreshBox(
+                    isRefreshing = state.loading,
+                    onRefresh = onRefresh,
+                    modifier = Modifier.fillMaxSize(),
+                ) {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(bottom = 125.dp),
+                        verticalArrangement = Arrangement.spacedBy(CineEditorial.SectionGap),
+                    ) {
+                        item { HomeHeaderV058(state.loading, onRefresh, onSearch, onOpenArchive) }
+                        item {
+                            if (heroStories.isNotEmpty()) HomeHeroPagerV066(heroStories, onOpenUpdate)
+                            else HomeHeroEmptyV058(favoriteSources)
+                        }
+                        state.error?.let { message ->
+                            item { Text(message, color = CineEditorial.Error, fontSize = CineEditorial.Metadata, modifier = Modifier.padding(horizontal = 16.dp)) }
+                        }
+                        if (rails.isEmpty() && !state.loading) {
+                            item {
+                                Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 24.dp)) {
+                                    Text("Nothing new yet", color = Home58Text, fontSize = CineEditorial.SectionTitle, fontWeight = FontWeight.Bold)
+                                    Spacer(Modifier.height(8.dp))
+                                    Text("Pull down to check for fresh movie and OTT updates.", color = Home58Muted, fontSize = CineEditorial.Body)
+                                }
+                            }
+                        }
+                        items(rails, key = { it.title }) { rail ->
+                            HomeRailV058(rail, onOpenUpdate, onSeeAll = { openedRail = rail.title })
+                        }
+                    }
+                }
+            }
         }
     }
 }
 
 @Composable
-private fun HomeHeaderV058(loading: Boolean, onRefresh: () -> Unit, onSearch: () -> Unit) {
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(start = 20.dp, end = 10.dp, top = 26.dp, bottom = 2.dp),
-        verticalAlignment = Alignment.CenterVertically,
+private fun HomeHeaderV058(loading: Boolean, onRefresh: () -> Unit, onSearch: () -> Unit, onOpenArchive: () -> Unit) {
+    Column(
+        Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 24.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        Box(
-            modifier = Modifier.size(45.dp).clip(RoundedCornerShape(14.dp)).background(Home58Gold.copy(alpha = 0.10f)),
-            contentAlignment = Alignment.Center,
-        ) { Text("C", color = Home58Gold, fontSize = 25.sp, fontWeight = FontWeight.Black) }
-        Spacer(Modifier.width(12.dp))
-        Column(Modifier.weight(1f)) {
-            Text("CINERELAY", color = Home58Gold, fontSize = 10.sp, fontWeight = FontWeight.Black, letterSpacing = 1.7.sp)
-            Text("For You", color = Home58Text, fontSize = 25.sp, fontWeight = FontWeight.Bold)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                modifier = Modifier.size(44.dp).clip(RoundedCornerShape(14.dp)).background(Home58Gold.copy(alpha = 0.12f)),
+                contentAlignment = Alignment.Center,
+            ) { Text("C", color = Home58Gold, fontSize = 25.sp, fontWeight = FontWeight.Black) }
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f)) {
+                Text("CINERELAY", color = Home58Gold, fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.2.sp)
+                Text("For you", color = Home58Text, fontSize = CineEditorial.PageTitle, fontWeight = FontWeight.Bold)
+            }
+            IconButton(onClick = onSearch) {
+                Icon(Icons.Default.Search, contentDescription = "Search CineRelay", tint = Home58Text)
+            }
+            IconButton(onClick = onRefresh, enabled = !loading) {
+                if (loading) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp, color = Home58Gold)
+                else Icon(Icons.Default.Refresh, contentDescription = "Refresh stories", tint = Home58Muted)
+            }
         }
-        IconButton(onClick = onSearch) { Icon(Icons.Default.Search, contentDescription = "Search CineRelay", tint = Home58Text) }
-        IconButton(onClick = onRefresh, enabled = !loading) {
-            if (loading) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp, color = Home58Gold)
-            else Icon(Icons.Default.Refresh, contentDescription = "Refresh", tint = Home58Muted)
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                "Your cinema briefing, backed by sources",
+                color = Home58Muted,
+                fontSize = CineEditorial.Metadata,
+                modifier = Modifier.weight(1f),
+            )
+            TextButton(onClick = onOpenArchive) {
+                Text("Archive", color = Home58Gold, fontSize = CineEditorial.Metadata, fontWeight = FontWeight.SemiBold)
+            }
         }
     }
 }
@@ -205,116 +251,94 @@ private fun HomeHeroPagerV066(heroStories: List<HomeStoryV059>, onOpenUpdate: (N
         }
     }
 
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Row(Modifier.fillMaxWidth().padding(horizontal = CineEditorial.Gutter), verticalAlignment = Alignment.Bottom) {
             Column(Modifier.weight(1f)) {
-                Text("TOP STORIES", color = Home58Gold, fontSize = 9.sp, fontWeight = FontWeight.Black, letterSpacing = 1.4.sp)
-                Text("What changed now", color = Home58Text, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                Text("TOP STORIES", color = Home58Gold, fontSize = CineEditorial.Metadata, fontWeight = FontWeight.Bold, letterSpacing = 1.0.sp)
+                Spacer(Modifier.height(4.dp))
+                Text("What changed now", color = Home58Text, fontSize = CineEditorial.SectionTitle, fontWeight = FontWeight.Bold)
             }
-            Text("Evidence-first", color = Home58Muted, fontSize = 9.sp, fontWeight = FontWeight.SemiBold)
+            Text("Evidence-first", color = Home58Muted, fontSize = CineEditorial.Metadata)
         }
 
         HorizontalPager(
             state = pagerState,
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = CineEditorial.Gutter),
             pageSize = PageSize.Fill,
-            contentPadding = PaddingValues(0.dp),
-            pageSpacing = 0.dp,
             beyondViewportPageCount = 1,
         ) { page ->
             val story = heroStories[page]
             val item = story.representative
             val event = item.canonicalEvent
             val evolving = story.updates.size > 1 || story.sourceCount > 1
-            val statusColor = if (story.officialSourceCount > 0 || item.state == "VERIFIED") Home58Green else Home58Amber
-            Box(
-                modifier = Modifier.fillMaxWidth().aspectRatio(1.62f).clip(RoundedCornerShape(26.dp)).background(Home58Raised).clickable { onOpenUpdate(item) },
+            val status = cineEvidenceLabel(event?.verificationState, item.state)
+            val statusColor = cineEvidenceColor(status)
+            Column(
+                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(CineEditorial.HeroRadius))
+                    .background(Home58Panel).clickable { onOpenUpdate(item) },
             ) {
-                if (!item.thumbnailUrl.isNullOrBlank()) {
-                    AsyncImage(model = item.thumbnailUrl, contentDescription = item.title, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
-                }
                 Box(
-                    Modifier.fillMaxSize().background(
-                        Brush.verticalGradient(
-                            listOf(
-                                Home58Ink.copy(alpha = 0.05f),
-                                Home58Ink.copy(alpha = 0.12f),
-                                Home58Ink.copy(alpha = 0.94f),
-                            ),
-                        ),
-                    ),
-                )
-
-                Row(
-                    modifier = Modifier.align(Alignment.TopStart).fillMaxWidth().padding(14.dp),
-                    verticalAlignment = Alignment.CenterVertically,
+                    Modifier.fillMaxWidth().height(180.dp).background(Home58Raised),
+                    contentAlignment = Alignment.Center,
                 ) {
-                    Surface(
-                        color = Home58Ink.copy(alpha = 0.84f),
-                        shape = RoundedCornerShape(50),
-                    ) {
-                        Text(
-                            if (evolving) "EVOLVING STORY" else friendlyHomeEventTypeV066(event?.eventType),
-                            color = Home58Gold,
-                            fontSize = 8.sp,
-                            fontWeight = FontWeight.Black,
-                            letterSpacing = 0.7.sp,
-                            modifier = Modifier.padding(horizontal = 9.dp, vertical = 5.dp),
+                    if (!item.thumbnailUrl.isNullOrBlank()) {
+                        AsyncImage(
+                            model = item.thumbnailUrl,
+                            contentDescription = item.title,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize(),
                         )
+                    } else {
+                        Text("CINERELAY  /  STORY", color = Home58Muted, fontSize = CineEditorial.Metadata, letterSpacing = 1.sp)
                     }
-                    Spacer(Modifier.weight(1f))
-                    Surface(color = Home58Ink.copy(alpha = 0.84f), shape = RoundedCornerShape(50)) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 9.dp, vertical = 5.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Box(Modifier.size(6.dp).clip(CircleShape).background(statusColor))
-                            Spacer(Modifier.width(5.dp))
+                    Row(
+                        Modifier.align(Alignment.TopStart).fillMaxWidth().padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        Surface(color = Home58Ink.copy(alpha = 0.94f), shape = RoundedCornerShape(8.dp)) {
                             Text(
-                                if (story.officialSourceCount > 0) "Official" else home58StateLabel(item.state),
-                                color = statusColor,
-                                fontSize = 8.sp,
-                                fontWeight = FontWeight.Bold,
+                                if (evolving) "EVOLVING STORY" else friendlyHomeEventTypeV066(event?.eventType),
+                                color = Home58Gold, fontSize = CineEditorial.Metadata,
+                                fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 9.dp, vertical = 6.dp),
                             )
+                        }
+                        Spacer(Modifier.weight(1f))
+                        Surface(color = Home58Ink.copy(alpha = 0.94f), shape = RoundedCornerShape(8.dp)) {
+                            Text(status, color = statusColor, fontSize = CineEditorial.Metadata,
+                                fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 9.dp, vertical = 6.dp))
                         }
                     }
                 }
-
                 Column(
-                    modifier = Modifier.align(Alignment.BottomStart).fillMaxWidth().padding(horizontal = 18.dp, vertical = 16.dp),
-                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                    Modifier.fillMaxWidth().padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
                     val identity = event?.entityName ?: item.source.name ?: item.source.handle ?: "CineRelay story"
-                    Text(identity, color = Home58Gold, fontSize = 11.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(identity, color = Home58Gold, fontSize = CineEditorial.Metadata, fontWeight = FontWeight.Bold,
+                        maxLines = 1, overflow = TextOverflow.Ellipsis)
                     Text(
                         event?.headline?.takeIf { it.isNotBlank() } ?: item.title,
-                        color = Home58Text,
-                        fontSize = 20.sp,
-                        lineHeight = 24.sp,
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 2,
+                        color = Home58Text, fontSize = 18.sp, lineHeight = 24.sp,
+                        fontWeight = FontWeight.Bold, minLines = 1, maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
                     )
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
-                            item.source.name ?: item.source.handle ?: "CineRelay",
-                            color = Home58Text.copy(alpha = 0.74f),
-                            fontSize = 9.sp,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
+                            item.source.name ?: item.source.handle ?: "Source unavailable",
+                            color = Home58Muted, fontSize = CineEditorial.Metadata,
+                            maxLines = 1, overflow = TextOverflow.Ellipsis,
                             modifier = Modifier.weight(1f),
                         )
-                        val storyMeta = buildList {
-                            if (story.updates.size > 1) add("${story.updates.size} updates")
-                            if (story.sourceCount > 1) add("${story.sourceCount} sources")
-                            home58TimeAgo(item.observedAt).takeIf { it.isNotBlank() }?.let { add(it) }
-                        }.joinToString(" • ")
-                        if (storyMeta.isNotBlank()) {
-                            Spacer(Modifier.width(8.dp))
-                            Text(storyMeta, color = Home58Text.copy(alpha = 0.62f), fontSize = 9.sp)
+                        Spacer(Modifier.width(8.dp))
+                        Text(home58TimeAgo(item.observedAt), color = Home58Muted, fontSize = CineEditorial.Metadata)
+                    }
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Text("Open update & evidence  →", color = Home58Gold,
+                            fontSize = CineEditorial.Metadata, fontWeight = FontWeight.Bold)
+                        Spacer(Modifier.weight(1f))
+                        if (story.sourceCount > 1) {
+                            Text("${story.sourceCount} sources", color = Home58Muted, fontSize = CineEditorial.Metadata)
                         }
                     }
                 }
@@ -324,7 +348,8 @@ private fun HomeHeroPagerV066(heroStories: List<HomeStoryV059>, onOpenUpdate: (N
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
                 repeat(heroStories.size) { dot ->
                     Box(
-                        Modifier.padding(horizontal = 3.dp).size(if (dot == pagerState.currentPage) 18.dp else 6.dp, 5.dp)
+                        Modifier.padding(horizontal = 3.dp)
+                            .size(if (dot == pagerState.currentPage) 18.dp else 6.dp, 5.dp)
                             .clip(CircleShape)
                             .background(if (dot == pagerState.currentPage) Home58Gold else Home58Muted.copy(alpha = 0.42f)),
                     )
@@ -372,11 +397,30 @@ private fun HomeArchiveFloatingV060(onOpenArchive: () -> Unit, modifier: Modifie
 }
 
 @Composable
-private fun HomeRailV058(rail: HomeRailV058, onOpenUpdate: (NewsroomSignal) -> Unit) {
-    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        Text(rail.title, color = Home58Text, fontSize = 19.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 20.dp))
-        LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            items(rail.items, key = { "${rail.title}:${it.key}" }) { story -> HomeCardV059(story) { onOpenUpdate(story.representative) } }
+private fun HomeRailV058(
+    rail: HomeRailV058,
+    onOpenUpdate: (NewsroomSignal) -> Unit,
+    onSeeAll: () -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = CineEditorial.Gutter),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(rail.title, color = Home58Text, fontSize = CineEditorial.SectionTitle,
+                fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f),
+                maxLines = 2, overflow = TextOverflow.Ellipsis)
+            TextButton(onClick = onSeeAll) {
+                Text("See all  ›", color = Home58Gold, fontSize = CineEditorial.Metadata, fontWeight = FontWeight.SemiBold)
+            }
+        }
+        LazyRow(
+            contentPadding = PaddingValues(horizontal = CineEditorial.Gutter),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            items(rail.items, key = { "${rail.title}:${it.key}" }) { story ->
+                HomeCardV059(story) { onOpenUpdate(story.representative) }
+            }
         }
     }
 }
@@ -385,46 +429,63 @@ private fun HomeRailV058(rail: HomeRailV058, onOpenUpdate: (NewsroomSignal) -> U
 private fun HomeCardV059(story: HomeStoryV059, onClick: () -> Unit) {
     val item = story.representative
     val event = item.canonicalEvent
-    Column(modifier = Modifier.width(220.dp).clickable(onClick = onClick), verticalArrangement = Arrangement.spacedBy(7.dp)) {
-        Box(Modifier.fillMaxWidth().aspectRatio(16f / 9f).clip(RoundedCornerShape(17.dp)).background(Home58Raised)) {
+    val status = cineEvidenceLabel(event?.verificationState, item.state)
+    Column(modifier = Modifier.width(220.dp).clickable(onClick = onClick), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Box(Modifier.fillMaxWidth().aspectRatio(16f / 9f).clip(RoundedCornerShape(16.dp)).background(Home58Raised)) {
             if (!item.thumbnailUrl.isNullOrBlank()) {
                 AsyncImage(model = item.thumbnailUrl, contentDescription = item.title, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
             }
-            Surface(color = Home58Ink.copy(alpha = 0.84f), shape = RoundedCornerShape(50), modifier = Modifier.align(Alignment.BottomStart).padding(8.dp)) {
-                Text(
-                    if (story.officialSourceCount > 0) "Official" else home58StateLabel(item.state),
-                    color = if (story.officialSourceCount > 0 || item.state == "VERIFIED") Home58Green else Home58Gold,
-                    fontSize = 9.sp,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                )
-            }
-            if (story.updates.size > 1 || story.sourceCount > 1) {
-                val storyMeta = buildList {
-                    if (story.updates.size > 1) add("${story.updates.size} updates")
-                    if (story.sourceCount > 1) add("${story.sourceCount} sources")
-                }.joinToString(" • ")
-                Surface(color = Home58Ink.copy(alpha = 0.88f), shape = RoundedCornerShape(50), modifier = Modifier.align(Alignment.TopEnd).padding(8.dp)) {
-                    Text(storyMeta, color = Home58Text, fontSize = 9.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp))
-                }
+            Surface(
+                color = Home58Ink.copy(alpha = 0.93f),
+                shape = RoundedCornerShape(8.dp),
+                modifier = Modifier.align(Alignment.BottomStart).padding(8.dp),
+            ) {
+                Text(status, color = cineEvidenceColor(status), fontSize = CineEditorial.Metadata,
+                    fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp))
             }
         }
         event?.entityName?.takeIf { it.isNotBlank() }?.let {
-            Text(it, color = Home58Gold, fontSize = 9.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(it, color = Home58Gold, fontSize = CineEditorial.Metadata, fontWeight = FontWeight.Bold,
+                maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
-        Text(
-            event?.headline?.takeIf { it.isNotBlank() } ?: item.title,
-            color = Home58Text,
-            fontSize = 13.sp,
-            fontWeight = FontWeight.SemiBold,
-            lineHeight = 17.sp,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-        )
+        Text(event?.headline?.takeIf { it.isNotBlank() } ?: item.title,
+            color = Home58Text, fontSize = CineEditorial.Body, fontWeight = FontWeight.SemiBold,
+            lineHeight = 20.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(item.source.name ?: item.source.handle ?: "CineRelay", color = Home58Muted, fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
-            Spacer(Modifier.width(7.dp))
-            Text(home58TimeAgo(item.observedAt), color = Home58Muted, fontSize = 9.sp)
+            Text(item.source.name ?: item.source.handle ?: "CineRelay", color = Home58Muted,
+                fontSize = CineEditorial.Metadata, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f))
+            Spacer(Modifier.width(6.dp))
+            Text(home58TimeAgo(item.observedAt), color = Home58Muted, fontSize = CineEditorial.Metadata)
+        }
+    }
+}
+
+@Composable
+private fun HomeFullStoryRowV1(story: HomeStoryV059, onClick: () -> Unit) {
+    val item = story.representative
+    val event = item.canonicalEvent
+    val status = cineEvidenceLabel(event?.verificationState, item.state)
+    Row(
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(Home58Panel)
+            .clickable(onClick = onClick).padding(12.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(Modifier.size(width = 104.dp, height = 78.dp).clip(RoundedCornerShape(11.dp)).background(Home58Raised)) {
+            if (!item.thumbnailUrl.isNullOrBlank()) {
+                AsyncImage(model = item.thumbnailUrl, contentDescription = item.title, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
+            }
+        }
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+            Text(event?.headline?.takeIf { it.isNotBlank() } ?: item.title,
+                color = Home58Text, fontSize = CineEditorial.Body, fontWeight = FontWeight.SemiBold,
+                maxLines = 2, overflow = TextOverflow.Ellipsis)
+            Text(item.source.name ?: item.source.handle ?: "CineRelay", color = Home58Muted,
+                fontSize = CineEditorial.Metadata, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(status + "  ·  " + home58TimeAgo(item.observedAt),
+                color = cineEvidenceColor(status), fontSize = CineEditorial.Metadata,
+                maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
     }
 }
