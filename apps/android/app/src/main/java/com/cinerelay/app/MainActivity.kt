@@ -235,7 +235,7 @@ class MainActivity : ComponentActivity() {
                             onQueryChange = archiveViewModel::setQuery,
                             onLoadMore = archiveViewModel::loadMore,
                             onOpen = { update ->
-                                archiveVisible = false
+                                // Keep archive and its scroll position mounted behind details.
                                 consumerViewModel.openNotification(
                                     eventId = update.eventId,
                                     rawItemId = update.id,
