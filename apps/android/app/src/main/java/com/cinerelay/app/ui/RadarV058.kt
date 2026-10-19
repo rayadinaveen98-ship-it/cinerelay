@@ -335,7 +335,7 @@ private fun RadarOpportunityCardV066(event: EventCard, actionable: Boolean, onCl
             event.entityName?.let {
                 Text(it, color = RadarGold58, fontSize = 12.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
-            Text(event.headline, color = RadarText58, fontSize = 18.sp, lineHeight = 23.sp, fontWeight = FontWeight.Bold, maxLines = 3, overflow = TextOverflow.Ellipsis)
+            Text(event.headline, color = RadarText58, fontSize = CineEditorial.CardTitle, lineHeight = 20.sp, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
             event.summary?.takeIf { it.isNotBlank() }?.let {
                 Text(it, color = RadarMuted58, fontSize = 12.sp, lineHeight = 18.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
             }
@@ -350,7 +350,7 @@ private fun RadarOpportunityCardV066(event: EventCard, actionable: Boolean, onCl
             if (reasonSummary.isNotBlank()) {
                 Surface(color = accent.copy(alpha = 0.07f), shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(horizontal = 11.dp, vertical = 9.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                        Text("WHY NOW", color = accent, fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 0.8.sp)
+                        Text("WHY IT MATTERS", color = accent, fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 0.8.sp)
                         Text(reasonSummary, color = RadarText58.copy(alpha = 0.82f), fontSize = 12.sp, lineHeight = 15.sp)
                     }
                 }
@@ -396,7 +396,7 @@ private fun RawRadarOpportunityCardV066(opportunity: RawRadarOpportunityV059, on
                 Text(opportunity.label, color = accent, fontSize = 12.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
                 RadarScorePillV066(opportunity.score, accent, actionable = true)
             }
-            Text(signal.title, color = RadarText58, fontSize = 18.sp, lineHeight = 22.sp, fontWeight = FontWeight.Bold, maxLines = 3, overflow = TextOverflow.Ellipsis)
+            Text(signal.title, color = RadarText58, fontSize = CineEditorial.CardTitle, lineHeight = 20.sp, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(signal.source.name ?: signal.source.handle ?: "CineRelay source", color = RadarGold58, fontSize = 12.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
                 Spacer(Modifier.width(8.dp))
