@@ -273,18 +273,15 @@ private fun SearchUpdateCardV056(item: UniversalUpdateResult, onClick: () -> Uni
         modifier = Modifier.fillMaxWidth().padding(horizontal = CineEditorial.Gutter).clickable(onClick = onClick),
     ) {
         Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-            if (!item.thumbnailUrl.isNullOrBlank()) {
-                AsyncImage(
-                    model = item.thumbnailUrl,
-                    contentDescription = item.title,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.width(104.dp).aspectRatio(16f / 9f).clip(RoundedCornerShape(12.dp)).background(SearchRaised56),
-                )
-                Spacer(Modifier.width(12.dp))
-            }
+            EditorialArtworkV2(
+                url = item.thumbnailUrl,
+                title = item.title,
+                modifier = Modifier.width(108.dp).aspectRatio(CineEditorial.ArtworkRatio),
+            )
+            Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
                 Text(item.source.name ?: "Movie update", color = SearchGold56, fontSize = 12.sp, fontWeight = FontWeight.Bold, maxLines = 1)
-                EditorialDisplayV2(item.title, size = 18, lines = 3)
+                EditorialDisplayV2(item.title, size = 15, lines = 3)
                 Text(friendlyLanguageV056(item.languageCode), color = SearchMuted56, fontSize = 12.sp)
             }
         }
@@ -361,7 +358,7 @@ private fun UniversalHubV056(
             Surface(color = SearchPanel56, shape = RoundedCornerShape(CineEditorial.CardRadius), modifier = Modifier.fillMaxWidth()) {
                 Row(Modifier.padding(18.dp), verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
-                        Text(hub.entity.name, color = SearchText56, fontSize = 26.sp, fontWeight = FontWeight.Bold)
+                        Text(hub.entity.name, color = SearchText56, fontSize = CineEditorial.PageTitle, fontWeight = FontWeight.SemiBold, maxLines = 3, overflow = TextOverflow.Ellipsis)
                         Text(
                             listOfNotNull(friendlyTypeV056(hub.entity.type), friendlyLanguageV056(hub.entity.primaryLanguage)).joinToString(" • "),
                             color = SearchMuted56,
@@ -380,7 +377,7 @@ private fun UniversalHubV056(
         }
 
         if (hub.ottReleases.isNotEmpty()) {
-            item { Text("Streaming", color = SearchText56, fontSize = 20.sp, fontWeight = FontWeight.Bold) }
+            item { Text("Streaming", color = SearchText56, fontSize = CineEditorial.SectionTitle, fontWeight = FontWeight.Bold) }
             items(hub.ottReleases, key = { it.id }) { release ->
                 Surface(color = SearchPanel56, shape = RoundedCornerShape(CineEditorial.CardRadius), modifier = Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -393,7 +390,7 @@ private fun UniversalHubV056(
         }
 
         if (hub.events.isNotEmpty()) {
-            item { Text("Story timeline", color = SearchText56, fontSize = 20.sp, fontWeight = FontWeight.Bold) }
+            item { Text("Story timeline", color = SearchText56, fontSize = CineEditorial.SectionTitle, fontWeight = FontWeight.Bold) }
             items(hub.events, key = { it.id }) { event ->
                 Surface(color = SearchPanel56, shape = RoundedCornerShape(CineEditorial.CardRadius), modifier = Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -406,7 +403,7 @@ private fun UniversalHubV056(
         }
 
         if (hub.activity.isNotEmpty()) {
-            item { Text("Latest updates", color = SearchText56, fontSize = 20.sp, fontWeight = FontWeight.Bold) }
+            item { Text("Latest updates", color = SearchText56, fontSize = CineEditorial.SectionTitle, fontWeight = FontWeight.Bold) }
             items(hub.activity, key = { it.rawItemId }) { activity ->
                 Surface(color = SearchPanel56, shape = RoundedCornerShape(CineEditorial.CardRadius), modifier = Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
