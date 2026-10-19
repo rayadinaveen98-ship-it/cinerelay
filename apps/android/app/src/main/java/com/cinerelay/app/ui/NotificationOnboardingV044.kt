@@ -206,7 +206,7 @@ private fun WelcomeStep(sourceCount: Int, onContinue: () -> Unit) {
             lineHeight = 21.sp,
         )
         Spacer(Modifier.height(22.dp))
-        Surface(color = OnboardingGold.copy(alpha = 0.10f), shape = RoundedCornerShape(16.dp)) {
+        Surface(color = OnboardingGold.copy(alpha = 0.10f), shape = RoundedCornerShape(CineEditorial.CardRadius)) {
             Text(
                 "$sourceCount official YouTube sources ready",
                 color = OnboardingGold,
@@ -312,7 +312,7 @@ private fun SelectableSourceRow(
 ) {
     Surface(
         color = if (selected) OnboardingGold.copy(alpha = 0.08f) else OnboardingPanel,
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(CineEditorial.CardRadius),
         modifier = Modifier.fillMaxWidth().clickable(enabled = enabled, onClick = onClick),
     ) {
         Row(
@@ -380,7 +380,7 @@ private fun ContentTypeStep(
             enabled = !saving,
         )
         Spacer(Modifier.height(18.dp))
-        Surface(color = OnboardingGreen.copy(alpha = 0.08f), shape = RoundedCornerShape(16.dp)) {
+        Surface(color = OnboardingGreen.copy(alpha = 0.08f), shape = RoundedCornerShape(CineEditorial.CardRadius)) {
             Text(
                 "CineRelay will never use channels you did not select to create upload notifications.",
                 color = OnboardingGreen,
@@ -403,7 +403,7 @@ private fun PreferenceSwitch(
     onCheckedChange: (Boolean) -> Unit,
     enabled: Boolean,
 ) {
-    Surface(color = OnboardingPanel, shape = RoundedCornerShape(18.dp), modifier = Modifier.fillMaxWidth()) {
+    Surface(color = OnboardingPanel, shape = RoundedCornerShape(CineEditorial.CardRadius), modifier = Modifier.fillMaxWidth()) {
         Row(Modifier.padding(15.dp), verticalAlignment = Alignment.CenterVertically) {
             Surface(color = OnboardingRaised, shape = CircleShape, modifier = Modifier.size(42.dp)) {
                 Box(contentAlignment = Alignment.Center) { icon() }
@@ -453,7 +453,7 @@ private fun PermissionStep(
             lineHeight = 18.sp,
         )
         Spacer(Modifier.height(22.dp))
-        Surface(color = OnboardingPanel, shape = RoundedCornerShape(18.dp), modifier = Modifier.fillMaxWidth()) {
+        Surface(color = OnboardingPanel, shape = RoundedCornerShape(CineEditorial.CardRadius), modifier = Modifier.fillMaxWidth()) {
             Column(Modifier.padding(16.dp)) {
                 SummaryLine("Selected channels", selectedCount.toString())
                 HorizontalDivider(color = OnboardingLine, modifier = Modifier.padding(vertical = 10.dp))
@@ -507,7 +507,7 @@ private fun PrimaryOnboardingButton(text: String, onClick: () -> Unit, enabled: 
             disabledContainerColor = OnboardingLine,
             disabledContentColor = OnboardingMuted,
         ),
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(CineEditorial.CardRadius),
         modifier = Modifier.fillMaxWidth().height(52.dp),
     ) {
         Text(text, fontSize = 14.sp, fontWeight = FontWeight.Black)
@@ -516,7 +516,7 @@ private fun PrimaryOnboardingButton(text: String, onClick: () -> Unit, enabled: 
 
 @Composable
 private fun BrandOrb() {
-    Surface(color = OnboardingGold.copy(alpha = 0.08f), shape = RoundedCornerShape(20.dp), modifier = Modifier.size(82.dp)) {
+    Surface(color = OnboardingGold.copy(alpha = 0.08f), shape = RoundedCornerShape(CineEditorial.CardRadius), modifier = Modifier.size(82.dp)) {
         Box(contentAlignment = Alignment.Center) {
             Icon(
                 painter = androidx.compose.ui.res.painterResource(com.cinerelay.app.R.drawable.ic_cinerelay_mark),
