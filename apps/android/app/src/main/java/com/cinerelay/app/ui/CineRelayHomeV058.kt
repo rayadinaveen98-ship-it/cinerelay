@@ -203,7 +203,6 @@ fun CineRelayHomeV058(
                 Column(Modifier.fillMaxSize().background(Home58Ink)) {
                     CineScreenHeader(
                         title = "Explore cinema",
-                        subtitle = "Choose a category to see all its updates.",
                         onBack = { showCategories = false },
                     )
                     LazyColumn(
