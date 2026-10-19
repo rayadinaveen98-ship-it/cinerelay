@@ -122,7 +122,7 @@ fun ArchiveV058(
                             item {
                                 Surface(
                                     color = ArchiveRaised58,
-                                    shape = RoundedCornerShape(18.dp),
+                                    shape = RoundedCornerShape(CineEditorial.CardRadius),
                                     modifier = Modifier.fillMaxWidth().clickable(enabled = !state.loadingMore) { onLoadMore() },
                                 ) {
                                     Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
@@ -143,7 +143,7 @@ fun ArchiveV058(
 private fun ArchiveCardV058(item: ConsumerUpdate, onClick: () -> Unit) {
     Surface(
         color = ArchivePanel58,
-        shape = RoundedCornerShape(18.dp),
+        shape = RoundedCornerShape(CineEditorial.CardRadius),
         modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
     ) {
         Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically,
