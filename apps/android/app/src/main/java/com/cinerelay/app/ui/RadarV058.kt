@@ -197,7 +197,7 @@ fun RadarV058(
                     LazyColumn(
                         state=landingListState,
                         contentPadding = PaddingValues(start = CineEditorial.Gutter, end = CineEditorial.Gutter, top = 8.dp, bottom = 110.dp),
-                        verticalArrangement = Arrangement.spacedBy(24.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp),
                     ) {
                         item {
                             RadarSummaryV066(
@@ -262,20 +262,25 @@ fun RadarV058(
 private fun RadarPreviewCardV080(
     label: String, headline: String, score: Int, source: String?, onClick: () -> Unit,
 ) {
-    Surface(color = RadarPanel58, shape = RoundedCornerShape(17.dp),
-        modifier = Modifier.width(272.dp).clickable(onClick = onClick)) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(11.dp)) {
-            EditorialEyebrowV2(label)
-            EditorialDisplayV2(headline, size = 20, lines = 3)
-            Text(source?.takeIf { it.isNotBlank() } ?: "Source details available",
-                color = RadarMuted58, fontSize = 12.sp, maxLines = 2,
+    Surface(
+        color = RadarPanel58, shape = RoundedCornerShape(CineEditorial.CardRadius),
+        modifier = Modifier.width(228.dp).clickable(onClick = onClick),
+    ) {
+        Column(
+            Modifier.padding(13.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text(label, color = RadarGold58, fontSize = 12.sp,
+                fontWeight = FontWeight.Medium, maxLines = 1,
                 overflow = TextOverflow.Ellipsis)
-            androidx.compose.material3.HorizontalDivider(color = CineEditorial.Outline)
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("SIGNAL SCORE ${score}", color = RadarGold58, fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
-                Text("Open evidence →", color = RadarMuted58, fontSize = 11.sp)
-            }
+            Text(headline, color = RadarText58, fontSize = 15.sp,
+                lineHeight = 20.sp, fontWeight = FontWeight.Medium,
+                maxLines = 2, overflow = TextOverflow.Ellipsis)
+            Text(source?.takeIf { it.isNotBlank() } ?: "Source available",
+                color = RadarMuted58, fontSize = 12.sp, maxLines = 1,
+                overflow = TextOverflow.Ellipsis)
+            Text("Signal ${score}  ·  Open details →",
+                color = RadarMuted58, fontSize = 12.sp, maxLines = 1)
         }
     }
 }
