@@ -58,8 +58,8 @@ class ArchiveViewModelV058(application: Application) : AndroidViewModel(applicat
         if (_state.value.loading) return
         if (_state.value.items.isNotEmpty() && !force) return
         val requestId = requestEpoch.advance()
+        _state.value = _state.value.copy(loading = true, error = null, page = 0)
         viewModelScope.launch {
-            _state.value = _state.value.copy(loading = true, error = null, page = 0)
             runCatching { withContext(Dispatchers.IO) { client.page(page = 0) } }
                 .onSuccess { page ->
                     if (!isCurrent(requestId)) return@onSuccess
@@ -86,8 +86,8 @@ class ArchiveViewModelV058(application: Application) : AndroidViewModel(applicat
         val current = _state.value
         if (current.loading || current.loadingMore || !current.hasMore) return
         val requestId = requestEpoch.advance()
+        _state.value = current.copy(loadingMore = true, error = null)
         viewModelScope.launch {
-            _state.value = current.copy(loadingMore = true, error = null)
             val nextPage = current.page + 1
             runCatching { withContext(Dispatchers.IO) { client.page(page = nextPage) } }
                 .onSuccess { page ->
