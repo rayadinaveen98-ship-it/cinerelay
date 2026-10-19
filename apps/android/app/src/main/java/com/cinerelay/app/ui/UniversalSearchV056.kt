@@ -249,18 +249,18 @@ private fun SearchSectionTitleV056(title: String) {
 @Composable
 private fun SearchTitleCardV056(item: UniversalTitleResult, onClick: () -> Unit) {
     Column(
-        modifier = Modifier.width(164.dp).clickable(onClick = onClick),
+        modifier = Modifier.width(CineEditorial.CompactPosterWidth).clickable(onClick = onClick),
         verticalArrangement = Arrangement.spacedBy(9.dp),
     ) {
         EditorialArtworkV2(
             url = null, title = item.name,
-            modifier = Modifier.fillMaxWidth().height(182.dp),
+            modifier = Modifier.fillMaxWidth().height(204.dp),
             label = friendlyTypeV056(item.type),
         )
-        EditorialDisplayV2(item.name, size = 18, lines = 2)
+        EditorialDisplayV2(item.name, size = 15, lines = 2)
         Text(
             friendlyLanguageV056(item.primaryLanguage),
-            color = SearchMuted56, fontSize = 11.sp, maxLines = 1,
+            color = SearchMuted56, fontSize = CineEditorial.Metadata, maxLines = 1,
         )
     }
 }
