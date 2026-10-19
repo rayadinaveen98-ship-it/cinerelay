@@ -28,6 +28,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Archive
+import androidx.compose.material.icons.filled.GridView
+import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.ArrowBack
@@ -172,6 +174,15 @@ fun CineRelayHomeV058(
     val heroStories = projection?.heroStories.orEmpty()
     val latestStories = projection?.latest.orEmpty()
     val rails = projection?.rails.orEmpty()
+    val visibleRails = rails.mapNotNull { rail ->
+        // Latest already shows the newest items; Just In should extend it,
+        // not repeat the same thumbnails immediately below the slideshow.
+        val items = if (rail.title == "Just In") {
+            val recentKeys = (heroStories + latestStories).map { it.key }.toSet()
+            rail.items.filterNot { it.key in recentKeys }
+        } else rail.items
+        if (items.isEmpty()) null else rail.copy(items = items)
+    }.sortedWith(compareBy<HomeRailV058> { homeRailPriorityV22(it.title) }.thenBy { it.title })
 
     var openedRail by rememberSaveable { mutableStateOf<String?>(null) }
     var showCategories by rememberSaveable { mutableStateOf(false) }
@@ -239,7 +250,13 @@ fun CineRelayHomeV058(
                         contentPadding = PaddingValues(bottom = 120.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        item(key = "header") { HomeHeaderV058(state.loading, onRefresh, onSearch, onOpenArchive) }
+                        item(key = "header") {
+                            HomeHeaderV058(
+                                onSearch = onSearch,
+                                onOpenExplore = { showCategories = true },
+                                onOpenArchive = onOpenArchive,
+                            )
+                        }
                         state.error?.let { message ->
                             item(key = "error") {
                                 Text(message, color = CineEditorial.Error, fontSize = 12.sp,
@@ -255,8 +272,6 @@ fun CineRelayHomeV058(
                         }
                         if (heroStories.isNotEmpty()) {
                             item(key = "top") {
-                                HomeCompactSectionV1("Top Stories")
-                                Spacer(Modifier.height(10.dp))
                                 HomeHeroPagerV066(heroStories, onOpenUpdate)
                             }
                         }
@@ -278,43 +293,24 @@ fun CineRelayHomeV058(
                                 }
                             }
                         }
-                        if (favoriteHighlights.isNotEmpty()) {
-                            item(key = "favorites-title") {
-                                Spacer(Modifier.height(10.dp))
-                                HomeCompactSectionV1("From Your Sources") {
-                                    openedRail = "From Your Favorites"
-                                }
-                            }
-                            item(key = "favorites-cinematic-rail") {
+                        // The Home is a vertical cinema discovery surface. Each shelf
+                        // swipes sideways, and See all opens its existing full listing.
+                        items(visibleRails, key = { "shelf:${it.title}" }) { rail ->
+                            Column(
+                                modifier = Modifier.padding(top = 12.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp),
+                            ) {
+                                HomeCompactSectionV1(rail.title) { openedRail = rail.title }
                                 LazyRow(
                                     contentPadding = PaddingValues(horizontal = CineEditorial.Gutter),
                                     horizontalArrangement = Arrangement.spacedBy(CineEditorial.RailGap),
                                 ) {
-                                    items(favoriteHighlights, key = { "favorite:${it.key}" }) { story ->
-                                        HomeCinematicRailCardV21(story) { onOpenUpdate(story.representative) }
-                                    }
-                                }
-                            }
-                        }
-                        if (rails.isNotEmpty()) {
-                            item(key = "explore") {
-                                Spacer(Modifier.height(10.dp))
-                                HomeCompactSectionV1("Explore More") { showCategories = true }
-                                Spacer(Modifier.height(10.dp))
-                                LazyRow(
-                                    contentPadding = PaddingValues(horizontal = CineEditorial.Gutter),
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                ) {
-                                    items(rails.filter { it.title !in setOf("Just In", "From Your Favorites") }.take(8),
-                                        key = { "explore:${it.title}" }) { rail ->
-                                        Surface(
-                                            color = Home58Panel, shape = RoundedCornerShape(10.dp),
-                                            modifier = Modifier.clickable { openedRail = rail.title },
-                                        ) {
-                                            Text(rail.title, color = Home58Text, fontSize = 13.sp,
-                                                fontWeight = FontWeight.Medium,
-                                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 13.dp),
-                                                maxLines = 1)
+                                    items(rail.items, key = { it.key }) { story ->
+                                        val open = { onOpenUpdate(story.representative) }
+                                        when (homeRailVisualV22(rail.title)) {
+                                            HomeRailVisualV22.PORTRAIT -> HomePortraitRailCardV22(story, open)
+                                            HomeRailVisualV22.COMPACT -> HomeCompactRailCardV22(story, open)
+                                            HomeRailVisualV22.LANDSCAPE -> HomeCinematicRailCardV21(story, open)
                                         }
                                     }
                                 }
@@ -332,31 +328,38 @@ fun CineRelayHomeV058(
 
 @Composable
 private fun HomeHeaderV058(
-    loading: Boolean, onRefresh: () -> Unit, onSearch: () -> Unit, onOpenArchive: () -> Unit,
+    onSearch: () -> Unit,
+    onOpenExplore: () -> Unit,
+    onOpenArchive: () -> Unit,
 ) {
     Row(
         modifier = Modifier.fillMaxWidth().padding(
-            start = CineEditorial.Gutter, end = CineEditorial.Gutter, top = 10.dp, bottom = 2.dp),
+            start = CineEditorial.Gutter, end = CineEditorial.Gutter, top = 10.dp, bottom = 2.dp,
+        ),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Surface(color = Home58Gold, shape = RoundedCornerShape(9.dp),
-            modifier = Modifier.size(36.dp)) {
+        Surface(
+            color = Home58Gold, shape = RoundedCornerShape(9.dp),
+            modifier = Modifier.size(36.dp),
+        ) {
             Box(contentAlignment = Alignment.Center) {
                 Text("C", color = Home58Ink, fontWeight = FontWeight.Bold, fontSize = 21.sp)
             }
         }
         Spacer(Modifier.width(10.dp))
-        Text("CineRelay", color = Home58Text, fontSize = 20.sp,
-            fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
-        IconButton(onClick = onSearch) {
+        Text(
+            "CineRelay", color = Home58Text, fontSize = 20.sp,
+            fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f),
+            maxLines = 1, overflow = TextOverflow.Ellipsis,
+        )
+        IconButton(onClick = onSearch, modifier = Modifier.size(CineEditorial.TargetSize)) {
             Icon(Icons.Default.Search, contentDescription = "Search", tint = Home58Text)
         }
-        IconButton(onClick = onOpenArchive) {
-            Icon(Icons.Default.Archive, contentDescription = "Archive", tint = Home58Text)
+        IconButton(onClick = onOpenExplore, modifier = Modifier.size(CineEditorial.TargetSize)) {
+            Icon(Icons.Default.GridView, contentDescription = "Explore cinema categories", tint = Home58Text)
         }
-        IconButton(onClick = onRefresh, enabled = !loading) {
-            if (loading) CircularProgressIndicator(Modifier.size(18.dp), color = Home58Gold, strokeWidth = 2.dp)
-            else Icon(Icons.Default.Refresh, contentDescription = "Refresh", tint = Home58Muted)
+        IconButton(onClick = onOpenArchive, modifier = Modifier.size(CineEditorial.TargetSize)) {
+            Icon(Icons.Default.Archive, contentDescription = "Archive", tint = Home58Text)
         }
     }
 }
@@ -367,12 +370,21 @@ private fun HomeCompactSectionV1(title: String, onSeeAll: (() -> Unit)? = null) 
         modifier = Modifier.fillMaxWidth().padding(horizontal = CineEditorial.Gutter),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(title, fontSize = 18.sp, fontWeight = FontWeight.SemiBold,
-            color = Home58Text, modifier = Modifier.weight(1f), maxLines = 2)
+        Text(
+            title, fontSize = CineEditorial.SectionTitle,
+            fontWeight = FontWeight.SemiBold, color = Home58Text,
+            modifier = Modifier.weight(1f),
+            maxLines = 1, overflow = TextOverflow.Ellipsis,
+        )
         if (onSeeAll != null) {
             TextButton(onClick = onSeeAll) {
-                Text("See all  →", color = Home58Gold, fontSize = 12.sp,
-                    fontWeight = FontWeight.Medium)
+                Text("See all", color = Home58Gold, fontSize = CineEditorial.Metadata)
+                Icon(
+                    Icons.Default.ChevronRight,
+                    contentDescription = null,
+                    tint = Home58Gold,
+                    modifier = Modifier.size(16.dp),
+                )
             }
         }
     }
