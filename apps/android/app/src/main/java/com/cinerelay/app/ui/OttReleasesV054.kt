@@ -412,32 +412,11 @@ private fun OttCompactCardV080(release: OttRelease, onClick: () -> Unit) {
         modifier = Modifier.width(168.dp).clickable(onClick = onClick),
     ) {
         Column {
-            Box(
-                Modifier.fillMaxWidth().height(194.dp).background(
-                    Brush.linearGradient(
-                        listOf(OttRaised, OttInk, OttRaised),
-                    ),
-                ),
-            ) {
-                Text(
-                    "STREAMING  /  CINERELAY",
-                    color = OttGold,
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.align(Alignment.TopStart).padding(12.dp),
-                    maxLines = 1,
-                )
-                Text(
-                    release.entity.name,
-                    color = OttText,
-                    fontSize = 17.sp,
-                    lineHeight = 23.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    maxLines = 4,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.align(Alignment.BottomStart).padding(12.dp),
-                )
-            }
+            CineTitleCoverV21(
+                title = release.entity.name,
+                eyebrow = "STREAMING",
+                modifier = Modifier.fillMaxWidth().height(194.dp),
+            )
             Column(
                 modifier = Modifier.fillMaxWidth().padding(12.dp),
                 verticalArrangement = Arrangement.spacedBy(7.dp),
