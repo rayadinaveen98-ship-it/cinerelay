@@ -335,23 +335,15 @@ private fun RadarPreviewCardV080(
 
 @Composable
 private fun RadarSummaryV066(actionableCount: Int, sourceOpportunityCount: Int, totalCount: Int) {
-    Row(
+    val priorityCount = actionableCount + sourceOpportunityCount
+    Text(
+        "$priorityCount priority · $totalCount total",
         modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(
-            "$totalCount updates to explore",
-            modifier = Modifier.weight(1f),
-            color = RadarText58,
-            fontSize = CineEditorial.Body,
-            fontWeight = FontWeight.SemiBold,
-        )
-        Text(
-            "${actionableCount + sourceOpportunityCount} priority signals",
-            color = RadarMuted58,
-            fontSize = CineEditorial.Metadata,
-        )
-    }
+        color = RadarMuted58,
+        fontSize = CineEditorial.Metadata,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+    )
 }
 
 @Composable
@@ -386,27 +378,13 @@ private fun RadarOpportunityCardV066(event: EventCard, actionable: Boolean, onCl
                 Text(it, color = RadarGold58, fontSize = 12.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
             Text(event.headline, color = RadarText58, fontSize = CineEditorial.CardTitle, lineHeight = 20.sp, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
-            event.summary?.takeIf { it.isNotBlank() }?.let {
-                Text(it, color = RadarMuted58, fontSize = 12.sp, lineHeight = 18.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
-            }
-
             Row(horizontalArrangement = Arrangement.spacedBy(7.dp), verticalAlignment = Alignment.CenterVertically) {
                 RadarMetaChipV066(radarVerificationLabelV066(event.verificationState), radarVerificationColorV066(event.verificationState))
                 if (event.evidenceCount > 0) RadarMetaChipV066("${event.evidenceCount} evidence", RadarBlue58)
                 event.detectedAt?.let { RadarMetaChipV066(radarAgeV058(it), RadarMuted58) }
             }
 
-            val reasonSummary = radarReasonSummaryV066(radar?.reasons.orEmpty())
-            if (reasonSummary.isNotBlank()) {
-                Surface(color = accent.copy(alpha = 0.07f), shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth()) {
-                    Column(Modifier.padding(horizontal = 11.dp, vertical = 9.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                        Text("WHY IT MATTERS", color = accent, fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 0.8.sp)
-                        Text(reasonSummary, color = RadarText58.copy(alpha = 0.82f), fontSize = 12.sp, lineHeight = 15.sp)
-                    }
-                }
-            }
 
-            Text(radarHintV058(event, actionable), color = RadarMuted58, fontSize = 12.sp, lineHeight = 16.sp)
         }
     }
 }
@@ -453,7 +431,6 @@ private fun RawRadarOpportunityCardV066(opportunity: RawRadarOpportunityV059, on
                 if ((signal.source.authorityTier ?: 99) <= 1) RadarMetaChipV066("Official", RadarGreen58)
                 else RadarMetaChipV066(radarSignalAgeV059(signal), RadarMuted58)
             }
-            Text(opportunity.hint, color = RadarMuted58, fontSize = 12.sp, lineHeight = 16.sp)
         }
     }
 }
