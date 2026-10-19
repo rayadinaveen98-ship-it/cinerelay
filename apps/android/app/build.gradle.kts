@@ -37,16 +37,18 @@ val updateSigningConfigured = listOf(
 // would prevent an update over the already-distributed Build 677 preview.
 // Debug CI builds remain unaffected.
 val releaseArtifactRequested = gradle.startParameter.taskNames.any { requested ->
-    val task = requested.substringAfterLast(':')
-    task.equals("assembleRelease", ignoreCase = true) ||
-        task.equals("bundleRelease", ignoreCase = true)
+    val task = requested.substringAfterLast(':').lowercase()
+    task in setOf("assemble", "bundle", "build") ||
+        (task.contains("release") && listOf("assemble", "bundle", "package", "install", "publish").any {
+            task.startsWith(it)
+        })
 }
 if (releaseArtifactRequested) {
     require(updateSigningConfigured) {
         "CineRelay release requires permanent update-signing configuration."
     }
-    require(configuredVersionCode != null && configuredVersionCode > 220677) {
-        "Release versionCode must be greater than the distributed Build 677 (220677)."
+    require(configuredVersionCode != null && configuredVersionCode >= 221000) {
+        "Stable release versionCode must be >= 221000, above distributed 220xxx preview builds."
     }
     require(
         !configuredVersionName.isNullOrBlank() &&
