@@ -2,6 +2,7 @@ package com.cinerelay.app.ui
 
 import android.app.Application
 import android.os.SystemClock
+import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.cinerelay.app.BuildConfig
@@ -73,7 +74,10 @@ class CineRelayViewModel(application: Application) : AndroidViewModel(applicatio
 
     init {
         if (_state.value.authenticated) {
-            refreshAll()
+            viewModelScope.launch {
+                loadCachedHome()
+                refreshAll()
+            }
         }
     }
 
@@ -147,7 +151,10 @@ class CineRelayViewModel(application: Application) : AndroidViewModel(applicatio
                         authMode = null,
                         notice = "Signed in. Loading your CineRelay setup.",
                     )
-                    refreshAll()
+                    viewModelScope.launch {
+                        loadCachedHome()
+                        refreshAll()
+                    }
                 }
                 .onFailure(::handleFailure)
         }
@@ -221,9 +228,32 @@ class CineRelayViewModel(application: Application) : AndroidViewModel(applicatio
                     when (requestedTab) {
                         AppTab.LIVE -> {
                             coroutineScope {
+                                val started = SystemClock.elapsedRealtime()
                                 val youtube = async { backend.newsroom(NewsroomPlatform.YOUTUBE.name, limit = 70) }
-                                val web = async { backend.newsroom(NewsroomPlatform.WEB.name, limit = 50) }
-                                LoadResult.Home(youtube = youtube.await(), web = web.await())
+                                val web = async { runCatching { backend.newsroom(NewsroomPlatform.WEB.name, limit = 50) } }
+                                val youtubeUpdates = youtube.await()
+                                // Don't make YouTube wait for the slower independent Web service.
+                                withContext(Dispatchers.Main) {
+                                    if (_state.value.authenticated && _state.value.tab == AppTab.LIVE) {
+                                        val existingWeb = _state.value.homeSignals.filter {
+                                            it.source.platform.equals("WEB", ignoreCase = true) ||
+                                                it.source.platform.equals("RSS", ignoreCase = true)
+                                        }
+                                        _state.value = _state.value.copy(
+                                            loading = false,
+                                            homeSignals = combineHomeSignals(youtubeUpdates, existingWeb),
+                                        )
+                                        Log.d("CineRelayHomePerf", "youtube_first_ms=" +
+                                            (SystemClock.elapsedRealtime() - started))
+                                    }
+                                }
+                                val webUpdates = web.await().getOrElse { error ->
+                                    Log.w("CineRelayHomePerf", "web_request_failed", error)
+                                    emptyList()
+                                }
+                                Log.d("CineRelayHomePerf", "both_feeds_ms=" +
+                                    (SystemClock.elapsedRealtime() - started))
+                                LoadResult.Home(youtube = youtubeUpdates, web = webUpdates)
                             }
                         }
                         AppTab.FOLLOWING -> LoadResult.Events(backend.eventFeed("following"))
@@ -375,10 +405,14 @@ class CineRelayViewModel(application: Application) : AndroidViewModel(applicatio
         refresh()
     }
 
-    private fun loadCachedHome() {
+    private suspend fun loadCachedHome() {
         val userId = backend.currentSession()?.userId?.trim().orEmpty()
         if (userId.isBlank()) return
-        val cached = app.homeCache.read(userId) ?: return
+        val start = SystemClock.elapsedRealtime()
+        val cached = withContext(Dispatchers.IO) { app.homeCache.read(userId) } ?: return
+        // An account switch during the disk read must never reveal another user's cache.
+        if (backend.currentSession()?.userId != userId || !_state.value.authenticated) return
+        Log.d("CineRelayHomePerf", "cache_read_ms=" + (SystemClock.elapsedRealtime() - start))
         val current = _state.value
         val selectedLane = when (current.newsroomPlatform) {
             NewsroomPlatform.YOUTUBE -> cached.youtube
