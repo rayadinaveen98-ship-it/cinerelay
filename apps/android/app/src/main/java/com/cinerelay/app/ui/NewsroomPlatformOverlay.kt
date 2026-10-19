@@ -38,7 +38,7 @@ fun NewsroomPlatformOverlay(
     Surface(
         modifier = modifier,
         color = LanePanel,
-        shape = RoundedCornerShape(18.dp),
+        shape = RoundedCornerShape(CineEditorial.CardRadius),
         shadowElevation = 7.dp,
     ) {
         Row(
