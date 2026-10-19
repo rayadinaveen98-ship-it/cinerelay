@@ -30,14 +30,39 @@ class ArchiveViewModelV058(application: Application) : AndroidViewModel(applicat
     private val client = ArchiveClient(app.sessionStore, app.backendClient)
     private val _state = MutableStateFlow(ArchiveUiStateV058())
     val state: StateFlow<ArchiveUiStateV058> = _state.asStateFlow()
+    private val requestEpoch = RequestEpochV25()
+    private var accountId: String? = null
+
+    fun reset() {
+        requestEpoch.invalidate()
+        accountId = null
+        _state.value = ArchiveUiStateV058()
+    }
+
+    private fun activeAccount(): String? = app.sessionStore.read()?.userId
+
+    private fun ensureCorrectAccount() {
+        val active = activeAccount()
+        if (active != accountId) {
+            requestEpoch.invalidate()
+            accountId = active
+            _state.value = ArchiveUiStateV058()
+        }
+    }
+
+    private fun isCurrent(requestId: Long): Boolean =
+        requestEpoch.isCurrent(requestId) && accountId == activeAccount()
 
     fun load(force: Boolean = false) {
+        ensureCorrectAccount()
         if (_state.value.loading) return
         if (_state.value.items.isNotEmpty() && !force) return
+        val requestId = requestEpoch.advance()
         viewModelScope.launch {
             _state.value = _state.value.copy(loading = true, error = null, page = 0)
             runCatching { withContext(Dispatchers.IO) { client.page(page = 0) } }
                 .onSuccess { page ->
+                    if (!isCurrent(requestId)) return@onSuccess
                     _state.value = _state.value.copy(
                         loading = false,
                         items = page.items,
@@ -48,6 +73,7 @@ class ArchiveViewModelV058(application: Application) : AndroidViewModel(applicat
                     )
                 }
                 .onFailure { error ->
+                    if (!isCurrent(requestId)) return@onFailure
                     _state.value = _state.value.copy(loading = false, error = error.message ?: "Archive unavailable")
                 }
         }
@@ -56,13 +82,16 @@ class ArchiveViewModelV058(application: Application) : AndroidViewModel(applicat
     fun refresh() = load(force = true)
 
     fun loadMore() {
+        ensureCorrectAccount()
         val current = _state.value
         if (current.loading || current.loadingMore || !current.hasMore) return
+        val requestId = requestEpoch.advance()
         viewModelScope.launch {
             _state.value = current.copy(loadingMore = true, error = null)
             val nextPage = current.page + 1
             runCatching { withContext(Dispatchers.IO) { client.page(page = nextPage) } }
                 .onSuccess { page ->
+                    if (!isCurrent(requestId)) return@onSuccess
                     _state.value = _state.value.copy(
                         loadingMore = false,
                         items = (_state.value.items + page.items).distinctBy { it.id },
@@ -73,6 +102,7 @@ class ArchiveViewModelV058(application: Application) : AndroidViewModel(applicat
                     )
                 }
                 .onFailure { error ->
+                    if (!isCurrent(requestId)) return@onFailure
                     _state.value = _state.value.copy(loadingMore = false, error = error.message ?: "Could not load more")
                 }
         }
