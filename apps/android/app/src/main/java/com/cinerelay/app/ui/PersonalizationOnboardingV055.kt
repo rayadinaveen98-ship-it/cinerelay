@@ -98,9 +98,7 @@ fun PersonalizationOnboardingV055(
                         verticalArrangement = Arrangement.spacedBy(16.dp),
                     ) {
                         Spacer(Modifier.height(16.dp))
-                        Text("Make CineRelay yours", color = PersonalGold, fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 1.5.sp)
-                        EditorialDisplayV2("Which cinema do you follow?", size = 32, lines = 3)
-                        Text("Pick the languages you care about. These choices shape your Home screen, not your notification settings.", color = PersonalMuted, fontSize = 14.sp, lineHeight = 21.sp)
+                        EditorialDisplayV2("Choose languages", size = 22, lines = 2)
 
                         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                             personalization.availableLanguages.forEach { language ->
@@ -143,7 +141,7 @@ fun PersonalizationOnboardingV055(
                             colors = ButtonDefaults.buttonColors(containerColor = PersonalGold, contentColor = CineEditorial.Raised),
                             contentPadding = PaddingValues(vertical = 15.dp),
                         ) {
-                            Text("Choose favorite channels", fontWeight = FontWeight.Bold)
+                            Text("Continue", fontWeight = FontWeight.Bold)
                         }
                     }
                 }
@@ -166,13 +164,8 @@ fun PersonalizationOnboardingV055(
                                 Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = PersonalText)
                             }
                             Column(Modifier.weight(1f)) {
-                                EditorialDisplayV2(if (showAllChannels) "All official channels" else "Recommended for you", size = 28, lines = 2)
-                                Text(
-                                    if (showAllChannels) "Browse all ${personalization.availableSources.size} official YouTube channels"
-                                    else "Five balanced picks for your cinema languages. You can browse every channel anytime.",
-                                    color = PersonalMuted,
-                                    fontSize = 12.sp,
-                                )
+                                EditorialDisplayV2(if (showAllChannels) "All channels" else "Favorite sources", size = 22, lines = 2)
+
                             }
                         }
 
