@@ -258,9 +258,14 @@ fun CineRelayHomeV058(
                                     openedRail = "Just In"
                                 }
                             }
-                            items(latestStories, key = { "latest:${it.key}" }) { story ->
-                                Box(Modifier.padding(horizontal = CineEditorial.Gutter)) {
-                                    HomeFullStoryRowV1(story) { onOpenUpdate(story.representative) }
+                            item(key = "latest-cinematic-rail") {
+                                LazyRow(
+                                    contentPadding = PaddingValues(horizontal = CineEditorial.Gutter),
+                                    horizontalArrangement = Arrangement.spacedBy(CineEditorial.RailGap),
+                                ) {
+                                    items(latestStories, key = { "latest:${it.key}" }) { story ->
+                                        HomeCinematicRailCardV21(story) { onOpenUpdate(story.representative) }
+                                    }
                                 }
                             }
                         }
@@ -271,9 +276,14 @@ fun CineRelayHomeV058(
                                     openedRail = "From Your Favorites"
                                 }
                             }
-                            items(favoriteHighlights, key = { "favorite:${it.key}" }) { story ->
-                                Box(Modifier.padding(horizontal = CineEditorial.Gutter)) {
-                                    HomeFullStoryRowV1(story) { onOpenUpdate(story.representative) }
+                            item(key = "favorites-cinematic-rail") {
+                                LazyRow(
+                                    contentPadding = PaddingValues(horizontal = CineEditorial.Gutter),
+                                    horizontalArrangement = Arrangement.spacedBy(CineEditorial.RailGap),
+                                ) {
+                                    items(favoriteHighlights, key = { "favorite:${it.key}" }) { story ->
+                                        HomeCinematicRailCardV21(story) { onOpenUpdate(story.representative) }
+                                    }
                                 }
                             }
                         }
@@ -382,7 +392,7 @@ private fun HomeHeroPagerV066(
                     EditorialArtworkV2(
                         url = item.thumbnailUrl,
                         title = item.title,
-                        modifier = Modifier.fillMaxWidth().height(148.dp),
+                        modifier = Modifier.fillMaxWidth().height(200.dp),
                     )
                     Column(
                         Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
@@ -412,6 +422,50 @@ private fun HomeHeroPagerV066(
                 modifier = Modifier.fillMaxWidth().padding(end = CineEditorial.Gutter),
                 color = Home58Muted, fontSize = 12.sp,
                 textAlign = androidx.compose.ui.text.style.TextAlign.End)
+        }
+    }
+}
+
+/**
+ * Artwork-led discovery rail. Full news evidence stays in the detail destination;
+ * only real source-supplied thumbnails are used here.
+ */
+@Composable
+private fun HomeCinematicRailCardV21(
+    story: HomeStoryV059,
+    onClick: () -> Unit,
+) {
+    val item = story.representative
+    val headline = item.canonicalEvent?.headline?.takeIf { it.isNotBlank() } ?: item.title
+    Column(
+        modifier = Modifier.width(208.dp).clickable(onClick = onClick),
+        verticalArrangement = Arrangement.spacedBy(7.dp),
+    ) {
+        EditorialArtworkV2(
+            url = item.thumbnailUrl,
+            title = headline,
+            modifier = Modifier.fillMaxWidth().height(117.dp),
+        )
+        Text(
+            headline,
+            color = Home58Text,
+            fontSize = CineEditorial.CardTitle,
+            lineHeight = 20.sp,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+        )
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                item.source.name ?: item.source.handle ?: "Source",
+                color = Home58Muted,
+                fontSize = CineEditorial.Metadata,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f),
+            )
+            Spacer(Modifier.width(6.dp))
+            Text(home58TimeAgo(item.observedAt), color = Home58Muted, fontSize = CineEditorial.Metadata)
         }
     }
 }
