@@ -257,10 +257,7 @@ class MainActivity : ComponentActivity() {
                             CineRelayHomeV058(
                                 state = state,
                                 personalization = personalization,
-                                onRefresh = {
-                                    viewModel.refresh()
-                                    consumerViewModel.syncPersonalization(authenticated = true, force = true)
-                                },
+                                onRefresh = viewModel::refresh,
                                 onSearch = searchViewModel::open,
                                 onOpenArchive = {
                                     archiveVisible = true
