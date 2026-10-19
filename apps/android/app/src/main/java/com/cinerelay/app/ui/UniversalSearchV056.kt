@@ -252,15 +252,16 @@ private fun SearchTitleCardV056(item: UniversalTitleResult, onClick: () -> Unit)
         modifier = Modifier.width(CineEditorial.CompactPosterWidth).clickable(onClick = onClick),
         verticalArrangement = Arrangement.spacedBy(9.dp),
     ) {
-        EditorialArtworkV2(
-            url = null, title = item.name,
+        CineTitleCoverV21(
+            title = item.name,
+            eyebrow = friendlyTypeV056(item.type),
             modifier = Modifier.fillMaxWidth().height(204.dp),
-            label = friendlyTypeV056(item.type),
         )
-        EditorialDisplayV2(item.name, size = 15, lines = 2)
         Text(
             friendlyLanguageV056(item.primaryLanguage),
-            color = SearchMuted56, fontSize = CineEditorial.Metadata, maxLines = 1,
+            color = SearchMuted56,
+            fontSize = CineEditorial.Metadata,
+            maxLines = 1,
         )
     }
 }
