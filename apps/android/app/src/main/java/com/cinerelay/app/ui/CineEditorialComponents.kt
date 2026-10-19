@@ -75,7 +75,7 @@ internal fun CineSectionHeader(
 ) {
     Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            EditorialDisplayV2(title, modifier = Modifier.weight(1f), size = 23, lines = 2)
+            EditorialDisplayV2(title, modifier = Modifier.weight(1f), size = 18, lines = 2)
             if (onSeeAll != null) {
                 TextButton(onClick = onSeeAll,
                     enabled = count == null || count > 0,
