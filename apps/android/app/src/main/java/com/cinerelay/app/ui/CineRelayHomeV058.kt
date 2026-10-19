@@ -546,7 +546,7 @@ private val HOME22_RAIL_ORDER = listOf(
     "From the Web",
 )
 
-private fun homeRailPriorityV22(title: String): Int {
+internal fun homeRailPriorityV22(title: String): Int {
     val index = HOME22_RAIL_ORDER.indexOf(title)
     return if (index >= 0) index else if (title.startsWith("Latest from ")) 100 else 99
 }
