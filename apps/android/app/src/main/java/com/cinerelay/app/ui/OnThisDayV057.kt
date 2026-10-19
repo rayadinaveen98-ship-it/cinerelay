@@ -131,7 +131,7 @@ fun OnThisDayV057(
                     EditorialMastheadV2(
                         section = "CINEMA / TIME MACHINE",
                         title = "Today in Cinema",
-                        subtitle = "Discover movie history, one day at a time.",
+                        subtitle = "",
                         modifier = Modifier.padding(horizontal = CineEditorial.Gutter),
                         actions = {
                             IconButton(onClick = onBack) {
@@ -182,7 +182,6 @@ fun OnThisDayV057(
                                     modifier = Modifier.padding(22.dp),
                                     verticalArrangement = Arrangement.spacedBy(12.dp),
                                 ) {
-                                    EditorialEyebrowV2("HISTORY SERVICE / UNAVAILABLE")
                                     EditorialDisplayV2(
                                         "History is temporarily unavailable.",
                                         size = 23, lines = 3,
@@ -196,11 +195,6 @@ fun OnThisDayV057(
                                         Text("Try again  →", color = HistoryGold,
                                             fontSize = 14.sp, fontWeight = FontWeight.Bold)
                                     }
-                                    Text(
-                                        "No films have been removed. You can still use Home, OTT and Radar.",
-                                        color = HistoryMuted, fontSize = 12.sp,
-                                        lineHeight = 17.sp,
-                                    )
                                 }
                             }
                         }
@@ -222,7 +216,7 @@ fun OnThisDayV057(
                                     Text("Nothing found for this date yet", color = HistoryText, fontSize = 20.sp, fontWeight = FontWeight.Bold)
                                     Spacer(Modifier.height(7.dp))
                                     Text(
-                                        "We don’t have a confirmed release for this date yet. Try another day or use the quick jumps.",
+                                        "Try another day.",
                                         color = HistoryMuted,
                                         fontSize = 12.sp,
                                         lineHeight = 18.sp,
