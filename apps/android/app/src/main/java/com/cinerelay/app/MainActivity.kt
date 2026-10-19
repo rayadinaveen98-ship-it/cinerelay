@@ -11,6 +11,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -179,7 +180,8 @@ class MainActivity : ComponentActivity() {
                 consumerState.deepLinkError != null
             val notificationRouteWaiting = state.authenticated && pendingNotificationRoute != null && !deepLinkVisible
 
-            Box(Modifier.fillMaxSize()) {
+            // Edge-to-edge window: scrolling content must stay below the status bar.
+            Box(Modifier.fillMaxSize().statusBarsPadding()) {
                 when {
                     !state.authenticated -> {
                         FirstRunAuthV050(
