@@ -95,7 +95,6 @@ private data class HomeDisplayProjectionV1(
     val favoriteSources: List<PersonalizationSource>,
     val heroStories: List<HomeStoryV059>,
     val latest: List<HomeStoryV059>,
-    val fromFavorites: List<HomeStoryV059>,
     val rails: List<HomeRailV058>,
 )
 
@@ -118,17 +117,34 @@ fun CineRelayHomeV058(
         key2 = personalization,
     ) {
         value = withContext(Dispatchers.Default) {
-            val freshSignals = state.homeSignals.filter(::isFreshHomeSignalV058)
-            val freshStories = clusterHomeStoriesV059(freshSignals)
+            // Home's first screen is strictly recent; the discovery shelves may
+            // show older *already loaded* stories without calling them breaking.
+            // Cap costly pairwise clustering to preserve smooth navigation.
+            val discoverySignals = state.homeSignals
+                .asSequence()
+                .distinctBy { it.id }
+                .sortedByDescending(::homeSignalInstantV059)
+                .take(160)
+                .toList()
+            val discoveryStories = clusterHomeStoriesV059(discoverySignals)
+            val freshStories = clusterHomeStoriesV059(
+                discoverySignals.filter(::isFreshHomeSignalV058),
+            )
             val favoriteSources = personalization.availableSources.filter {
                 it.identityId in personalization.favoriteSourceIdentityIds
             }
-            val favoriteSignals = freshSignals.filter { signal ->
-                favoriteSources.any { it.matchesV058(signal) }
+            val favoriteStories = discoveryStories.mapNotNull { story ->
+                val matches = story.updates.filter { signal ->
+                    favoriteSources.any { source -> source.matchesV058(signal) }
+                }
+                if (matches.isEmpty()) null
+                else story.copy(representative = bestHomeRepresentativeV059(matches))
             }
-            val favoriteStories = clusterHomeStoriesV059(favoriteSignals)
-            val favoriteKeys = favoriteStories.map { it.key }.toSet()
-            val ranked = (favoriteStories + freshStories)
+            val freshFavoriteStories = favoriteStories.filter {
+                isFreshHomeSignalV058(it.representative)
+            }
+            val favoriteKeys = freshFavoriteStories.map { it.key }.toSet()
+            val ranked = (freshFavoriteStories + freshStories)
                 .distinctBy { it.key }
                 .sortedWith(
                     compareByDescending<HomeStoryV059> {
@@ -139,20 +155,15 @@ fun CineRelayHomeV058(
             val heroStories = ranked.filter { !it.representative.thumbnailUrl.isNullOrBlank() }
                 .take(3).ifEmpty { ranked.take(3) }
             val usedKeys = heroStories.map { it.key }.toMutableSet()
-            // Reserve unique favorite stories, then fill Latest from the remaining
-            // items. Sequence short-circuits so we do not consume all keys.
-            val fromFavorites = favoriteStories.asSequence()
-                .filter { usedKeys.add(it.key) }.take(3).toList()
             val latest = freshStories.asSequence()
                 .filter { usedKeys.add(it.key) }.take(6).toList()
             HomeDisplayProjectionV1(
                 favoriteSources = favoriteSources,
                 heroStories = heroStories,
                 latest = latest,
-                fromFavorites = fromFavorites,
                 rails = buildHomeRailsV059(
-                    freshStories, favoriteStories, favoriteSources,
-                    personalization.favoriteLanguages,
+                    discoveryStories, favoriteStories, favoriteSources,
+                    personalization.favoriteLanguages, recentStories = freshStories,
                 ),
             )
         }
@@ -160,7 +171,6 @@ fun CineRelayHomeV058(
     val favoriteSources = projection?.favoriteSources.orEmpty()
     val heroStories = projection?.heroStories.orEmpty()
     val latestStories = projection?.latest.orEmpty()
-    val favoriteHighlights = projection?.fromFavorites.orEmpty()
     val rails = projection?.rails.orEmpty()
 
     var openedRail by rememberSaveable { mutableStateOf<String?>(null) }
@@ -584,6 +594,7 @@ private fun buildHomeRailsV059(
     favorites: List<HomeStoryV059>,
     favoriteSources: List<PersonalizationSource>,
     favoriteLanguages: Set<String>,
+    recentStories: List<HomeStoryV059>,
 ): List<HomeRailV058> {
     if (stories.isEmpty()) return emptyList()
     val rails = mutableListOf<HomeRailV058>()
@@ -606,7 +617,7 @@ private fun buildHomeRailsV059(
         stories.filter { it.sourceCount >= 2 }
             .sortedWith(compareByDescending<HomeStoryV059> { it.sourceCount }.thenByDescending { homeSignalInstantV059(it.representative) }),
     )
-    add("Just In", stories.take(24))
+    add("Just In", recentStories.take(24))
 
     val labels = linkedMapOf(
         "te" to "Telugu Cinema",
@@ -617,9 +628,9 @@ private fun buildHomeRailsV059(
         "en" to "English & International",
     )
     val indianLanguages = setOf("te", "ta", "ml", "kn", "hi")
-    add("Indian Cinema", stories.filter { story -> story.updates.any { it.languageCode?.lowercase(Locale.ENGLISH) in indianLanguages } }, minimum = 3, limit = 24)
+    add("Indian Cinema", stories.filter { story -> story.updates.any { (it.languageCode ?: it.canonicalEvent?.primaryLanguage)?.lowercase(Locale.ENGLISH) in indianLanguages } }, limit = 24)
     val languageOrder = (favoriteLanguages.filter { it in labels.keys } + labels.keys).distinct()
-    for (code in languageOrder) add(labels.getValue(code), stories.filter { story -> story.updates.any { it.languageCode?.lowercase() == code } })
+    for (code in languageOrder) add(labels.getValue(code), stories.filter { story -> story.updates.any { (it.languageCode ?: it.canonicalEvent?.primaryLanguage)?.lowercase(Locale.ENGLISH) == code } })
 
     add("Trailers & Teasers", stories.filter { it.hasAnyTitleV059("trailer", "teaser", "glimpse") })
     add("First Looks & Announcements", stories.filter { it.hasAnyTitleV059("first look", "poster", "announcement", "launch") })
