@@ -157,6 +157,18 @@ fun OnThisDayV057(
                     )
                 }
 
+                if (state.onThisDayMovies.isNotEmpty()) {
+                    item(key = "cinematic-history-feature") {
+                        val featured = state.onThisDayMovies.firstOrNull {
+                            !it.posterUrl.isNullOrBlank() || !it.backdropUrl.isNullOrBlank()
+                        } ?: state.onThisDayMovies.first()
+                        HistoryFeaturedV23(
+                            movie = featured,
+                            onClick = { openedMovieId = featured.id },
+                        )
+                    }
+                }
+
                 item {
                     HistoryQuickJumpV060(selected = selected, today = today, onLoadDate = onLoadDate, onToday = onToday)
                 }
@@ -256,6 +268,57 @@ fun OnThisDayV057(
     }
 }
 
+/** History uses a real catalogue backdrop when supplied, otherwise a clearly
+ * original procedural composition — never a fabricated historical poster.
+ */
+@Composable
+private fun HistoryFeaturedV23(movie: OnThisDayMovie, onClick: () -> Unit) {
+    Surface(
+        color = HistoryPanel,
+        shape = RoundedCornerShape(CineEditorial.HeroRadius),
+        modifier = Modifier.fillMaxWidth()
+            .padding(horizontal = CineEditorial.Gutter)
+            .clickable(onClick = onClick),
+    ) {
+        Box(Modifier.fillMaxWidth().height(225.dp)) {
+            EditorialArtworkV2(
+                url = movie.backdropUrl ?: movie.posterUrl,
+                title = movie.title,
+                mood = CineArtworkMoodV23.HISTORY,
+                modifier = Modifier.matchParentSize(),
+            )
+            Box(
+                Modifier.matchParentSize().background(
+                    Brush.verticalGradient(
+                        0f to Color.Transparent,
+                        0.50f to HistoryInk.copy(alpha = 0.14f),
+                        1f to HistoryInk.copy(alpha = 0.96f),
+                    ),
+                ),
+            )
+            Column(
+                modifier = Modifier.align(Alignment.BottomStart).fillMaxWidth().padding(18.dp),
+                verticalArrangement = Arrangement.spacedBy(5.dp),
+            ) {
+                Text(
+                    movie.title,
+                    color = HistoryText,
+                    fontSize = 20.sp,
+                    lineHeight = 26.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    movie.releaseYear.toString(),
+                    color = HistoryGold,
+                    fontSize = CineEditorial.Metadata,
+                )
+            }
+        }
+    }
+}
+
 @Composable
 private fun HistoryPreviewCardV080(movie: OnThisDayMovie, onClick: () -> Unit) {
     Column(
@@ -267,6 +330,7 @@ private fun HistoryPreviewCardV080(movie: OnThisDayMovie, onClick: () -> Unit) {
             title = movie.title,
             modifier = Modifier.fillMaxWidth().height(216.dp),
             label = movie.releaseYear.toString(),
+            mood = CineArtworkMoodV23.HISTORY,
         )
         EditorialDisplayV2(movie.title, size = 15, lines = 2)
         Text(listOfNotNull(movie.language, movie.countryCode).joinToString(" · "),
@@ -426,42 +490,21 @@ private fun HistoryYearHeaderV060(year: Int, selectedYear: Int, count: Int) {
 private fun OnThisDayMovieRowV070(movie: OnThisDayMovie, modifier: Modifier = Modifier) {
     Surface(color = HistoryPanel, shape = RoundedCornerShape(CineEditorial.CardRadius), modifier = modifier.fillMaxWidth()) {
         Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(
-                modifier = Modifier.size(width = 82.dp, height = 118.dp).clip(RoundedCornerShape(CineEditorial.CardRadius)).background(HistoryRaised),
-                contentAlignment = Alignment.Center,
-            ) {
-                val artwork = movie.posterUrl ?: movie.backdropUrl
-                if (!artwork.isNullOrBlank()) {
-                    AsyncImage(
-                        model = artwork,
-                        contentDescription = movie.title,
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxSize(),
-                    )
-                    Box(
-                        Modifier.fillMaxSize().background(
-                            Brush.verticalGradient(listOf(Color.Transparent, Color.Transparent, HistoryInk.copy(alpha = 0.64f))),
-                        ),
-                    )
-                } else {
-                    Text(movie.releaseYear.toString(), color = HistoryGold, fontSize = 18.sp, fontWeight = FontWeight.Black)
-                }
-                Surface(
-                    color = HistoryInk.copy(alpha = 0.84f),
-                    shape = RoundedCornerShape(50),
-                    modifier = Modifier.align(Alignment.BottomStart).padding(7.dp),
-                ) {
-                    Text(movie.releaseYear.toString(), color = HistoryGold, fontSize = 12.sp, fontWeight = FontWeight.Black, modifier = Modifier.padding(horizontal = 7.dp, vertical = 4.dp))
-                }
-            }
+            EditorialArtworkV2(
+                url = movie.posterUrl ?: movie.backdropUrl,
+                title = movie.title,
+                modifier = Modifier.size(width = 82.dp, height = 118.dp),
+                label = movie.releaseYear.toString(),
+                mood = CineArtworkMoodV23.HISTORY,
+            )
             Spacer(Modifier.width(14.dp))
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text(
                     movie.title,
                     color = HistoryText,
-                    fontSize = 18.sp,
-                    lineHeight = 21.sp,
-                    fontWeight = FontWeight.Bold,
+                    fontSize = CineEditorial.CardTitle,
+                    lineHeight = 20.sp,
+                    fontWeight = FontWeight.SemiBold,
                     maxLines = 3,
                     overflow = TextOverflow.Ellipsis,
                 )
