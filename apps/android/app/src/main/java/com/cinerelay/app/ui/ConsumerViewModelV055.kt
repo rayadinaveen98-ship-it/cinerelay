@@ -41,23 +41,41 @@ class ConsumerViewModelV055(application: Application) : AndroidViewModel(applica
     private val consumer = app.consumerClient
     private val onThisDay = app.onThisDayClient
     private val personalizationCache = PersonalizationCacheV24(application)
+    private val personalizationEpoch = RequestEpochV25()
+    private val detailEpoch = RequestEpochV25()
+    private var personalizationAccountId: String? = null
+
+    private fun currentAccountId(): String? =
+        app.sessionStore.read()?.userId?.takeIf { it.isNotBlank() }
+
+    private fun validPersonalizationResult(requestId: Long, accountId: String): Boolean =
+        personalizationEpoch.isCurrent(requestId) && currentAccountId() == accountId
 
     private val _state = MutableStateFlow(ConsumerUiStateV055())
     val state: StateFlow<ConsumerUiStateV055> = _state.asStateFlow()
 
     fun syncPersonalization(authenticated: Boolean, force: Boolean = false) {
         if (!authenticated) {
+            personalizationEpoch.invalidate()
+            detailEpoch.invalidate()
+            personalizationAccountId = null
             _state.value = ConsumerUiStateV055()
             return
         }
+        val accountId = currentAccountId() ?: return
+        if (personalizationAccountId != accountId) {
+            personalizationEpoch.invalidate()
+            personalizationAccountId = accountId
+            _state.value = ConsumerUiStateV055()
+        }
         if (_state.value.personalizationLoading) return
         if (!force && _state.value.personalization != null) return
+        val requestId = personalizationEpoch.advance()
 
         viewModelScope.launch {
-            val accountId = app.sessionStore.read()?.userId.orEmpty()
             if (!force && _state.value.personalization == null) {
                 val cached = withContext(Dispatchers.IO) { personalizationCache.read(accountId) }
-                if (cached != null && app.sessionStore.read()?.userId == accountId) {
+                if (cached != null && validPersonalizationResult(requestId, accountId)) {
                     _state.value = _state.value.copy(
                         personalization = cached,
                         selectedLanguages = cached.favoriteLanguages,
@@ -65,13 +83,14 @@ class ConsumerViewModelV055(application: Application) : AndroidViewModel(applica
                     )
                 }
             }
+            if (!validPersonalizationResult(requestId, accountId)) return@launch
             _state.value = _state.value.copy(personalizationLoading = true, personalizationError = null)
             runCatching { withContext(Dispatchers.IO) { consumer.personalization() } }
                 .onSuccess { personalization ->
-                val cacheAccount = app.sessionStore.read()?.userId.orEmpty()
-                viewModelScope.launch(Dispatchers.IO) {
-                    personalizationCache.write(cacheAccount, personalization)
-                }
+                    if (!validPersonalizationResult(requestId, accountId)) return@onSuccess
+                    viewModelScope.launch(Dispatchers.IO) {
+                        personalizationCache.write(accountId, personalization)
+                    }
                     _state.value = _state.value.copy(
                         personalizationLoading = false,
                         personalization = personalization,
@@ -81,6 +100,7 @@ class ConsumerViewModelV055(application: Application) : AndroidViewModel(applica
                     )
                 }
                 .onFailure { error ->
+                    if (!validPersonalizationResult(requestId, accountId)) return@onFailure
                     _state.value = _state.value.copy(
                         personalizationLoading = false,
                         personalizationError = friendlyError(error),
@@ -166,7 +186,10 @@ class ConsumerViewModelV055(application: Application) : AndroidViewModel(applica
             return
         }
 
+        val accountId = currentAccountId() ?: return
+        val requestId = personalizationEpoch.advance()
         viewModelScope.launch {
+            if (!validPersonalizationResult(requestId, accountId)) return@launch
             _state.value = _state.value.copy(personalizationBusy = true, personalizationError = null)
             runCatching {
                 withContext(Dispatchers.IO) {
@@ -178,9 +201,9 @@ class ConsumerViewModelV055(application: Application) : AndroidViewModel(applica
                     consumer.personalization()
                 }
             }.onSuccess { personalization ->
-                val cacheAccount = app.sessionStore.read()?.userId.orEmpty()
+                if (!validPersonalizationResult(requestId, accountId)) return@onSuccess
                 viewModelScope.launch(Dispatchers.IO) {
-                    personalizationCache.write(cacheAccount, personalization)
+                    personalizationCache.write(accountId, personalization)
                 }
                 _state.value = _state.value.copy(
                     personalizationBusy = false,
@@ -191,6 +214,7 @@ class ConsumerViewModelV055(application: Application) : AndroidViewModel(applica
                 )
                 onSaved?.invoke()
             }.onFailure { error ->
+                if (!validPersonalizationResult(requestId, accountId)) return@onFailure
                 _state.value = _state.value.copy(
                     personalizationBusy = false,
                     personalizationError = friendlyError(error),
@@ -200,6 +224,8 @@ class ConsumerViewModelV055(application: Application) : AndroidViewModel(applica
     }
 
     fun openNotification(eventId: String?, rawItemId: String?, canonicalUrl: String?) {
+        val requestId = detailEpoch.advance()
+        val accountId = currentAccountId()
         val normalizedEventId = eventId?.trim().orEmpty()
         val normalizedRawItemId = rawItemId?.trim().orEmpty()
         if (normalizedEventId.isBlank() && normalizedRawItemId.isBlank()) {
@@ -225,12 +251,14 @@ class ConsumerViewModelV055(application: Application) : AndroidViewModel(applica
                     else consumer.rawItem(normalizedRawItemId)
                 }
             }.onSuccess { target ->
+                if (!detailEpoch.isCurrent(requestId) || accountId != currentAccountId()) return@onSuccess
                 _state.value = _state.value.copy(
                     deepLinkLoading = false,
                     deepLinkTarget = target,
                     deepLinkError = null,
                 )
             }.onFailure { error ->
+                if (!detailEpoch.isCurrent(requestId) || accountId != currentAccountId()) return@onFailure
                 _state.value = _state.value.copy(
                     deepLinkLoading = false,
                     deepLinkTarget = null,
@@ -241,6 +269,7 @@ class ConsumerViewModelV055(application: Application) : AndroidViewModel(applica
     }
 
     fun closeNotification() {
+        detailEpoch.invalidate()
         _state.value = _state.value.copy(
             deepLinkLoading = false,
             deepLinkTarget = null,
