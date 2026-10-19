@@ -1,6 +1,7 @@
 package com.cinerelay.app.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -27,6 +28,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.geometry.Offset
+import kotlin.math.min
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -117,6 +122,71 @@ internal fun EditorialMastheadV2(
     }
 }
 
+/**
+ * Original procedural cinematic fallback, intentionally not an official poster.
+ * Stable title-based variations keep the interface polished without invented art.
+ */
+internal enum class CineArtworkMoodV23 { STORY, STREAMING, HISTORY, SOURCE }
+
+@Composable
+internal fun CineArtworkBackdropV23(
+    seed: String,
+    mood: CineArtworkMoodV23 = CineArtworkMoodV23.STORY,
+    modifier: Modifier = Modifier,
+) {
+    val palette = when (mood) {
+        CineArtworkMoodV23.HISTORY -> listOf(Color(0xFF30251E), Color(0xFF141721), Color(0xFF090B10))
+        CineArtworkMoodV23.STREAMING -> listOf(Color(0xFF292036), Color(0xFF121928), Color(0xFF08090F))
+        CineArtworkMoodV23.SOURCE -> listOf(Color(0xFF192B2C), Color(0xFF14202A), Color(0xFF080C10))
+        CineArtworkMoodV23.STORY -> listOf(Color(0xFF291E29), Color(0xFF18222E), Color(0xFF090B11))
+    }
+    val tint = when (mood) {
+        CineArtworkMoodV23.HISTORY -> Color(0xFFE8B978)
+        CineArtworkMoodV23.STREAMING -> Color(0xFF9B91E4)
+        CineArtworkMoodV23.SOURCE -> Color(0xFF7CD4C4)
+        CineArtworkMoodV23.STORY -> CineEditorial.Accent
+    }
+    val designSeed = seed.hashCode().toLong() and 0x7fffffffL
+    Canvas(modifier) {
+        val w = size.width
+        val h = size.height
+        drawRect(brush = Brush.linearGradient(palette))
+        drawCircle(
+            color = tint.copy(alpha = 0.20f),
+            radius = min(w, h) * (0.37f + (designSeed % 17L) / 100f),
+            center = Offset(w * (0.23f + (designSeed % 24L) / 100f), h * 0.37f),
+        )
+        drawCircle(
+            color = Color.White.copy(alpha = 0.045f),
+            radius = min(w, h) * 0.31f,
+            center = Offset(w * 0.89f, h * 0.76f),
+        )
+        val beam = Path().apply {
+            moveTo(-w * 0.12f, h * 0.16f)
+            lineTo(w * 0.38f, 0f)
+            lineTo(w * 0.97f, h)
+            lineTo(w * 0.28f, h)
+            close()
+        }
+        drawPath(beam, color = tint.copy(alpha = 0.075f))
+        for (i in 0..4) {
+            val x = w * (0.12f + i * 0.2f)
+            drawLine(
+                color = Color.White.copy(alpha = 0.035f),
+                start = Offset(x, 0f),
+                end = Offset(x + w * 0.1f, h),
+                strokeWidth = 1.5f,
+            )
+        }
+        drawLine(
+            color = tint.copy(alpha = 0.42f),
+            start = Offset(w * 0.1f, h * 0.89f),
+            end = Offset(w * 0.42f, h * 0.89f),
+            strokeWidth = 2f,
+        )
+    }
+}
+
 /** Official artwork is drawn only when source data supplies a real URL. */
 @Composable
 internal fun EditorialArtworkV2(
@@ -124,6 +194,7 @@ internal fun EditorialArtworkV2(
     title: String,
     modifier: Modifier = Modifier,
     label: String? = null,
+    mood: CineArtworkMoodV23 = CineArtworkMoodV23.STORY,
 ) {
     var imageFailed by remember(url) { mutableStateOf(false) }
     Box(
@@ -143,12 +214,10 @@ internal fun EditorialArtworkV2(
                 onError = { imageFailed = true },
                 modifier = Modifier.matchParentSize())
         } else {
-            // No repeated headline inside an empty image frame.
-            Icon(
-                Icons.Default.Movie,
-                contentDescription = null,
-                tint = CineEditorial.Muted.copy(alpha = 0.65f),
-                modifier = Modifier.size(24.dp),
+            CineArtworkBackdropV23(
+                seed = title,
+                mood = mood,
+                modifier = Modifier.matchParentSize(),
             )
         }
         if (!label.isNullOrBlank()) {
@@ -182,6 +251,18 @@ internal fun CineTitleCoverV21(
                 listOf(CineEditorial.Raised, CineEditorial.Surface, CineEditorial.Background),
             )),
     ) {
+        CineArtworkBackdropV23(
+            seed = title,
+            mood = CineArtworkMoodV23.STREAMING,
+            modifier = Modifier.matchParentSize(),
+        )
+        Box(
+            Modifier.matchParentSize().background(
+                Brush.verticalGradient(
+                    listOf(Color.Transparent, CineEditorial.Background.copy(alpha = 0.90f)),
+                ),
+            ),
+        )
         if (eyebrow.isNotBlank()) {
             Text(
                 eyebrow,
