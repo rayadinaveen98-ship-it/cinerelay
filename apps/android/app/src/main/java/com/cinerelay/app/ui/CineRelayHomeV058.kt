@@ -156,8 +156,9 @@ fun CineRelayHomeV058(
             }
             // Always newest first: never fill the hero with old, highly scored
             // stories just to reach ten. A missing image uses original fallback art.
-            val heroStories = freshStories
-                .distinctBy { it.key }
+            val heroStories = clusterHomeStoriesV059(
+                discoverySignals.filter { it.source.platform == "YOUTUBE" && isFreshHomeSignalV058(it) },
+            ).distinctBy { it.key }
                 .sortedByDescending { homeSignalInstantV059(it.representative) }
                 .take(HOME23_HERO_CAP)
             val heroKeys = heroStories.map { it.key }.toSet()
