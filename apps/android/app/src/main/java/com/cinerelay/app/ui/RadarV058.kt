@@ -46,6 +46,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -212,7 +213,7 @@ fun RadarV058(
                                         Text("See all →",color=RadarGold58,fontSize=12.sp)
                                     }
                                 })}
-                            item{LazyRow(contentPadding=PaddingValues(horizontal=16.dp),
+                            item{LazyRow(contentPadding=PaddingValues(0.dp),
                                 horizontalArrangement=Arrangement.spacedBy(12.dp)){
                                 items(actionable.take(10),key={it.id}){event->
                                     RadarPreviewCardV080(radarLabelV058(event,true),event.headline,
@@ -226,11 +227,12 @@ fun RadarV058(
                                         Text("See all →",color=RadarGold58,fontSize=12.sp)
                                     }
                                 })}
-                            item{LazyRow(contentPadding=PaddingValues(horizontal=16.dp),
+                            item{LazyRow(contentPadding=PaddingValues(0.dp),
                                 horizontalArrangement=Arrangement.spacedBy(12.dp)){
                                 items(freshSourceOpportunities.take(10),key={it.signal.id}){opportunity->
                                     RadarPreviewCardV080(opportunity.label,opportunity.signal.title,
-                                        opportunity.score,opportunity.signal.source.name){
+                                        opportunity.score,opportunity.signal.source.name,
+                                        artworkUrl = opportunity.signal.thumbnailUrl){
                                         onOpenUpdate(opportunity.signal)
                                     }
                                 }
@@ -242,7 +244,7 @@ fun RadarV058(
                                         Text("See all →",color=RadarGold58,fontSize=12.sp)
                                     }
                                 })}
-                            item{LazyRow(contentPadding=PaddingValues(horizontal=16.dp),
+                            item{LazyRow(contentPadding=PaddingValues(0.dp),
                                 horizontalArrangement=Arrangement.spacedBy(12.dp)){
                                 items(watchlist.take(10),key={it.id}){event->
                                     RadarPreviewCardV080(radarLabelV058(event,false),event.headline,
@@ -260,47 +262,95 @@ fun RadarV058(
 
 @Composable
 private fun RadarPreviewCardV080(
-    label: String, headline: String, score: Int, source: String?, onClick: () -> Unit,
+    label: String,
+    headline: String,
+    score: Int,
+    source: String?,
+    artworkUrl: String? = null,
+    onClick: () -> Unit,
 ) {
-    Surface(
-        color = RadarPanel58, shape = RoundedCornerShape(CineEditorial.CardRadius),
-        modifier = Modifier.width(228.dp).clickable(onClick = onClick),
+    Column(
+        modifier = Modifier.width(214.dp).clickable(onClick = onClick),
+        verticalArrangement = Arrangement.spacedBy(7.dp),
     ) {
-        Column(
-            Modifier.padding(13.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            Text(label, color = RadarGold58, fontSize = 12.sp,
-                fontWeight = FontWeight.Medium, maxLines = 1,
-                overflow = TextOverflow.Ellipsis)
-            Text(headline, color = RadarText58, fontSize = 15.sp,
-                lineHeight = 20.sp, fontWeight = FontWeight.Medium,
-                maxLines = 2, overflow = TextOverflow.Ellipsis)
-            Text(source?.takeIf { it.isNotBlank() } ?: "Source available",
-                color = RadarMuted58, fontSize = 12.sp, maxLines = 1,
-                overflow = TextOverflow.Ellipsis)
-            Text("Signal ${score}  ·  Open details →",
-                color = RadarMuted58, fontSize = 12.sp, maxLines = 1)
+        if (!artworkUrl.isNullOrBlank()) {
+            EditorialArtworkV2(
+                url = artworkUrl,
+                title = headline,
+                modifier = Modifier.fillMaxWidth().height(120.dp),
+                label = label,
+            )
+        } else {
+            // An original signal graphic is not presented as an official movie poster.
+            Box(
+                modifier = Modifier.fillMaxWidth().height(120.dp)
+                    .clip(RoundedCornerShape(CineEditorial.CardRadius))
+                    .background(Brush.linearGradient(listOf(RadarRaised58, RadarPanel58))),
+            ) {
+                Icon(
+                    Icons.Default.TrendingUp,
+                    contentDescription = null,
+                    tint = RadarGold58.copy(alpha = 0.55f),
+                    modifier = Modifier.align(Alignment.Center).size(34.dp),
+                )
+                Text(
+                    label,
+                    modifier = Modifier.align(Alignment.BottomStart).padding(12.dp),
+                    color = RadarGold58,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
+        Text(
+            headline,
+            color = RadarText58,
+            fontSize = CineEditorial.CardTitle,
+            lineHeight = 20.sp,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+        )
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                source?.takeIf { it.isNotBlank() } ?: "CineRelay",
+                modifier = Modifier.weight(1f),
+                color = RadarMuted58,
+                fontSize = CineEditorial.Metadata,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Spacer(Modifier.width(6.dp))
+            Text(
+                "Signal $score",
+                color = RadarMuted58,
+                fontSize = CineEditorial.Metadata,
+                maxLines = 1,
+            )
         }
     }
 }
 
 @Composable
 private fun RadarSummaryV066(actionableCount: Int, sourceOpportunityCount: Int, totalCount: Int) {
-    EditorialBriefV2(
-        kicker = "OPPORTUNITY PULSE / UPDATED REGULARLY",
-        title = "${actionableCount + sourceOpportunityCount} fresh signals",
-        description = "${actionableCount} prioritized · ${sourceOpportunityCount} fresh source activities · ${(totalCount - actionableCount - sourceOpportunityCount).coerceAtLeast(0)} on the watchlist.",
-    )
-}
-
-@Composable
-private fun RadarSummaryStatV066(value: String, label: String, modifier: Modifier = Modifier) {
-    Surface(color = RadarRaised58, shape = RoundedCornerShape(12.dp), modifier = modifier) {
-        Column(Modifier.padding(vertical = 9.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(value, color = RadarText58, fontSize = 16.sp, fontWeight = FontWeight.Black)
-            Text(label, color = RadarMuted58, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-        }
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            "$totalCount updates to explore",
+            modifier = Modifier.weight(1f),
+            color = RadarText58,
+            fontSize = CineEditorial.Body,
+            fontWeight = FontWeight.SemiBold,
+        )
+        Text(
+            "${actionableCount + sourceOpportunityCount} priority signals",
+            color = RadarMuted58,
+            fontSize = CineEditorial.Metadata,
+        )
     }
 }
 
