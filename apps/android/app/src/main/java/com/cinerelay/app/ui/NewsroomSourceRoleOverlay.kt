@@ -42,9 +42,9 @@ private val SourceRoleRaised = CineEditorial.Raised
 private val SourceRoleText = CineEditorial.Text
 private val SourceRoleMuted = CineEditorial.Muted
 private val SourceRoleGold = CineEditorial.Accent
-private val SourceRoleProduction = Color(0xFF8CB9FF)
-private val SourceRoleOtt = Color(0xFF72D6A4)
-private val SourceRoleMusic = Color(0xFFF0B862)
+private val SourceRoleProduction = CineEditorial.Info
+private val SourceRoleOtt = CineEditorial.Confirmed
+private val SourceRoleMusic = CineEditorial.Developing
 
 private val SourceRoleColors = darkColorScheme(
     primary = SourceRoleGold,
@@ -105,7 +105,7 @@ fun NewsroomSourceRoleOverlay(
                         val selectedRow = role == selected
                         Surface(
                             color = if (selectedRow) SourceRoleGold.copy(alpha = 0.10f) else SourceRoleRaised,
-                            shape = RoundedCornerShape(16.dp),
+                            shape = RoundedCornerShape(CineEditorial.CardRadius),
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clickable {
