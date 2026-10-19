@@ -107,7 +107,7 @@ fun PersonalizationOnboardingV055(
                                 val selected = language.code in state.selectedLanguages
                                 Surface(
                                     color = if (selected) PersonalGold.copy(alpha = 0.13f) else PersonalPanel,
-                                    shape = RoundedCornerShape(16.dp),
+                                    shape = RoundedCornerShape(CineEditorial.CardRadius),
                                     modifier = Modifier.fillMaxWidth().clickable { onToggleLanguage(language.code) },
                                 ) {
                                     Row(
@@ -140,7 +140,7 @@ fun PersonalizationOnboardingV055(
                             },
                             enabled = state.selectedLanguages.isNotEmpty(),
                             modifier = Modifier.fillMaxWidth(),
-                            colors = ButtonDefaults.buttonColors(containerColor = PersonalGold, contentColor = Color(0xFF241C09)),
+                            colors = ButtonDefaults.buttonColors(containerColor = PersonalGold, contentColor = CineEditorial.Raised),
                             contentPadding = PaddingValues(vertical = 15.dp),
                         ) {
                             Text("Choose favorite channels", fontWeight = FontWeight.Bold)
@@ -184,7 +184,7 @@ fun PersonalizationOnboardingV055(
                                 leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
                                 placeholder = { Text("Search channels", color = PersonalMuted) },
                                 modifier = Modifier.fillMaxWidth().padding(horizontal = CineEditorial.Gutter, vertical = 8.dp),
-                                shape = RoundedCornerShape(16.dp),
+                                shape = RoundedCornerShape(CineEditorial.CardRadius),
                             )
                         } else {
                             val languageLabels = personalization.availableLanguages
@@ -248,11 +248,11 @@ fun PersonalizationOnboardingV055(
                             onClick = onSave,
                             enabled = state.selectedSourceIds.isNotEmpty() && !state.personalizationBusy,
                             modifier = Modifier.fillMaxWidth().padding(horizontal = CineEditorial.Gutter, vertical = 16.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = PersonalGold, contentColor = Color(0xFF241C09)),
+                            colors = ButtonDefaults.buttonColors(containerColor = PersonalGold, contentColor = CineEditorial.Raised),
                             contentPadding = PaddingValues(vertical = 15.dp),
                         ) {
                             if (state.personalizationBusy) {
-                                CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp, color = Color(0xFF241C09))
+                                CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp, color = CineEditorial.Raised)
                                 Spacer(Modifier.width(10.dp))
                             }
                             Text("Build my Home", fontWeight = FontWeight.Bold)
@@ -272,7 +272,7 @@ private fun FavoriteSourceRowV055(
 ) {
     Surface(
         color = if (selected) PersonalGold.copy(alpha = 0.10f) else PersonalPanel,
-        shape = RoundedCornerShape(18.dp),
+        shape = RoundedCornerShape(CineEditorial.CardRadius),
         modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
     ) {
         Row(
@@ -304,7 +304,7 @@ private fun FavoriteSourceRowV055(
                     .background(if (selected) PersonalGold else PersonalRaised),
                 contentAlignment = Alignment.Center,
             ) {
-                if (selected) Icon(Icons.Default.Check, contentDescription = null, tint = Color(0xFF241C09), modifier = Modifier.size(15.dp))
+                if (selected) Icon(Icons.Default.Check, contentDescription = null, tint = CineEditorial.Raised, modifier = Modifier.size(15.dp))
             }
         }
     }
