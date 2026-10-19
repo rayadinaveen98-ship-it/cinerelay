@@ -165,8 +165,8 @@ fun RadarV058(
             Column(Modifier.fillMaxSize()) {
                 EditorialMastheadV2(
                     section = "SIGNAL DESK / FRESH STORIES",
-                    title = "The radar.",
-                    subtitle = "A calm, prioritized view of noteworthy updates, with evidence always in reach.",
+                    title = "Radar",
+                    subtitle = "Important updates from sources you can verify.",
                     modifier = Modifier.padding(horizontal = CineEditorial.Gutter),
                     actions = {
                         IconButton(onClick = onRefresh, enabled = !state.loading) {
@@ -323,7 +323,7 @@ private fun RadarOpportunityCardV066(event: EventCard, actionable: Boolean, onCl
         "FOLLOW_UP_NEEDED" -> RadarAmber58
         else -> if (actionable) RadarGold58 else RadarMuted58
     }
-    Surface(color = RadarPanel58, shape = RoundedCornerShape(20.dp), modifier = Modifier.fillMaxWidth().clickable(onClick = onClick)) {
+    Surface(color = RadarPanel58, shape = RoundedCornerShape(CineEditorial.CardRadius), modifier = Modifier.fillMaxWidth().clickable(onClick = onClick)) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(Modifier.size(8.dp).clip(CircleShape).background(accent))
@@ -388,7 +388,7 @@ private fun RawRadarOpportunityCardV066(opportunity: RawRadarOpportunityV059, on
         opportunity.score >= 60 -> RadarGreen58
         else -> RadarBlue58
     }
-    Surface(color = RadarPanel58, shape = RoundedCornerShape(20.dp), modifier = Modifier.fillMaxWidth().clickable(onClick = onClick)) {
+    Surface(color = RadarPanel58, shape = RoundedCornerShape(CineEditorial.CardRadius), modifier = Modifier.fillMaxWidth().clickable(onClick = onClick)) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(9.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(Modifier.size(8.dp).clip(CircleShape).background(accent))
