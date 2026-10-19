@@ -342,7 +342,7 @@ fun CineRelayHomeV058(
                                     modifier = Modifier.padding(horizontal = CineEditorial.Gutter))
                             }
                         }
-                        if (projection == null && state.homeSignals.isNotEmpty()) {
+                        if (projection == null && state.homeSignals.isNotEmpty() && heroStories.isEmpty()) {
                             item(key = "loading-projection") {
                                 Box(Modifier.fillMaxWidth().height(96.dp), contentAlignment = Alignment.Center) {
                                     CircularProgressIndicator(color = Home58Gold, strokeWidth = 2.dp)
