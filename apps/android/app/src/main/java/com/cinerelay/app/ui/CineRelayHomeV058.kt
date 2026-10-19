@@ -207,7 +207,7 @@ fun CineRelayHomeV058(
                         onBack = { showCategories = false },
                     )
                     LazyColumn(
-                        contentPadding = PaddingValues(horizontal = CineEditorial.Gutter, bottom = 120.dp),
+                        contentPadding = PaddingValues(start = CineEditorial.Gutter, end = CineEditorial.Gutter, bottom = 120.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
                         items(rails, key = { it.title }) { rail ->
