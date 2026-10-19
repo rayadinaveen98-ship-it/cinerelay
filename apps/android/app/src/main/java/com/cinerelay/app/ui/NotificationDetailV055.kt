@@ -129,7 +129,7 @@ fun NotificationDetailV055(
                                         if (story.timeline.isNotEmpty()) {
                                             item {
                                                 Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                                                    Text("Story timeline", color = DetailText, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                                                    Text("Story timeline", color = DetailText, fontSize = 18.sp, fontWeight = FontWeight.Bold)
                                                     Text("How this title has evolved across retained, evidence-backed updates", color = DetailMuted, fontSize = 12.sp)
                                                 }
                                             }
@@ -141,7 +141,7 @@ fun NotificationDetailV055(
                                     if (target.event.evidence.isNotEmpty()) {
                                         item {
                                             Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                                                Text("Evidence & sources", color = DetailText, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                                                Text("Evidence & sources", color = DetailText, fontSize = 18.sp, fontWeight = FontWeight.Bold)
                                                 Text("Original retained sources behind this specific update", color = DetailMuted, fontSize = 12.sp)
                                             }
                                         }
@@ -164,7 +164,7 @@ fun NotificationDetailV055(
                                 Spacer(Modifier.height(18.dp))
                                 Button(
                                     onClick = { runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) } },
-                                    colors = ButtonDefaults.buttonColors(containerColor = DetailGold, contentColor = Color(0xFF241C09)),
+                                    colors = ButtonDefaults.buttonColors(containerColor = DetailGold, contentColor = Color.White),
                                 ) {
                                     Icon(Icons.Default.OpenInNew, contentDescription = null, modifier = Modifier.size(17.dp))
                                     Spacer(Modifier.width(8.dp))
@@ -184,6 +184,13 @@ private fun SourceUpdateDetailV055(target: ConsumerDeepLinkTarget.SourceUpdate) 
     val context = LocalContext.current
     val item = target.item
     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        if (!item.thumbnailUrl.isNullOrBlank()) {
+            EditorialArtworkV2(
+                url = item.thumbnailUrl,
+                title = item.title,
+                modifier = Modifier.fillMaxWidth().aspectRatio(CineEditorial.ArtworkRatio),
+            )
+        }
         Row(verticalAlignment = Alignment.CenterVertically) {
             if (!item.source.artworkUrl.isNullOrBlank()) {
                 AsyncImage(
@@ -204,15 +211,6 @@ private fun SourceUpdateDetailV055(target: ConsumerDeepLinkTarget.SourceUpdate) 
             }
         }
 
-        item.thumbnailUrl?.let { image ->
-            AsyncImage(
-                model = image,
-                contentDescription = item.title,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxWidth().aspectRatio(16f / 9f).clip(RoundedCornerShape(CineEditorial.CardRadius)).background(DetailRaised),
-            )
-        }
-
         EditorialDisplayV2(item.title, size = 27, lines = 5)
         item.text?.takeIf { it.isNotBlank() && it != item.title }?.let {
             Text(it, color = DetailMuted, fontSize = 14.sp, lineHeight = 21.sp)
@@ -226,7 +224,7 @@ private fun SourceUpdateDetailV055(target: ConsumerDeepLinkTarget.SourceUpdate) 
             Button(
                 onClick = { runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) } },
                 modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.buttonColors(containerColor = DetailGold, contentColor = Color(0xFF241C09)),
+                colors = ButtonDefaults.buttonColors(containerColor = DetailGold, contentColor = Color.White),
             ) {
                 Icon(Icons.Default.OpenInNew, contentDescription = null, modifier = Modifier.size(17.dp))
                 Spacer(Modifier.width(8.dp))
