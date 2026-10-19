@@ -42,15 +42,15 @@ private val PanelRaised = CineEditorial.Raised
 private val Line = CineEditorial.Outline
 private val TextPrimary = CineEditorial.Text
 private val TextSecondary = CineEditorial.Text
-private val Signal = Color(0xFFE8C26A)
-private val Trusted = Color(0xFF73D9A6)
-private val Developing = Color(0xFFF2B85B)
-private val Caution = Color(0xFFF07A75)
+private val Signal = CineEditorial.Accent
+private val Trusted = CineEditorial.Confirmed
+private val Developing = CineEditorial.Developing
+private val Caution = CineEditorial.Error
 private val InfoBlue = CineEditorial.Info
 
 private val CineRelayColors = darkColorScheme(
     primary = Signal,
-    onPrimary = Color(0xFF231B08),
+    onPrimary = CineEditorial.Raised,
     secondary = Trusted,
     background = Ink,
     surface = Panel,
@@ -378,7 +378,7 @@ private fun FeedContent(state: CineRelayUiState, viewModel: CineRelayViewModel) 
 
 @Composable
 private fun GuestWelcomeCard(viewModel: CineRelayViewModel) {
-    Card(colors = CardDefaults.cardColors(containerColor = PanelRaised), shape = RoundedCornerShape(18.dp)) {
+    Card(colors = CardDefaults.cardColors(containerColor = PanelRaised), shape = RoundedCornerShape(CineEditorial.CardRadius)) {
         Column(Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 BrandMark(34.dp)
@@ -408,7 +408,7 @@ private fun SignalCard(card: EventCard, authenticated: Boolean, onFollow: () -> 
     val context = LocalContext.current
     Card(
         colors = CardDefaults.cardColors(containerColor = Panel),
-        shape = RoundedCornerShape(18.dp),
+        shape = RoundedCornerShape(CineEditorial.CardRadius),
         modifier = Modifier.fillMaxWidth(),
     ) {
         Column(Modifier.padding(16.dp)) {
@@ -510,7 +510,7 @@ private fun AlertsContent(state: CineRelayUiState, viewModel: CineRelayViewModel
 
 @Composable
 private fun PushCanaryCard(state: CineRelayUiState, notificationGranted: Boolean, onEnable: () -> Unit) {
-    Card(colors = CardDefaults.cardColors(containerColor = PanelRaised), shape = RoundedCornerShape(18.dp)) {
+    Card(colors = CardDefaults.cardColors(containerColor = PanelRaised), shape = RoundedCornerShape(CineEditorial.CardRadius)) {
         Column(Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
@@ -553,7 +553,7 @@ private fun PushCanaryCard(state: CineRelayUiState, notificationGranted: Boolean
 
 @Composable
 private fun AlertCard(alert: AlertItem) {
-    Card(colors = CardDefaults.cardColors(containerColor = Panel), shape = RoundedCornerShape(16.dp)) {
+    Card(colors = CardDefaults.cardColors(containerColor = Panel), shape = RoundedCornerShape(CineEditorial.CardRadius)) {
         Column(Modifier.padding(15.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(alert.deliveryKind, color = Signal, fontSize = 12.sp, fontWeight = FontWeight.Bold)
