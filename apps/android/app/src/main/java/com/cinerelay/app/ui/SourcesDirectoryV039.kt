@@ -271,7 +271,7 @@ private fun SourcesDirectoryList(
 private fun SourcesSummaryCard(state: SourcesUiState) {
     Surface(
         color = SourcesPanelRaised,
-        shape = RoundedCornerShape(18.dp),
+        shape = RoundedCornerShape(CineEditorial.CardRadius),
         modifier = Modifier.fillMaxWidth(),
     ) {
         Column(Modifier.padding(16.dp)) {
@@ -339,7 +339,7 @@ private fun SourceRow(
 ) {
     Surface(
         color = SourcesPanel,
-        shape = RoundedCornerShape(18.dp),
+        shape = RoundedCornerShape(CineEditorial.CardRadius),
         modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
     ) {
         Row(
@@ -444,7 +444,7 @@ private fun SourceDetailFeed(
             item {
                 Surface(
                     color = SourcesPanel,
-                    shape = RoundedCornerShape(18.dp),
+                    shape = RoundedCornerShape(CineEditorial.CardRadius),
                     modifier = Modifier.fillMaxWidth(),
                 ) {
                     Column(Modifier.padding(18.dp)) {
@@ -476,7 +476,7 @@ private fun SourceDetailHeader(
 ) {
     Surface(
         color = SourcesPanelRaised,
-        shape = RoundedCornerShape(18.dp),
+        shape = RoundedCornerShape(CineEditorial.CardRadius),
         modifier = Modifier.fillMaxWidth(),
     ) {
         Row(
@@ -538,7 +538,7 @@ private fun SourceNewsroomCard(signal: NewsroomSignal) {
     val context = LocalContext.current
     Card(
         colors = CardDefaults.cardColors(containerColor = SourcesPanel),
-        shape = RoundedCornerShape(18.dp),
+        shape = RoundedCornerShape(CineEditorial.CardRadius),
         modifier = Modifier.fillMaxWidth(),
     ) {
         Column(Modifier.padding(15.dp)) {
