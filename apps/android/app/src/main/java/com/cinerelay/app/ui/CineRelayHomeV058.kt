@@ -375,53 +375,96 @@ private fun HomeHeroPagerV066(
     onOpenUpdate: (NewsroomSignal) -> Unit,
 ) {
     val pager = rememberPagerState(initialPage = 0, pageCount = { heroStories.size })
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         HorizontalPager(
             state = pager,
             modifier = Modifier.fillMaxWidth().padding(horizontal = CineEditorial.Gutter),
             pageSize = PageSize.Fill,
         ) { index ->
-            val story = heroStories[index]
-            val item = story.representative
+            val item = heroStories[index].representative
+            val headline = item.canonicalEvent?.headline?.takeIf { it.isNotBlank() } ?: item.title
             val status = cineEvidenceLabel(item.canonicalEvent?.verificationState, item.state)
             Surface(
-                color = Home58Panel, shape = RoundedCornerShape(CineEditorial.HeroRadius),
+                color = Home58Panel,
+                shape = RoundedCornerShape(CineEditorial.HeroRadius),
                 modifier = Modifier.fillMaxWidth().clickable { onOpenUpdate(item) },
             ) {
-                Column {
+                Box(Modifier.fillMaxWidth().height(270.dp)) {
                     EditorialArtworkV2(
                         url = item.thumbnailUrl,
-                        title = item.title,
-                        modifier = Modifier.fillMaxWidth().height(200.dp),
+                        title = headline,
+                        modifier = Modifier.matchParentSize(),
+                    )
+                    // The scrim keeps both Telugu and Latin headlines readable on any real thumbnail.
+                    Box(
+                        Modifier.matchParentSize().background(
+                            Brush.verticalGradient(
+                                colors = listOf(
+                                    Color.Transparent,
+                                    Home58Ink.copy(alpha = 0.38f),
+                                    Home58Ink.copy(alpha = 0.97f),
+                                ),
+                            ),
+                        ),
                     )
                     Column(
-                        Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
-                        verticalArrangement = Arrangement.spacedBy(7.dp),
+                        modifier = Modifier.align(Alignment.BottomStart).fillMaxWidth().padding(18.dp),
+                        verticalArrangement = Arrangement.spacedBy(9.dp),
                     ) {
-                        Text(item.canonicalEvent?.headline?.takeIf { it.isNotBlank() } ?: item.title,
-                            color = Home58Text, fontSize = 16.sp, lineHeight = 22.sp,
-                            fontWeight = FontWeight.SemiBold, maxLines = 2,
-                            overflow = TextOverflow.Ellipsis)
+                        Text(
+                            "FEATURED UPDATE",
+                            color = Home58Gold,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                        )
+                        Text(
+                            headline,
+                            color = Home58Text,
+                            fontSize = 19.sp,
+                            lineHeight = 25.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 3,
+                            overflow = TextOverflow.Ellipsis,
+                        )
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(item.source.name ?: item.source.handle ?: "Source",
-                                color = Home58Muted, fontSize = 12.sp,
-                                maxLines = 1, overflow = TextOverflow.Ellipsis,
-                                modifier = Modifier.weight(1f))
+                            Text(
+                                item.source.name ?: item.source.handle ?: "Source",
+                                color = Home58Text.copy(alpha = 0.88f),
+                                fontSize = CineEditorial.Metadata,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.weight(1f),
+                            )
                             Spacer(Modifier.width(8.dp))
-                            Text(home58TimeAgo(item.observedAt), color = Home58Muted, fontSize = 12.sp)
-                            Spacer(Modifier.width(8.dp))
-                            Text(status, color = cineEvidenceColor(status),
-                                fontSize = 12.sp, maxLines = 1)
+                            Text(
+                                status,
+                                color = cineEvidenceColor(status),
+                                fontSize = CineEditorial.Metadata,
+                                maxLines = 1,
+                            )
                         }
                     }
                 }
             }
         }
         if (heroStories.size > 1) {
-            Text("${pager.currentPage + 1} / ${heroStories.size}",
-                modifier = Modifier.fillMaxWidth().padding(end = CineEditorial.Gutter),
-                color = Home58Muted, fontSize = 12.sp,
-                textAlign = androidx.compose.ui.text.style.TextAlign.End)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                repeat(heroStories.size) { index ->
+                    Box(
+                        Modifier.padding(horizontal = 3.dp)
+                            .size(
+                                width = if (index == pager.currentPage) 20.dp else 6.dp,
+                                height = 6.dp,
+                            )
+                            .clip(RoundedCornerShape(3.dp))
+                            .background(if (index == pager.currentPage) Home58Gold else Home58Muted.copy(alpha = 0.45f)),
+                    )
+                }
+            }
         }
     }
 }
