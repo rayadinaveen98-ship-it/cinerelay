@@ -29,39 +29,38 @@ import androidx.compose.ui.unit.sp
  * Consistent V2 page layout for sources, search, settings, archive, story detail,
  * and nested See All pages. This deliberately changes hierarchy, not just colors.
  */
+/** Shared utility-page title with no decorative repeated eyebrow. */
 @Composable
 internal fun CineScreenHeader(
     title: String,
     subtitle: String? = null,
-    eyebrow: String = "CINERELAY / THE EDITORIAL EDITION",
+    eyebrow: String = "CINERELAY",
     onBack: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
     actions: @Composable RowScope.() -> Unit = {},
 ) {
     Column(
         modifier.fillMaxWidth().padding(
-            start = if (onBack != null) 6.dp else CineEditorial.Gutter,
+            start = if (onBack != null) 4.dp else CineEditorial.Gutter,
             end = CineEditorial.Gutter,
-            top = 16.dp, bottom = 16.dp,
+            top = 12.dp, bottom = 12.dp,
         ),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             if (onBack != null) {
                 IconButton(onClick = onBack, modifier = Modifier.size(CineEditorial.TargetSize)) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "Back", tint = CineEditorial.Text)
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = CineEditorial.Text)
                 }
             }
-            EditorialEyebrowV2(eyebrow,
-                modifier = if (onBack != null) Modifier.weight(1f) else Modifier.weight(1f))
+            EditorialDisplayV2(title, modifier = Modifier.weight(1f), size = 22, lines = 2)
             actions()
         }
-        EditorialDisplayV2(title, size = 29, lines = 2)
         if (!subtitle.isNullOrBlank()) {
             Text(subtitle, color = CineEditorial.Muted,
-                fontSize = 13.sp, lineHeight = 19.sp,
-                maxLines = 3, overflow = TextOverflow.Ellipsis)
+                fontSize = 12.sp, lineHeight = 17.sp,
+                modifier = Modifier.padding(start = if (onBack != null) 48.dp else 0.dp),
+                maxLines = 2, overflow = TextOverflow.Ellipsis)
         }
     }
 }
