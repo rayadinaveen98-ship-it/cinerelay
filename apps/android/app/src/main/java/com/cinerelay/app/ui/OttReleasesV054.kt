@@ -29,6 +29,7 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.OpenInNew
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -37,6 +38,9 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -119,7 +123,13 @@ fun OttReleasesV054(
     val landingListState=rememberLazyListState()
     var openedCategory by rememberSaveable { mutableStateOf<String?>(null) }
     var openedReleaseId by rememberSaveable { mutableStateOf<String?>(null) }
-    BackHandler(enabled=openedCategory!=null||openedReleaseId!=null){
+    val activeFilters = listOf(
+        state.providerCode != null,
+        state.language != null,
+        state.contentType != OttContentType.ALL,
+        state.evidence != OttEvidenceFilter.ALL,
+    ).count { it }
+        BackHandler(enabled=openedCategory!=null||openedReleaseId!=null){
         if(openedReleaseId!=null) openedReleaseId=null else openedCategory=null
     }
     MaterialTheme(colorScheme = OttColors) {
@@ -132,6 +142,23 @@ fun OttReleasesV054(
             )
             val chosen = state.items.firstOrNull { it.id==openedReleaseId }
             val category = sections.firstOrNull { it.first==openedCategory }
+            if (filtersExpanded && chosen == null && category == null) {
+                ModalBottomSheet(
+                    onDismissRequest = { filtersExpanded = false },
+                    containerColor = OttPanel,
+                    contentColor = OttText,
+                ) {
+                    OttFiltersV060(
+                        state = state,
+                        onClose = { filtersExpanded = false },
+                        onSelectProvider = onSelectProvider,
+                        onSelectLanguage = onSelectLanguage,
+                        onSelectContentType = onSelectContentType,
+                        onSelectEvidence = onSelectEvidence,
+                        onClearFilters = onClearFilters,
+                    )
+                }
+            }
             if(chosen!=null) {
                 LazyColumn(Modifier.fillMaxSize(),contentPadding=PaddingValues(bottom=128.dp),
                     verticalArrangement=Arrangement.spacedBy(10.dp)){
@@ -166,6 +193,21 @@ fun OttReleasesV054(
                             title = "Streaming",
                             subtitle = "",
                             actions = {
+                                TextButton(onClick = { filtersExpanded = true }) {
+                                    Icon(
+                                        Icons.Default.Tune,
+                                        contentDescription = null,
+                                        tint = OttGold,
+                                        modifier = Modifier.size(19.dp),
+                                    )
+                                    Spacer(Modifier.width(5.dp))
+                                    Text(
+                                        if (activeFilters == 0) "Refine" else "Refine ($activeFilters)",
+                                        color = OttGold,
+                                        fontSize = CineEditorial.Metadata,
+                                        maxLines = 1,
+                                    )
+                                }
                                 IconButton(onClick = onRefresh, enabled = !state.loading) {
                                     if (state.loading) CircularProgressIndicator(
                                         Modifier.size(19.dp), strokeWidth = 2.dp, color = OttGold,
@@ -175,31 +217,6 @@ fun OttReleasesV054(
                             },
                         )
                     }
-                    item { OttOverviewV069(state, onOpenCategory = { openedCategory = it }) }
-                    item {
-                        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            items(OttLanguages, key = { it.first ?: "all" }) { (code, label) ->
-                                OttChipV054(
-                                    if (code == null) "All" else label,
-                                    state.language == code,
-                                ) { onSelectLanguage(code) }
-                            }
-                        }
-                    }
-
-                    item {
-                        OttFiltersV060(
-                            state = state,
-                            expanded = filtersExpanded,
-                            onToggle = { filtersExpanded = !filtersExpanded },
-                            onSelectProvider = onSelectProvider,
-                            onSelectLanguage = onSelectLanguage,
-                            onSelectContentType = onSelectContentType,
-                            onSelectEvidence = onSelectEvidence,
-                            onClearFilters = onClearFilters,
-                        )
-                    }
-
                     state.error?.let { message ->
                         item {
                             Surface(color = OttRed.copy(alpha = 0.10f), shape = RoundedCornerShape(CineEditorial.CardRadius)) {
@@ -296,8 +313,7 @@ private fun OttCountPillV060(label: String, count: Int, onClick: () -> Unit) {
 @Composable
 private fun OttFiltersV060(
     state: OttUiState,
-    expanded: Boolean,
-    onToggle: () -> Unit,
+    onClose: () -> Unit,
     onSelectProvider: (String?) -> Unit,
     onSelectLanguage: (String?) -> Unit,
     onSelectContentType: (OttContentType) -> Unit,
@@ -311,60 +327,57 @@ private fun OttFiltersV060(
         state.evidence != OttEvidenceFilter.ALL,
     ).count { it }
 
-    Surface(color = OttPanel, shape = RoundedCornerShape(CineEditorial.CardRadius), modifier = Modifier.fillMaxWidth()) {
-        Column {
-            Row(
-                modifier = Modifier.fillMaxWidth().clickable(onClick = onToggle).padding(horizontal = 15.dp, vertical = 13.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Column(Modifier.weight(1f)) {
-                    Text("Refine results", color = OttText, fontSize = CineEditorial.CardTitle, fontWeight = FontWeight.Bold)
-                    Text(
-                        if (activeCount == 0) "Optional · platform, language and verification" else "$activeCount active filter${if (activeCount == 1) "" else "s"}",
-                        color = if (activeCount == 0) OttMuted else OttGold,
-                        fontSize = CineEditorial.Metadata,
-                    )
-                }
-                if (activeCount > 0) {
-                    TextButton(onClick = onClearFilters) {
-                        Text("Reset", color = OttGold, fontSize = CineEditorial.Metadata, fontWeight = FontWeight.Bold)
-                    }
-                }
-                Text(if (expanded) "Hide" else "Show", color = OttGold,
-                    fontSize = CineEditorial.Metadata, fontWeight = FontWeight.Bold)
-            }
-
-            if (expanded) {
-                HorizontalDivider(color = OttLine)
-                Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(13.dp)) {
-                    OttProviderRowV054(state.providers, state.providerCode, onSelectProvider)
-                    Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
-                        Text("LANGUAGE", color = OttMuted, fontSize = CineEditorial.Metadata, fontWeight = FontWeight.Black, letterSpacing = 1.2.sp)
-                        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            items(OttLanguages, key = { it.first ?: "all" }) { (code, label) ->
-                                OttChipV054(label, state.language == code) { onSelectLanguage(code) }
-                            }
-                        }
-                    }
-                    Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
-                        Text("TYPE", color = OttMuted, fontSize = CineEditorial.Metadata, fontWeight = FontWeight.Black, letterSpacing = 1.2.sp)
-                        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            item { OttChipV054("Movies + Series", state.contentType == OttContentType.ALL) { onSelectContentType(OttContentType.ALL) } }
-                            item { OttChipV054("Movies", state.contentType == OttContentType.MOVIES) { onSelectContentType(OttContentType.MOVIES) } }
-                            item { OttChipV054("Series", state.contentType == OttContentType.SERIES) { onSelectContentType(OttContentType.SERIES) } }
-                        }
-                    }
-                    Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
-                        Text("STATUS", color = OttMuted, fontSize = CineEditorial.Metadata, fontWeight = FontWeight.Black, letterSpacing = 1.2.sp)
-                        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            item { OttChipV054("All", state.evidence == OttEvidenceFilter.ALL) { onSelectEvidence(OttEvidenceFilter.ALL) } }
-                            item { OttChipV054("Confirmed", state.evidence == OttEvidenceFilter.CONFIRMED) { onSelectEvidence(OttEvidenceFilter.CONFIRMED) } }
-                            item { OttChipV054("Reported", state.evidence == OttEvidenceFilter.REPORTED) { onSelectEvidence(OttEvidenceFilter.REPORTED) } }
-                        }
-                    }
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                "Refine results",
+                color = OttText,
+                fontSize = CineEditorial.SectionTitle,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.weight(1f),
+            )
+            if (activeCount > 0) {
+                TextButton(onClick = onClearFilters) {
+                    Text("Reset ($activeCount)", color = OttGold, fontSize = CineEditorial.Metadata)
                 }
             }
         }
+        OttProviderRowV054(state.providers, state.providerCode, onSelectProvider)
+        Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
+            Text("LANGUAGE", color = OttMuted, fontSize = CineEditorial.Metadata)
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                items(OttLanguages, key = { it.first ?: "all" }) { (code, label) ->
+                    OttChipV054(label, state.language == code) { onSelectLanguage(code) }
+                }
+            }
+        }
+        Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
+            Text("TYPE", color = OttMuted, fontSize = CineEditorial.Metadata)
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                item { OttChipV054("All", state.contentType == OttContentType.ALL) { onSelectContentType(OttContentType.ALL) } }
+                item { OttChipV054("Movies", state.contentType == OttContentType.MOVIES) { onSelectContentType(OttContentType.MOVIES) } }
+                item { OttChipV054("Series", state.contentType == OttContentType.SERIES) { onSelectContentType(OttContentType.SERIES) } }
+            }
+        }
+        Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
+            Text("EVIDENCE", color = OttMuted, fontSize = CineEditorial.Metadata)
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                item { OttChipV054("All", state.evidence == OttEvidenceFilter.ALL) { onSelectEvidence(OttEvidenceFilter.ALL) } }
+                item { OttChipV054("Confirmed", state.evidence == OttEvidenceFilter.CONFIRMED) { onSelectEvidence(OttEvidenceFilter.CONFIRMED) } }
+                item { OttChipV054("Reported", state.evidence == OttEvidenceFilter.REPORTED) { onSelectEvidence(OttEvidenceFilter.REPORTED) } }
+            }
+        }
+        Button(
+            onClick = onClose,
+            modifier = Modifier.fillMaxWidth().height(48.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = OttGold, contentColor = OttInk),
+        ) {
+            Text("Show results", fontWeight = FontWeight.SemiBold)
+        }
+        Spacer(Modifier.height(22.dp))
     }
 }
 
