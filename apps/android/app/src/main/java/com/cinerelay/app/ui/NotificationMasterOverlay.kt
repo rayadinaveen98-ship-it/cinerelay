@@ -55,7 +55,7 @@ fun NotificationMasterOverlay(
     Surface(
         modifier = modifier.fillMaxWidth(),
         color = MasterPanel.copy(alpha = 0.98f),
-        shape = RoundedCornerShape(18.dp),
+        shape = RoundedCornerShape(CineEditorial.CardRadius),
         shadowElevation = 10.dp,
         tonalElevation = 0.dp,
     ) {
