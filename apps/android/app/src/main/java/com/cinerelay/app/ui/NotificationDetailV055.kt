@@ -209,7 +209,7 @@ private fun SourceUpdateDetailV055(target: ConsumerDeepLinkTarget.SourceUpdate) 
                 model = image,
                 contentDescription = item.title,
                 contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxWidth().aspectRatio(16f / 9f).clip(RoundedCornerShape(20.dp)).background(DetailRaised),
+                modifier = Modifier.fillMaxWidth().aspectRatio(16f / 9f).clip(RoundedCornerShape(CineEditorial.CardRadius)).background(DetailRaised),
             )
         }
 
@@ -283,7 +283,7 @@ private fun StoryChangeNowV066(story: ConsumerStory) {
     else story.timeline.firstOrNull { it.id != current.id }
     Surface(
         color = DetailGold.copy(alpha = 0.08f),
-        shape = RoundedCornerShape(20.dp),
+        shape = RoundedCornerShape(CineEditorial.CardRadius),
         modifier = Modifier.fillMaxWidth(),
     ) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -322,7 +322,7 @@ private fun StoryChangeNowV066(story: ConsumerStory) {
 
 @Composable
 private fun StoryIntelligenceOverviewV061(story: ConsumerStory) {
-    Surface(color = DetailPanel, shape = RoundedCornerShape(20.dp), modifier = Modifier.fillMaxWidth()) {
+    Surface(color = DetailPanel, shape = RoundedCornerShape(CineEditorial.CardRadius), modifier = Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
@@ -352,7 +352,7 @@ private fun StoryIntelligenceOverviewV061(story: ConsumerStory) {
 
 @Composable
 private fun StoryStatV061(value: String, label: String, modifier: Modifier = Modifier) {
-    Surface(color = DetailRaised, shape = RoundedCornerShape(16.dp), modifier = modifier) {
+    Surface(color = DetailRaised, shape = RoundedCornerShape(CineEditorial.CardRadius), modifier = modifier) {
         Column(Modifier.padding(vertical = 10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             Text(value, color = DetailText, fontSize = 18.sp, fontWeight = FontWeight.Black)
             Text(label, color = DetailMuted, fontSize = 12.sp, fontWeight = FontWeight.Bold)
@@ -375,7 +375,7 @@ private fun StoryTimelineEntryV061(entry: ConsumerStoryTimelineEntry) {
         Spacer(Modifier.width(12.dp))
         Surface(
             color = if (entry.current) DetailGold.copy(alpha = 0.08f) else DetailPanel,
-            shape = RoundedCornerShape(16.dp),
+            shape = RoundedCornerShape(CineEditorial.CardRadius),
             modifier = Modifier.weight(1f),
         ) {
             Column(Modifier.padding(13.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -402,7 +402,7 @@ private fun EventEvidenceCardV055(evidence: ConsumerEvidence) {
     val context = LocalContext.current
     Surface(
         color = DetailPanel,
-        shape = RoundedCornerShape(18.dp),
+        shape = RoundedCornerShape(CineEditorial.CardRadius),
         modifier = Modifier.fillMaxWidth().let { base ->
             val url = evidence.canonicalUrl
             if (url.isNullOrBlank()) base else base.clickable {
