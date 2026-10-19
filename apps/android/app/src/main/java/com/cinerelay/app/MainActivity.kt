@@ -263,7 +263,6 @@ class MainActivity : ComponentActivity() {
                                 onSearch = searchViewModel::open,
                                 onOpenArchive = {
                                     archiveVisible = true
-                                    archiveViewModel.load()
                                 },
                                 onOpenUpdate = { signal ->
                                     consumerViewModel.openNotification(
@@ -368,13 +367,11 @@ class MainActivity : ComponentActivity() {
                                     settingsVisible = false
                                     historyVisible = false
                                     ottVisible = true
-                                    ottViewModel.load()
                                 },
                                 onOpenHistory = {
                                     settingsVisible = false
                                     ottVisible = false
                                     historyVisible = true
-                                    consumerViewModel.loadOnThisDay()
                                 },
                                 onOpenControlRoom = {
                                     ottVisible = false
