@@ -159,7 +159,7 @@ jobs:
           profile: pixel_6
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
           script: |
-            set -euo pipefail
+            set -eu
             adb wait-for-device
             adb install -r s3-release-results/CineRelay-v0.2.9-rc1-release.apk
             adb logcat -c
