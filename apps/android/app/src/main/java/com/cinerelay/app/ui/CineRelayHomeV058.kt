@@ -83,6 +83,9 @@ private val Home58Gold = CineEditorial.Accent
 private val Home58Green = CineEditorial.Confirmed
 private val Home58Amber = CineEditorial.Developing
 
+internal const val HOME23_HERO_CAP = 10
+private const val HOME23_AUTO_REFRESH_MS = 10 * 60 * 1000L
+
 private data class HomeStoryV059(
     val key: String,
     val representative: NewsroomSignal,
@@ -111,6 +114,15 @@ fun CineRelayHomeV058(
     onOpenUpdate: (NewsroomSignal) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    // Foreground-only periodic refresh. The ViewModel preserves caching/throttling;
+    // push notification delivery continues through the existing app infrastructure.
+    LaunchedEffect(Unit) {
+        while (true) {
+            delay(HOME23_AUTO_REFRESH_MS)
+            onRefresh()
+        }
+    }
+
     // Clustering compares stories pairwise and can become expensive as feeds grow.
     // Compute the complete projection on Default, not during UI composition.
     val projection by produceState<HomeDisplayProjectionV1?>(
@@ -142,23 +154,16 @@ fun CineRelayHomeV058(
                 if (matches.isEmpty()) null
                 else story.copy(representative = bestHomeRepresentativeV059(matches))
             }
-            val freshFavoriteStories = favoriteStories.filter {
-                isFreshHomeSignalV058(it.representative)
-            }
-            val favoriteKeys = freshFavoriteStories.map { it.key }.toSet()
-            val ranked = (freshFavoriteStories + freshStories)
+            // Always newest first: never fill the hero with old, highly scored
+            // stories just to reach ten. A missing image uses original fallback art.
+            val heroStories = freshStories
                 .distinctBy { it.key }
-                .sortedWith(
-                    compareByDescending<HomeStoryV059> {
-                        homeHeroScoreV066(it, personalization.favoriteLanguages) +
-                            if (it.key in favoriteKeys) 80 else 0
-                    }.thenByDescending { homeSignalInstantV059(it.representative) },
-                )
-            val heroStories = ranked.filter { !it.representative.thumbnailUrl.isNullOrBlank() }
-                .take(3).ifEmpty { ranked.take(3) }
-            val usedKeys = heroStories.map { it.key }.toMutableSet()
-            val latest = freshStories.asSequence()
-                .filter { usedKeys.add(it.key) }.take(6).toList()
+                .sortedByDescending { homeSignalInstantV059(it.representative) }
+                .take(HOME23_HERO_CAP)
+            val heroKeys = heroStories.map { it.key }.toSet()
+            val freshNotFeatured = freshStories.filterNot { it.key in heroKeys }
+            val latest = if (freshNotFeatured.isNotEmpty()) freshNotFeatured.take(6)
+                else freshStories.take(6)
             HomeDisplayProjectionV1(
                 favoriteSources = favoriteSources,
                 heroStories = heroStories,
@@ -409,7 +414,7 @@ private fun HomeHeroPagerV066(
                 shape = RoundedCornerShape(CineEditorial.HeroRadius),
                 modifier = Modifier.fillMaxWidth().clickable { onOpenUpdate(item) },
             ) {
-                Box(Modifier.fillMaxWidth().height(270.dp)) {
+                Box(Modifier.fillMaxWidth().height(302.dp)) {
                     EditorialArtworkV2(
                         url = item.thumbnailUrl,
                         title = headline,
@@ -419,10 +424,11 @@ private fun HomeHeroPagerV066(
                     Box(
                         Modifier.matchParentSize().background(
                             Brush.verticalGradient(
-                                colors = listOf(
-                                    Color.Transparent,
-                                    Home58Ink.copy(alpha = 0.38f),
-                                    Home58Ink.copy(alpha = 0.97f),
+                                colorStops = arrayOf(
+                                    0f to Color.Transparent,
+                                    0.40f to Home58Ink.copy(alpha = 0.08f),
+                                    0.73f to Home58Ink.copy(alpha = 0.46f),
+                                    1f to Home58Ink.copy(alpha = 0.99f),
                                 ),
                             ),
                         ),
@@ -430,10 +436,10 @@ private fun HomeHeroPagerV066(
                     Text(
                         headline,
                         modifier = Modifier.align(Alignment.BottomStart)
-                            .fillMaxWidth().padding(18.dp),
+                            .fillMaxWidth().padding(horizontal = 20.dp, vertical = 22.dp),
                         color = Home58Text,
-                        fontSize = 19.sp,
-                        lineHeight = 25.sp,
+                        fontSize = 21.sp,
+                        lineHeight = 28.sp,
                         fontWeight = FontWeight.SemiBold,
                         maxLines = 3,
                         overflow = TextOverflow.Ellipsis,
