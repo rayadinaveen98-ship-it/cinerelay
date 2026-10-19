@@ -232,7 +232,22 @@ fun OttReleasesV054(
                             }
                         }
                     } else {
-                        item {
+                        if (state.weekendItems.isEmpty() && state.todayItems.isEmpty() &&
+                            state.nowStreamingItems.isEmpty() && state.upcomingItems.isEmpty()) {
+                            item {
+                                Column(
+                                    modifier = Modifier.fillMaxWidth().padding(vertical = 28.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                                ) {
+                                    Text("No matching releases", color = OttText, fontSize = CineEditorial.SectionTitle)
+                                    TextButton(onClick = { filtersExpanded = true }) {
+                                        Text("Adjust filters", color = OttGold)
+                                    }
+                                }
+                            }
+                        }
+                        if (state.weekendItems.isNotEmpty()) item {
                             OttReleaseSectionV066(
                                 eyebrow = "WEEKEND",
                                 title = "This Weekend",
@@ -243,7 +258,7 @@ fun OttReleasesV054(
                                 onOpenRelease = { openedReleaseId=it.id },
                             )
                         }
-                        item {
+                        if (state.todayItems.isNotEmpty()) item {
                             OttReleaseSectionV066(
                                 eyebrow = "TODAY",
                                 title = "Today’s OTT Releases",
@@ -254,7 +269,7 @@ fun OttReleasesV054(
                                 onOpenRelease = { openedReleaseId=it.id },
                             )
                         }
-                        item {
+                        if (state.nowStreamingItems.isNotEmpty()) item {
                             OttReleaseSectionV066(
                                 eyebrow = "AVAILABLE NOW",
                                 title = "Now Streaming",
@@ -265,7 +280,7 @@ fun OttReleasesV054(
                                 onOpenRelease = { openedReleaseId=it.id },
                             )
                         }
-                        item {
+                        if (state.upcomingItems.isNotEmpty()) item {
                             OttReleaseSectionV066(
                                 eyebrow = "COMING SOON",
                                 title = "Coming in the Next 30 Days",
@@ -397,8 +412,15 @@ private fun OttReleaseSectionV066(
                 Text("See all →", color = if (items.isNotEmpty()) OttGold else OttMuted, fontSize = 12.sp)
             }
         })
-        Text(subtitle, color = OttMuted, fontSize = 12.sp, maxLines = 2,
-            overflow = TextOverflow.Ellipsis)
+        if (subtitle.isNotBlank()) {
+            Text(
+                subtitle,
+                color = OttMuted,
+                fontSize = CineEditorial.Metadata,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
         if (items.isEmpty()) {
             Text(emptyMessage, color = OttMuted, fontSize = CineEditorial.Body,
                 lineHeight = 19.sp, modifier = Modifier.padding(vertical = 16.dp))
@@ -445,20 +467,22 @@ private fun OttCompactCardV080(release: OttRelease, onClick: () -> Unit) {
                         overflow = TextOverflow.Ellipsis,
                     )
                 }
-                Text(
-                    date,
-                    color = OttMuted,
-                    fontSize = CineEditorial.Metadata,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Text(
-                    status,
-                    color = if (confirmed) OttGreen else OttAmber,
-                    fontSize = CineEditorial.Metadata,
-                    fontWeight = FontWeight.Medium,
-                    maxLines = 1,
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        if (confirmed) Icons.Default.CheckCircle else Icons.Default.Info,
+                        contentDescription = status,
+                        tint = if (confirmed) OttGreen else OttAmber,
+                        modifier = Modifier.size(15.dp),
+                    )
+                    Spacer(Modifier.width(5.dp))
+                    Text(
+                        date,
+                        color = OttMuted,
+                        fontSize = CineEditorial.Metadata,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
             }
         }
     }
