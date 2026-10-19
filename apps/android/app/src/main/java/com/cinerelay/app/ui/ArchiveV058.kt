@@ -151,16 +151,15 @@ private fun ArchiveCardV058(item: ConsumerUpdate, onClick: () -> Unit) {
             EditorialArtworkV2(
                 url = item.thumbnailUrl,
                 title = item.title,
-                modifier = Modifier.width(106.dp).height(116.dp),
+                modifier = Modifier.width(108.dp).height(72.dp),
             )
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(9.dp)) {
-                EditorialEyebrowV2("FROM THE ARCHIVE")
-                EditorialDisplayV2(item.title, size = 17, lines = 3)
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                EditorialDisplayV2(item.title, size = 15, lines = 2)
                 Text(item.source.name ?: "CineRelay source",
-                    color = ArchiveMuted58, fontSize = 11.sp, maxLines = 1,
+                    color = ArchiveMuted58, fontSize = CineEditorial.Metadata, maxLines = 1,
                     overflow = TextOverflow.Ellipsis)
                 Text(archiveDateV058(item.observedAt),
-                    color = ArchiveGold58, fontSize = 11.sp)
+                    color = ArchiveGold58, fontSize = CineEditorial.Metadata)
             }
         }
     }
