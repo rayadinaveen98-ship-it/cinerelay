@@ -84,7 +84,7 @@ fun NotificationOnboardingV044(
             else -> Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .statusBarsPadding()
+                    
                     .navigationBarsPadding(),
             ) {
                 OnboardingProgress(step = step, onBack = { if (step > 0 && !state.saving) step -= 1 })
