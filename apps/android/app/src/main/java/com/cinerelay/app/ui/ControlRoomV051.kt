@@ -244,7 +244,7 @@ private fun ControlNotificationsCard(
 
         state.error?.let {
             Spacer(Modifier.height(10.dp))
-            Text(it, color = Color(0xFFF08079), fontSize = 12.sp, lineHeight = 15.sp)
+            Text(it, color = CineEditorial.Error, fontSize = 12.sp, lineHeight = 15.sp)
         }
     }
 }
@@ -257,7 +257,7 @@ private fun ControlCard(
 ) {
     Card(
         colors = CardDefaults.cardColors(containerColor = ControlPanel),
-        shape = RoundedCornerShape(18.dp),
+        shape = RoundedCornerShape(CineEditorial.CardRadius),
         modifier = Modifier.fillMaxWidth(),
     ) {
         Column(Modifier.fillMaxWidth().padding(16.dp)) {
