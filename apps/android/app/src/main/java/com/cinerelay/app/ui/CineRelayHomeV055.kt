@@ -231,7 +231,7 @@ private fun HomeHeroCarouselV055(
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp)
                 .aspectRatio(1.55f)
-                .clip(RoundedCornerShape(20.dp))
+                .clip(RoundedCornerShape(CineEditorial.CardRadius))
                 .background(Home55Raised)
                 .clickable { onOpenUpdate(item) },
         ) {
@@ -256,7 +256,7 @@ private fun HomeHeroCarouselV055(
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Surface(color = Home55Gold.copy(alpha = 0.92f), shape = RoundedCornerShape(50)) {
-                        Text("FROM YOUR FAVORITES", color = Color(0xFF241C09), fontSize = 12.sp, fontWeight = FontWeight.Black, modifier = Modifier.padding(horizontal = 9.dp, vertical = 5.dp))
+                        Text("FROM YOUR FAVORITES", color = CineEditorial.Raised, fontSize = 12.sp, fontWeight = FontWeight.Black, modifier = Modifier.padding(horizontal = 9.dp, vertical = 5.dp))
                     }
                     Spacer(Modifier.width(8.dp))
                     Text(home55TimeAgo(item.observedAt), color = Home55Text.copy(alpha = 0.78f), fontSize = 12.sp)
@@ -301,7 +301,7 @@ private fun HomeHeroCarouselV055(
 private fun HomeHeroEmptyV055(favoriteSources: List<PersonalizationSource>) {
     Surface(
         color = Home55Panel,
-        shape = RoundedCornerShape(20.dp),
+        shape = RoundedCornerShape(CineEditorial.CardRadius),
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
     ) {
         Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
@@ -357,7 +357,7 @@ private fun HomeOnThisDayCardV057(movie: OnThisDayMovie, onClick: () -> Unit) {
             modifier = Modifier
                 .fillMaxWidth()
                 .aspectRatio(2f / 3f)
-                .clip(RoundedCornerShape(18.dp))
+                .clip(RoundedCornerShape(CineEditorial.CardRadius))
                 .background(Home55Raised),
         ) {
             val artwork = movie.posterUrl ?: movie.backdropUrl
@@ -381,7 +381,7 @@ private fun HomeOnThisDayCardV057(movie: OnThisDayMovie, onClick: () -> Unit) {
             ) {
                 Text(
                     movie.releaseYear.toString(),
-                    color = Color(0xFF241C09),
+                    color = CineEditorial.Raised,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Black,
                     modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
@@ -449,7 +449,7 @@ private fun HomeRailCardV055(
         verticalArrangement = Arrangement.spacedBy(7.dp),
     ) {
         Box(
-            modifier = Modifier.fillMaxWidth().aspectRatio(16f / 9f).clip(RoundedCornerShape(16.dp)).background(Home55Raised),
+            modifier = Modifier.fillMaxWidth().aspectRatio(16f / 9f).clip(RoundedCornerShape(CineEditorial.CardRadius)).background(Home55Raised),
         ) {
             if (!item.thumbnailUrl.isNullOrBlank()) {
                 AsyncImage(
