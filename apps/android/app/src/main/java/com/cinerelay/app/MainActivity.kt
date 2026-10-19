@@ -113,6 +113,8 @@ class MainActivity : ComponentActivity() {
 
             LaunchedEffect(state.authenticated) {
                 if (!state.authenticated) {
+                    sourcesViewModel.reset()
+                    archiveViewModel.reset()
                     settingsVisible = false
                     personalizationEditorVisible = false
                     ottVisible = false
