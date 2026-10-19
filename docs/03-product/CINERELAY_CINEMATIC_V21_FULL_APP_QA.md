@@ -34,7 +34,8 @@ Status "styled" means common palette and geometry changes have been applied; it 
 | Today | Date navigation, anniversaries, quick jump, loading/empty/error | portrait artwork, cinematic palette, shared cards |
 | Today nested | Year See All, title detail and Back | shared headers and artwork |
 | Universal Search | Query, title rail, updates, channels, OTT results, empty/error | portrait cards, consistent text and spacing |
-| Search hub | Entity detail, activity/source/streaming, follow/unfollow | inherited shared screen surfaces |
+| Search hub | Entity detail, activity/source/streaming, follow/unfollow | shared layout and typography |
+| Legacy Intelligence Search | Canonical title search, hub, empty/error/results | shared header, charcoal, no double top inset |
 | Sources | Directory, source details, notification toggle, platform/filter/role overlays | shared palette, cards and overlays |
 | Archive | Query, pagination, story open and Back/scroll restoration | shared header, palette and cards |
 | Story Details | Event/source update, changes, timeline, evidence, URLs, error/retry | shared typography and card geometry |
@@ -46,9 +47,9 @@ Status "styled" means common palette and geometry changes have been applied; it 
 ## Acceptance gates before merging or calling this a complete redesign
 
 1. Build Kotlin/Compose Android, run unit tests, check generated debug APK signature and versionCode.
-2. Screenshot **every screen/overlay above** at 360, 393 and 412dp and at 1.3x and 2x font scale. Verify both Telugu and English multi-line headlines.
+2. Screenshot **every screen/overlay above** at 360, 393 and 412dp and at 1.3x and 2x font scale. Verify both Telugu and English multi-line headlines. Include auth, onboarding and legacy search to catch duplicate system-bar padding.
 3. Reproduce Home/Radar/Today/Archive → story → Back 10 times; no frozen navigation, lost scroll, crashes or stale overlays.
-4. Test empty, loading, error, offline and missing-artwork states without invented posters or incorrect evidence/date.
+4. Test empty, loading, error, offline and missing-artwork states without invented posters or incorrect evidence/date. Search and OTT must use the shared title-only cinematic cover when official artwork is unavailable; titles must not appear twice.
 5. Verify OTT filter counts, all See All routes, notification permission, authentication/setup, source tracking and deep links.
 6. Physical Samsung A54 acceptance: status/navigation insets, contrast, clipped text, tap targets, 60fps-feel scrolling, power/memory, actual artwork behavior.
 7. Keep PR in draft until screenshot sign-off; a successful CI build is **not** proof of full-screen visual acceptance.
