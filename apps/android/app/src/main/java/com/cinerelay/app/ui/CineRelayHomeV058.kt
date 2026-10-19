@@ -139,11 +139,12 @@ fun CineRelayHomeV058(
             val heroStories = ranked.filter { !it.representative.thumbnailUrl.isNullOrBlank() }
                 .take(3).ifEmpty { ranked.take(3) }
             val usedKeys = heroStories.map { it.key }.toMutableSet()
-            // Stories appear once on the landing page even if they match many rails.
-            val latest = freshStories.filter { usedKeys.add(it.key) }.take(6)
-            val latestKeys = latest.map { it.key }.toSet()
-            usedKeys += latestKeys
-            val fromFavorites = favoriteStories.filter { usedKeys.add(it.key) }.take(3)
+            // Reserve unique favorite stories, then fill Latest from the remaining
+            // items. Sequence short-circuits so we do not consume all keys.
+            val fromFavorites = favoriteStories.asSequence()
+                .filter { usedKeys.add(it.key) }.take(3).toList()
+            val latest = freshStories.asSequence()
+                .filter { usedKeys.add(it.key) }.take(6).toList()
             HomeDisplayProjectionV1(
                 favoriteSources = favoriteSources,
                 heroStories = heroStories,
@@ -227,7 +228,7 @@ fun CineRelayHomeV058(
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(bottom = 120.dp),
-                        verticalArrangement = Arrangement.spacedBy(20.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
                         item(key = "header") { HomeHeaderV058(state.loading, onRefresh, onSearch, onOpenArchive) }
                         state.error?.let { message ->
@@ -252,6 +253,7 @@ fun CineRelayHomeV058(
                         }
                         if (latestStories.isNotEmpty()) {
                             item(key = "latest-title") {
+                                Spacer(Modifier.height(10.dp))
                                 HomeCompactSectionV1("Latest Updates") {
                                     openedRail = "Just In"
                                 }
@@ -264,6 +266,7 @@ fun CineRelayHomeV058(
                         }
                         if (favoriteHighlights.isNotEmpty()) {
                             item(key = "favorites-title") {
+                                Spacer(Modifier.height(10.dp))
                                 HomeCompactSectionV1("From Your Sources") {
                                     openedRail = "From Your Favorites"
                                 }
@@ -276,6 +279,7 @@ fun CineRelayHomeV058(
                         }
                         if (rails.isNotEmpty()) {
                             item(key = "explore") {
+                                Spacer(Modifier.height(10.dp))
                                 HomeCompactSectionV1("Explore More") { showCategories = true }
                                 Spacer(Modifier.height(10.dp))
                                 LazyRow(
