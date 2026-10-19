@@ -110,7 +110,7 @@ private fun WelcomeGateV050(
             lineHeight = 21.sp,
         )
         Spacer(Modifier.height(22.dp))
-        Surface(color = AuthRaised, shape = RoundedCornerShape(18.dp), modifier = Modifier.fillMaxWidth()) {
+        Surface(color = AuthRaised, shape = RoundedCornerShape(CineEditorial.CardRadius), modifier = Modifier.fillMaxWidth()) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(11.dp)) {
                 AuthPromiseV050("Official-source feed", "YouTube now; websites and feeds can join the same evidence pipeline.")
                 AuthPromiseV050("Your control room", "Notification, source and content preferences stay synced to you.")
@@ -126,7 +126,7 @@ private fun WelcomeGateV050(
             onClick = onSignIn,
             colors = ButtonDefaults.buttonColors(containerColor = AuthGold, contentColor = AuthInk),
             modifier = Modifier.fillMaxWidth().height(52.dp),
-            shape = RoundedCornerShape(16.dp),
+            shape = RoundedCornerShape(CineEditorial.CardRadius),
         ) {
             Icon(Icons.Default.Lock, contentDescription = null, modifier = Modifier.size(17.dp))
             Spacer(Modifier.width(7.dp))
@@ -136,7 +136,7 @@ private fun WelcomeGateV050(
         OutlinedButton(
             onClick = onCreateAccount,
             modifier = Modifier.fillMaxWidth().height(52.dp),
-            shape = RoundedCornerShape(16.dp),
+            shape = RoundedCornerShape(CineEditorial.CardRadius),
         ) {
             Text("Create account", color = AuthText, fontWeight = FontWeight.Bold)
         }
@@ -244,7 +244,7 @@ private fun AuthFormV050(
             enabled = !busy,
             colors = ButtonDefaults.buttonColors(containerColor = AuthGold, contentColor = AuthInk),
             modifier = Modifier.fillMaxWidth().height(52.dp),
-            shape = RoundedCornerShape(16.dp),
+            shape = RoundedCornerShape(CineEditorial.CardRadius),
         ) {
             if (busy) CircularProgressIndicator(Modifier.size(19.dp), strokeWidth = 2.dp, color = AuthInk)
             else Text(if (create) "Create account" else "Sign in", fontWeight = FontWeight.Bold)
