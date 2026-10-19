@@ -175,7 +175,7 @@ fun CineRelayWelcomeV058(
                     text = "CineRelay",
                     color = Color.White,
                     fontSize = 36.sp,
-                    fontFamily = FontFamily.Serif,
+                    fontFamily = FontFamily.SansSerif,
                     fontWeight = FontWeight.Medium,
                     letterSpacing = 0.4.sp,
                     modifier = Modifier.alpha(titleAlpha),
@@ -206,7 +206,7 @@ fun CineRelayWelcomeV058(
                         text = "C",
                         color = CineEditorial.Background,
                         fontSize = 20.sp,
-                        fontFamily = FontFamily.Serif,
+                        fontFamily = FontFamily.SansSerif,
                         fontWeight = FontWeight.Bold,
                     )
                 }
@@ -214,7 +214,7 @@ fun CineRelayWelcomeV058(
                     text = "CineRelay",
                     color = Color.White,
                     fontSize = 32.sp,
-                    fontFamily = FontFamily.Serif,
+                    fontFamily = FontFamily.SansSerif,
                     fontWeight = FontWeight.Medium,
                     letterSpacing = 0.25.sp,
                 )
