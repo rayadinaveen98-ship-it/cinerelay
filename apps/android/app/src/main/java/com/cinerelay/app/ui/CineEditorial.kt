@@ -5,7 +5,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 /**
- * Shared, design-reviewed visual primitives for the CineRelay Android editorial UI.
+ * CineRelay Cinematic V2.1: one Netflix-inspired, original design language for every Android route.
  *
  * Source: approved CineRelay Editorial Edition V2 concept, October 2026.
  * All screen headlines use a standard sans-serif type system, including Telugu fallback.
@@ -13,22 +13,27 @@ import androidx.compose.ui.unit.sp
  * must always come from existing app state rather than presentation constants.
  */
 internal object CineEditorial {
-    val Background = Color(0xFF10141F)
-    val Surface = Color(0xFF19212D)
-    val Raised = Color(0xFF222C39)
-    val Outline = Color(0xFF354352)
-    val Text = Color(0xFFF6F2E9)
-    val Muted = Color(0xFFA1ADBA)
-    val Accent = Color(0xFFE7C29B)
-    val Confirmed = Color(0xFF9ADAC9)
-    val Developing = Color(0xFFEEC596)
-    val Error = Color(0xFFEC9E99)
-    val Info = Color(0xFFA9BED5)
+    val Background = Color(0xFF09090D)
+    val Surface = Color(0xFF17171D)
+    val Raised = Color(0xFF25252D)
+    val Outline = Color(0xFF393942)
+    val Text = Color(0xFFF8F8FA)
+    val Muted = Color(0xFFB4B4C0)
+    val Accent = Color(0xFFFF5865)
+    val Confirmed = Color(0xFF91DBBB)
+    val Developing = Color(0xFFFFCB8A)
+    val Error = Color(0xFFFF8E95)
+    val Info = Color(0xFFA9C8F3)
 
     val Gutter = 16.dp
     val SectionGap = 24.dp
+    val RailGap = 12.dp
+    val ScreenBottom = 120.dp
+    val CompactPosterWidth = 136.dp
+    val PosterRatio = 2f / 3f
+    val ArtworkRatio = 16f / 9f
     val CardRadius = 12.dp
-    val HeroRadius = 14.dp
+    val HeroRadius = 16.dp
     val TargetSize = 48.dp
 
     val PageTitle = 22.sp
