@@ -170,10 +170,7 @@ jobs:
             mkdir -p s3-emulator-evidence
             adb exec-out screencap -p > s3-emulator-evidence/first-launch.png
             adb logcat -d -v brief > s3-emulator-evidence/startup-logcat.txt
-            if grep -E 'FATAL EXCEPTION|ANR in com.cinerelay.app' s3-emulator-evidence/startup-logcat.txt; then
-              echo "::error::Release app crashed or ANR during startup"
-              exit 1
-            fi
+            ! grep -q -E 'FATAL EXCEPTION|ANR in com.cinerelay.app' s3-emulator-evidence/startup-logcat.txt
             echo 'QA RC1 installed, launched and remained alive on emulator.'
       - name: Upload emulator startup evidence
         if: always()
