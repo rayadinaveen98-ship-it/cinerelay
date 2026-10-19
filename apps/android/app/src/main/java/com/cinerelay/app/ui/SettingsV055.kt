@@ -98,24 +98,24 @@ fun SettingsV055(
                             SettingsInfoRowV055(
                                 icon = { Icon(Icons.Default.Person, contentDescription = null, tint = SettingsGold55) },
                                 title = state.email ?: "Signed in",
-                                subtitle = "Your CineRelay account",
+                                subtitle = "",
                             )
                         }
                     }
 
                     item {
-                        SettingsSectionV055(title = "Your CineRelay") {
+                        SettingsSectionV055(title = "Preferences") {
                             SettingsActionRowV055(
                                 icon = { Icon(Icons.Default.Favorite, contentDescription = null, tint = SettingsGold55) },
                                 title = "Favorite channels",
-                                subtitle = "$favoriteCount selected • shapes your Home",
+                                subtitle = "$favoriteCount selected",
                                 onClick = onEditFavorites,
                             )
                             SettingsDividerV055()
                             SettingsActionRowV055(
                                 icon = { Icon(Icons.Default.Language, contentDescription = null, tint = SettingsGold55) },
                                 title = "Languages",
-                                subtitle = languageLabels.ifBlank { "Choose the cinema you follow" },
+                                subtitle = languageLabels.ifBlank { "Choose languages" },
                                 onClick = onEditFavorites,
                             )
                         }
@@ -167,7 +167,7 @@ fun SettingsV055(
                             SettingsActionRowV055(
                                 icon = { Icon(Icons.Default.Settings, contentDescription = null, tint = SettingsGold55) },
                                 title = "Manage channels",
-                                subtitle = "Browse official movie, streaming and music sources",
+                                subtitle = "",
                                 onClick = onOpenSources,
                             )
                         }
@@ -178,7 +178,7 @@ fun SettingsV055(
                             SettingsInfoRowV055(
                                 icon = { Icon(Icons.Default.Settings, contentDescription = null, tint = SettingsMuted55) },
                                 title = "CineRelay",
-                                subtitle = "Movie, series and streaming updates in one place",
+                                subtitle = "",
                             )
                         }
                     }
@@ -210,7 +210,7 @@ private fun SettingsSectionV055(
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         EditorialDisplayV2(title, modifier = Modifier.padding(horizontal = 4.dp),
-            size = 22, lines = 1)
+            size = 18, lines = 1)
         Surface(color = SettingsPanel55, shape = RoundedCornerShape(CineEditorial.CardRadius), modifier = Modifier.fillMaxWidth()) {
             Column { content() }
         }
@@ -231,8 +231,10 @@ private fun SettingsActionRowV055(
         BoxIconV055(icon)
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
-            Text(title, color = SettingsText55, fontSize = 16.sp, fontWeight = FontWeight.Bold)
-            Text(subtitle, color = SettingsMuted55, fontSize = 12.sp, lineHeight = 16.sp)
+            Text(title, color = SettingsText55, fontSize = CineEditorial.CardTitle, fontWeight = FontWeight.SemiBold)
+            if (subtitle.isNotBlank()) {
+                Text(subtitle, color = SettingsMuted55, fontSize = CineEditorial.Metadata, lineHeight = 16.sp)
+            }
         }
         Icon(Icons.Default.ChevronRight, contentDescription = null, tint = SettingsMuted55)
     }
@@ -251,8 +253,10 @@ private fun SettingsInfoRowV055(
         BoxIconV055(icon)
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
-            Text(title, color = SettingsText55, fontSize = 16.sp, fontWeight = FontWeight.Bold)
-            Text(subtitle, color = SettingsMuted55, fontSize = 12.sp, lineHeight = 16.sp)
+            Text(title, color = SettingsText55, fontSize = CineEditorial.CardTitle, fontWeight = FontWeight.SemiBold)
+            if (subtitle.isNotBlank()) {
+                Text(subtitle, color = SettingsMuted55, fontSize = CineEditorial.Metadata, lineHeight = 16.sp)
+            }
         }
     }
 }
