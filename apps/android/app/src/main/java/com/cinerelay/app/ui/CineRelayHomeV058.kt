@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PageSize
@@ -44,12 +45,17 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.produceState
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewmodel.compose.viewModel
+import android.os.SystemClock
+import android.util.Log
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -103,6 +109,61 @@ private data class HomeDisplayProjectionV1(
     val rails: List<HomeRailV058>,
 )
 
+/**
+ * Activity-scoped screen state survives navigating to OTT, Radar and back.
+ * It is keyed to the authenticated identity, source content and personalization;
+ * no other account can reuse a previous user's projection.
+ */
+private class HomeProjectionCacheV25 : ViewModel() {
+    val scrollState = LazyListState()
+    private var account: String? = null
+    private var signals: List<NewsroomSignal>? = null
+    private var setup: PersonalizationState? = null
+    private var projection: HomeDisplayProjectionV1? = null
+
+    fun read(
+        accountKey: String?,
+        currentSignals: List<NewsroomSignal>,
+        currentSetup: PersonalizationState,
+    ): HomeDisplayProjectionV1? =
+        if (account == accountKey && signals == currentSignals && setup == currentSetup) {
+            projection
+        } else null
+
+    fun store(
+        accountKey: String?,
+        currentSignals: List<NewsroomSignal>,
+        currentSetup: PersonalizationState,
+        result: HomeDisplayProjectionV1,
+    ) {
+        account = accountKey
+        signals = currentSignals
+        setup = currentSetup
+        projection = result
+    }
+}
+
+/** Fast, minimal YouTube hero shown while the complete discovery rails build. */
+private fun initialHomeHeroV25(signals: List<NewsroomSignal>): List<HomeStoryV059> =
+    signals.asSequence()
+        .filter {
+            it.source.platform.equals("YOUTUBE", ignoreCase = true) &&
+                isFreshHomeSignalV058(it)
+        }
+        .distinctBy { it.canonicalEvent?.id ?: it.id }
+        .sortedByDescending(::homeSignalInstantV059)
+        .take(HOME23_HERO_CAP)
+        .map { signal ->
+            HomeStoryV059(
+                key = "preview:${signal.id}",
+                representative = signal,
+                updates = listOf(signal),
+                sourceCount = 1,
+                officialSourceCount = if ((signal.source.authorityTier ?: 99) <= 1) 1 else 0,
+            )
+        }
+        .toList()
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CineRelayHomeV058(
@@ -123,14 +184,21 @@ fun CineRelayHomeV058(
         }
     }
 
-    // Clustering compares stories pairwise and can become expensive as feeds grow.
-    // Compute the complete projection on Default, not during UI composition.
+    val projectionCache: HomeProjectionCacheV25 = viewModel()
+    // Returning from another tab instantly reuses the result and scroll state.
     val projection by produceState<HomeDisplayProjectionV1?>(
-        initialValue = null,
+        initialValue = projectionCache.read(state.email, state.homeSignals, personalization),
         key1 = state.homeSignals,
         key2 = personalization,
+        key3 = state.email,
     ) {
-        value = withContext(Dispatchers.Default) {
+        val cached = projectionCache.read(state.email, state.homeSignals, personalization)
+        if (cached != null) {
+            value = cached
+            return@produceState
+        }
+        val startMs = SystemClock.elapsedRealtime()
+        val prepared = withContext(Dispatchers.Default) {
             // Home's first screen is strictly recent; the discovery shelves may
             // show older *already loaded* stories without calling them breaking.
             // Cap costly pairwise clustering to preserve smooth navigation.
@@ -175,9 +243,13 @@ fun CineRelayHomeV058(
                 ),
             )
         }
+        projectionCache.store(state.email, state.homeSignals, personalization, prepared)
+        value = prepared
+        Log.d("CineRelayHomePerf", "projection_ms=" + (SystemClock.elapsedRealtime() - startMs))
     }
+    val firstHero = remember(state.homeSignals) { initialHomeHeroV25(state.homeSignals) }
     val favoriteSources = projection?.favoriteSources.orEmpty()
-    val heroStories = projection?.heroStories.orEmpty()
+    val heroStories = projection?.heroStories ?: firstHero
     val latestStories = projection?.latest.orEmpty()
     val rails = projection?.rails.orEmpty()
     val visibleRails = rails.mapNotNull { rail ->
@@ -252,6 +324,7 @@ fun CineRelayHomeV058(
                     modifier = modifier.fillMaxSize().background(Home58Ink),
                 ) {
                     LazyColumn(
+                        state = projectionCache.scrollState,
                         modifier = Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(bottom = 120.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -278,7 +351,14 @@ fun CineRelayHomeV058(
                         }
                         if (heroStories.isNotEmpty()) {
                             item(key = "top") {
-                                HomeHeroPagerV066(heroStories, onOpenUpdate)
+                                val heroVisible by remember(projectionCache) {
+                                    derivedStateOf {
+                                        projectionCache.scrollState.layoutInfo.visibleItemsInfo.any {
+                                            it.key == "top"
+                                        }
+                                    }
+                                }
+                                HomeHeroPagerV066(heroStories, onOpenUpdate, heroVisible)
                             }
                         }
                         if (latestStories.isNotEmpty()) {
