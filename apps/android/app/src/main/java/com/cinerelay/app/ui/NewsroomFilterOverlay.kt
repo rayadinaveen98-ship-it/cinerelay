@@ -110,7 +110,7 @@ fun NewsroomFilterOverlay(
                         val selectedRow = filter == selected
                         Surface(
                             color = if (selectedRow) FilterGold.copy(alpha = 0.10f) else FilterRaised,
-                            shape = RoundedCornerShape(16.dp),
+                            shape = RoundedCornerShape(CineEditorial.CardRadius),
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clickable {
