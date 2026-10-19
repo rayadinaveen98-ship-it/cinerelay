@@ -84,7 +84,7 @@ fun IntelligenceSearchV053(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .statusBarsPadding()
+                
                 .navigationBarsPadding(),
         ) {
             IntelligenceHeader(
@@ -122,29 +122,11 @@ fun IntelligenceSearchV053(
 
 @Composable
 private fun IntelligenceHeader(title: String, subtitle: String, onBack: () -> Unit) {
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        IconButton(onClick = onBack) {
-            Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = IntelligenceText)
-        }
-        Surface(
-            color = IntelligenceGold.copy(alpha = 0.10f),
-            shape = RoundedCornerShape(12.dp),
-            modifier = Modifier.size(40.dp),
-        ) {
-            Box(contentAlignment = Alignment.Center) {
-                Icon(Icons.Default.Search, contentDescription = null, tint = IntelligenceGold, modifier = Modifier.size(21.dp))
-            }
-        }
-        Spacer(Modifier.width(10.dp))
-        Column(Modifier.weight(1f)) {
-            Text("CINERELAY INTELLIGENCE", color = IntelligenceGold, fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 1.2.sp)
-            Text(title, color = IntelligenceText, fontSize = 20.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text(subtitle, color = IntelligenceMuted, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-        }
-    }
+    CineScreenHeader(
+        title = title,
+        subtitle = if (subtitle == "Films, series and canonical stories") null else subtitle,
+        onBack = onBack,
+    )
 }
 
 @Composable
@@ -179,7 +161,7 @@ private fun SearchBody(
                         Text("No canonical title found", color = IntelligenceText, fontSize = 18.sp, fontWeight = FontWeight.Bold)
                         Spacer(Modifier.height(7.dp))
                         Text(
-                            "CineRelay only shows reviewed film and series hubs. Raw posts do not become titles automatically.",
+                            "Try a different title.",
                             color = IntelligenceMuted,
                             fontSize = 12.sp,
                             lineHeight = 17.sp,
@@ -195,7 +177,7 @@ private fun SearchBody(
                     if (state.results.isNotEmpty()) {
                         item {
                             Text(
-                                "CANONICAL RESULTS",
+                                "Results",
                                 color = IntelligenceMuted,
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold,
@@ -224,7 +206,7 @@ private fun SearchEmptyIntro() {
             }
         }
         Spacer(Modifier.height(14.dp))
-        Text("Find the story, not the post", color = IntelligenceText, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+        Text("Find the story, not the post", color = IntelligenceText, fontSize = CineEditorial.SectionTitle, fontWeight = FontWeight.SemiBold)
         Spacer(Modifier.height(7.dp))
         Text(
             "Search across reviewed CineRelay film and series identities. One hub collects the canonical story and its resolved source evidence.",
@@ -239,7 +221,7 @@ private fun SearchEmptyIntro() {
 private fun EntitySearchRow(entity: IntelligenceEntity, onClick: () -> Unit) {
     Surface(
         color = IntelligencePanel,
-        shape = RoundedCornerShape(18.dp),
+        shape = RoundedCornerShape(CineEditorial.CardRadius),
         modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
     ) {
         Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -273,11 +255,11 @@ private fun HubBody(state: IntelligenceUiState, onToggleFollow: () -> Unit) {
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         item {
-            Surface(color = IntelligenceRaised, shape = RoundedCornerShape(20.dp), modifier = Modifier.fillMaxWidth()) {
+            Surface(color = IntelligenceRaised, shape = RoundedCornerShape(CineEditorial.CardRadius), modifier = Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(16.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Column(Modifier.weight(1f)) {
-                            Text(hub.entity.name, color = IntelligenceText, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                            Text(hub.entity.name, color = IntelligenceText, fontSize = CineEditorial.SectionTitle, fontWeight = FontWeight.SemiBold)
                             Text(
                                 listOfNotNull(prettyIntelligenceValue(hub.entity.type), hub.entity.primaryLanguage?.uppercase()).joinToString(" • "),
                                 color = IntelligenceMuted,
@@ -346,7 +328,7 @@ private fun IntelligenceEventCard(event: IntelligenceEvent) {
         "RUMOR" -> IntelligenceRed
         else -> IntelligenceBlue
     }
-    Card(colors = CardDefaults.cardColors(containerColor = IntelligencePanel), shape = RoundedCornerShape(18.dp), modifier = Modifier.fillMaxWidth()) {
+    Card(colors = CardDefaults.cardColors(containerColor = IntelligencePanel), shape = RoundedCornerShape(CineEditorial.CardRadius), modifier = Modifier.fillMaxWidth()) {
         Column(Modifier.padding(15.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Surface(color = stateColor.copy(alpha = 0.10f), shape = RoundedCornerShape(50)) {
@@ -400,7 +382,7 @@ private fun IntelligenceOttReleaseCard(release: OttRelease) {
 
     Card(
         colors = CardDefaults.cardColors(containerColor = IntelligencePanel),
-        shape = RoundedCornerShape(18.dp),
+        shape = RoundedCornerShape(CineEditorial.CardRadius),
         modifier = Modifier.fillMaxWidth(),
     ) {
         Column(Modifier.padding(15.dp)) {
@@ -428,7 +410,7 @@ private fun IntelligenceOttReleaseCard(release: OttRelease) {
             Spacer(Modifier.height(10.dp))
             Text(release.provider.name, color = IntelligenceGold, fontSize = 12.sp, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(3.dp))
-            Text(dateLabel, color = IntelligenceText, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+            Text(dateLabel, color = IntelligenceText, fontSize = CineEditorial.SectionTitle, fontWeight = FontWeight.SemiBold)
             Text(secondary, color = IntelligenceMuted, fontSize = 12.sp)
 
             release.previousReleaseDate?.takeIf { it.isNotBlank() && it != release.releaseDate }?.let { previous ->
@@ -459,7 +441,7 @@ private fun IntelligenceOttReleaseCard(release: OttRelease) {
 @Composable
 private fun IntelligenceActivityCard(item: IntelligenceActivity) {
     val context = LocalContext.current
-    Surface(color = IntelligencePanel, shape = RoundedCornerShape(18.dp), modifier = Modifier.fillMaxWidth()) {
+    Surface(color = IntelligencePanel, shape = RoundedCornerShape(CineEditorial.CardRadius), modifier = Modifier.fillMaxWidth()) {
         Column(Modifier.padding(14.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(item.source.name ?: "CineRelay source", color = IntelligenceGold, fontSize = 12.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -492,7 +474,7 @@ private fun IntelligenceActivityCard(item: IntelligenceActivity) {
 
 @Composable
 private fun HubEmptyCard(title: String, body: String) {
-    Surface(color = IntelligencePanel, shape = RoundedCornerShape(18.dp), modifier = Modifier.fillMaxWidth()) {
+    Surface(color = IntelligencePanel, shape = RoundedCornerShape(CineEditorial.CardRadius), modifier = Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp)) {
             Text(title, color = IntelligenceText, fontSize = 14.sp, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(5.dp))
