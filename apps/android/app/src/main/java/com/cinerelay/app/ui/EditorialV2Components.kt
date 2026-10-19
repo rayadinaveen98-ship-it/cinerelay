@@ -165,6 +165,47 @@ internal fun EditorialArtworkV2(
     }
 }
 
+/**
+ * A cinematic typographic title cover when the upstream catalogue supplies no
+ * licensed/sourced artwork. Never presented as an official film poster.
+ * Both OTT and title search use the same visual proportions and type hierarchy.
+ */
+@Composable
+internal fun CineTitleCoverV21(
+    title: String,
+    eyebrow: String,
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier = modifier.clip(RoundedCornerShape(CineEditorial.CardRadius))
+            .background(Brush.linearGradient(
+                listOf(CineEditorial.Raised, CineEditorial.Surface, CineEditorial.Background),
+            )),
+    ) {
+        if (eyebrow.isNotBlank()) {
+            Text(
+                eyebrow,
+                color = CineEditorial.Accent,
+                fontSize = 10.sp,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.align(Alignment.TopStart).padding(12.dp),
+            )
+        }
+        Text(
+            title,
+            color = CineEditorial.Text,
+            fontSize = 17.sp,
+            lineHeight = 23.sp,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 4,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.align(Alignment.BottomStart).padding(12.dp),
+        )
+    }
+}
+
 /** A content-first, non-decorative editorial section header shared across destinations. */
 @Composable
 internal fun EditorialSectionV2(
