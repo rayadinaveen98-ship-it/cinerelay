@@ -192,15 +192,15 @@ private fun WelcomeStep(sourceCount: Int, onContinue: () -> Unit) {
         Text("CINERELAY", color = OnboardingGold, fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 2.sp)
         Spacer(Modifier.height(8.dp))
         Text(
-            "Every official update.\nOne cinema feed.",
+            "Your cinema alerts",
             color = OnboardingText,
-            fontSize = 32.sp,
-            lineHeight = 36.sp,
+            fontSize = CineEditorial.PageTitle,
+            lineHeight = 30.sp,
             fontWeight = FontWeight.Bold,
         )
         Spacer(Modifier.height(16.dp))
         Text(
-            "CineRelay monitors official cinema sources continuously. You choose exactly which channels are allowed to interrupt you.",
+            "Choose which sources can notify you.",
             color = OnboardingMuted,
             fontSize = 14.sp,
             lineHeight = 21.sp,
@@ -240,10 +240,10 @@ private fun SourceSelectionStep(
 
     Column(Modifier.fillMaxSize()) {
         Column(Modifier.padding(horizontal = CineEditorial.Gutter)) {
-            EditorialDisplayV2("Choose who can notify you", size = 27, lines = 3)
+            EditorialDisplayV2("Choose sources", size = 27, lines = 3)
             Spacer(Modifier.height(5.dp))
             Text(
-                "CineRelay still monitors every source. Only the channels you check here can send upload notifications.",
+                "Only selected sources can send alerts.",
                 color = OnboardingMuted,
                 fontSize = 12.sp,
                 lineHeight = 18.sp,
@@ -253,7 +253,7 @@ private fun SourceSelectionStep(
                 value = query,
                 onValueChange = { query = it },
                 leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
-                placeholder = { Text("Search 90 sources") },
+                placeholder = { Text("Search sources") },
                 singleLine = true,
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = OnboardingGold,
@@ -358,9 +358,8 @@ private fun ContentTypeStep(
     onContinue: () -> Unit,
 ) {
     Column(Modifier.fillMaxSize().padding(horizontal = CineEditorial.Gutter, vertical = 18.dp)) {
-        EditorialDisplayV2("What should interrupt you?", size = 27, lines = 3)
+        EditorialDisplayV2("Choose updates", size = 27, lines = 3)
         Spacer(Modifier.height(7.dp))
-        Text("These choices apply only to the sources you selected.", color = OnboardingMuted, fontSize = 12.sp)
         Spacer(Modifier.height(24.dp))
         PreferenceSwitch(
             icon = { Icon(Icons.Default.SmartDisplay, contentDescription = null, tint = OnboardingGold) },
