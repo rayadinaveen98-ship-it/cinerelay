@@ -133,7 +133,7 @@ fun UniversalSearchV056(
                             focusedTextColor = SearchText56,
                             unfocusedTextColor = SearchText56,
                         ),
-                        shape = RoundedCornerShape(18.dp),
+                        shape = RoundedCornerShape(CineEditorial.CardRadius),
                         modifier = Modifier.fillMaxWidth().padding(horizontal = CineEditorial.Gutter),
                     )
 
@@ -269,7 +269,7 @@ private fun SearchTitleCardV056(item: UniversalTitleResult, onClick: () -> Unit)
 private fun SearchUpdateCardV056(item: UniversalUpdateResult, onClick: () -> Unit) {
     Surface(
         color = SearchPanel56,
-        shape = RoundedCornerShape(18.dp),
+        shape = RoundedCornerShape(CineEditorial.CardRadius),
         modifier = Modifier.fillMaxWidth().padding(horizontal = CineEditorial.Gutter).clickable(onClick = onClick),
     ) {
         Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -294,7 +294,7 @@ private fun SearchUpdateCardV056(item: UniversalUpdateResult, onClick: () -> Uni
 @Composable
 private fun SearchChannelRowV056(item: UniversalChannelResult, onClick: () -> Unit) {
     Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = CineEditorial.Gutter).clip(RoundedCornerShape(18.dp)).background(SearchPanel56).clickable(onClick = onClick).padding(13.dp),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = CineEditorial.Gutter).clip(RoundedCornerShape(CineEditorial.CardRadius)).background(SearchPanel56).clickable(onClick = onClick).padding(13.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (!item.artworkUrl.isNullOrBlank()) {
@@ -322,7 +322,7 @@ private fun SearchChannelRowV056(item: UniversalChannelResult, onClick: () -> Un
 private fun SearchStreamingRowV056(item: UniversalStreamingResult, onClick: () -> Unit) {
     Surface(
         color = SearchPanel56,
-        shape = RoundedCornerShape(18.dp),
+        shape = RoundedCornerShape(CineEditorial.CardRadius),
         modifier = Modifier.fillMaxWidth().padding(horizontal = CineEditorial.Gutter).clickable(onClick = onClick),
     ) {
         Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -358,7 +358,7 @@ private fun UniversalHubV056(
         verticalArrangement = Arrangement.spacedBy(18.dp),
     ) {
         item {
-            Surface(color = SearchPanel56, shape = RoundedCornerShape(20.dp), modifier = Modifier.fillMaxWidth()) {
+            Surface(color = SearchPanel56, shape = RoundedCornerShape(CineEditorial.CardRadius), modifier = Modifier.fillMaxWidth()) {
                 Row(Modifier.padding(18.dp), verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
                         Text(hub.entity.name, color = SearchText56, fontSize = 26.sp, fontWeight = FontWeight.Bold)
@@ -382,7 +382,7 @@ private fun UniversalHubV056(
         if (hub.ottReleases.isNotEmpty()) {
             item { Text("Streaming", color = SearchText56, fontSize = 20.sp, fontWeight = FontWeight.Bold) }
             items(hub.ottReleases, key = { it.id }) { release ->
-                Surface(color = SearchPanel56, shape = RoundedCornerShape(18.dp), modifier = Modifier.fillMaxWidth()) {
+                Surface(color = SearchPanel56, shape = RoundedCornerShape(CineEditorial.CardRadius), modifier = Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Text(release.provider.name, color = SearchGold56, fontSize = 14.sp, fontWeight = FontWeight.Bold)
                         Text(release.releaseDate ?: friendlyReleaseStateV056(release.state), color = SearchText56, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
@@ -395,7 +395,7 @@ private fun UniversalHubV056(
         if (hub.events.isNotEmpty()) {
             item { Text("Story timeline", color = SearchText56, fontSize = 20.sp, fontWeight = FontWeight.Bold) }
             items(hub.events, key = { it.id }) { event ->
-                Surface(color = SearchPanel56, shape = RoundedCornerShape(18.dp), modifier = Modifier.fillMaxWidth()) {
+                Surface(color = SearchPanel56, shape = RoundedCornerShape(CineEditorial.CardRadius), modifier = Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         Text(friendlyVerificationV056(event.verificationState), color = SearchGold56, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                         Text(event.headline, color = SearchText56, fontSize = 16.sp, fontWeight = FontWeight.Bold)
@@ -408,7 +408,7 @@ private fun UniversalHubV056(
         if (hub.activity.isNotEmpty()) {
             item { Text("Latest updates", color = SearchText56, fontSize = 20.sp, fontWeight = FontWeight.Bold) }
             items(hub.activity, key = { it.rawItemId }) { activity ->
-                Surface(color = SearchPanel56, shape = RoundedCornerShape(18.dp), modifier = Modifier.fillMaxWidth()) {
+                Surface(color = SearchPanel56, shape = RoundedCornerShape(CineEditorial.CardRadius), modifier = Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
                         Text(activity.source.name ?: "Source", color = SearchGold56, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                         Text(activity.title ?: "Update", color = SearchText56, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
