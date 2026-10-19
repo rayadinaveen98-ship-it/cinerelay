@@ -404,7 +404,6 @@ private fun HomeHeroPagerV066(
         ) { index ->
             val item = heroStories[index].representative
             val headline = item.canonicalEvent?.headline?.takeIf { it.isNotBlank() } ?: item.title
-            val status = cineEvidenceLabel(item.canonicalEvent?.verificationState, item.state)
             Surface(
                 color = Home58Panel,
                 shape = RoundedCornerShape(CineEditorial.HeroRadius),
@@ -428,43 +427,17 @@ private fun HomeHeroPagerV066(
                             ),
                         ),
                     )
-                    Column(
-                        modifier = Modifier.align(Alignment.BottomStart).fillMaxWidth().padding(18.dp),
-                        verticalArrangement = Arrangement.spacedBy(9.dp),
-                    ) {
-                        Text(
-                            "FEATURED UPDATE",
-                            color = Home58Gold,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                        )
-                        Text(
-                            headline,
-                            color = Home58Text,
-                            fontSize = 19.sp,
-                            lineHeight = 25.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            maxLines = 3,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(
-                                item.source.name ?: item.source.handle ?: "Source",
-                                color = Home58Text.copy(alpha = 0.88f),
-                                fontSize = CineEditorial.Metadata,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                                modifier = Modifier.weight(1f),
-                            )
-                            Spacer(Modifier.width(8.dp))
-                            Text(
-                                status,
-                                color = cineEvidenceColor(status),
-                                fontSize = CineEditorial.Metadata,
-                                maxLines = 1,
-                            )
-                        }
-                    }
+                    Text(
+                        headline,
+                        modifier = Modifier.align(Alignment.BottomStart)
+                            .fillMaxWidth().padding(18.dp),
+                        color = Home58Text,
+                        fontSize = 19.sp,
+                        lineHeight = 25.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 3,
+                        overflow = TextOverflow.Ellipsis,
+                    )
                 }
             }
         }
@@ -530,6 +503,133 @@ private fun HomeCinematicRailCardV21(
             )
             Spacer(Modifier.width(6.dp))
             Text(home58TimeAgo(item.observedAt), color = Home58Muted, fontSize = CineEditorial.Metadata)
+        }
+    }
+}
+
+/**
+ * Controlled visual families: art-led film shelves, short latest updates and
+ * landscape news stories share fonts/gutters but don't look like clones.
+ * All artwork is taken from the underlying update; no invented movie posters.
+ */
+private enum class HomeRailVisualV22 { PORTRAIT, COMPACT, LANDSCAPE }
+
+private fun homeRailVisualV22(title: String): HomeRailVisualV22 = when {
+    title in setOf("Just In", "From Your Favorites", "From the Web") ||
+        title.startsWith("Latest from ") -> HomeRailVisualV22.COMPACT
+    title in setOf(
+        "Indian Cinema", "English & International", "Telugu Cinema",
+        "Hindi Cinema", "Tamil Cinema", "Malayalam Cinema", "Kannada Cinema",
+        "First Looks & Announcements", "Official Movie Updates",
+    ) -> HomeRailVisualV22.PORTRAIT
+    else -> HomeRailVisualV22.LANDSCAPE
+}
+
+private val HOME22_RAIL_ORDER = listOf(
+    "Evolving Stories",
+    "Just In",
+    "Trending Across Sources",
+    "Indian Cinema",
+    "English & International",
+    "Telugu Cinema",
+    "Tamil Cinema",
+    "Hindi Cinema",
+    "Malayalam Cinema",
+    "Kannada Cinema",
+    "Trailers & Teasers",
+    "First Looks & Announcements",
+    "OTT & Streaming Updates",
+    "Music & Songs",
+    "Interviews & Events",
+    "Official Movie Updates",
+    "From Your Favorites",
+    "From the Web",
+)
+
+private fun homeRailPriorityV22(title: String): Int {
+    val index = HOME22_RAIL_ORDER.indexOf(title)
+    return if (index >= 0) index else if (title.startsWith("Latest from ")) 100 else 99
+}
+
+@Composable
+private fun HomePortraitRailCardV22(story: HomeStoryV059, onClick: () -> Unit) {
+    val item = story.representative
+    val headline = item.canonicalEvent?.headline?.takeIf { it.isNotBlank() } ?: item.title
+    Column(
+        modifier = Modifier.width(146.dp).clickable(onClick = onClick),
+        verticalArrangement = Arrangement.spacedBy(7.dp),
+    ) {
+        EditorialArtworkV2(
+            url = item.thumbnailUrl,
+            title = headline,
+            modifier = Modifier.fillMaxWidth().height(185.dp),
+        )
+        Text(
+            headline,
+            color = Home58Text,
+            fontSize = CineEditorial.CardTitle,
+            lineHeight = 20.sp,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+        )
+        Text(
+            item.source.name ?: item.source.handle ?: "Source",
+            color = Home58Muted,
+            fontSize = CineEditorial.Metadata,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
+}
+
+@Composable
+private fun HomeCompactRailCardV22(story: HomeStoryV059, onClick: () -> Unit) {
+    val item = story.representative
+    val headline = item.canonicalEvent?.headline?.takeIf { it.isNotBlank() } ?: item.title
+    Row(
+        modifier = Modifier.width(282.dp)
+            .clip(RoundedCornerShape(CineEditorial.CardRadius))
+            .background(Home58Panel)
+            .clickable(onClick = onClick)
+            .padding(9.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        EditorialArtworkV2(
+            url = item.thumbnailUrl,
+            title = headline,
+            modifier = Modifier.size(width = 98.dp, height = 82.dp),
+        )
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            Text(
+                headline,
+                color = Home58Text,
+                fontSize = CineEditorial.CardTitle,
+                lineHeight = 20.sp,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 3,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    item.source.name ?: item.source.handle ?: "Source",
+                    modifier = Modifier.weight(1f),
+                    color = Home58Muted,
+                    fontSize = CineEditorial.Metadata,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Spacer(Modifier.width(4.dp))
+                Text(
+                    home58TimeAgo(item.observedAt),
+                    color = Home58Muted,
+                    fontSize = CineEditorial.Metadata,
+                )
+            }
         }
     }
 }
