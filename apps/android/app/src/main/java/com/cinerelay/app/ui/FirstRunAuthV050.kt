@@ -91,7 +91,7 @@ private fun WelcomeGateV050(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .statusBarsPadding()
+            
             .navigationBarsPadding()
             .padding(horizontal = 28.dp, vertical = 24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -174,7 +174,7 @@ private fun AuthFormV050(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .statusBarsPadding()
+            
             .navigationBarsPadding()
             .padding(horizontal = CineEditorial.Gutter, vertical = 10.dp),
     ) {
@@ -266,7 +266,7 @@ private fun AuthFormV050(
 fun CineRelaySetupLoadingV050(modifier: Modifier = Modifier) {
     Surface(modifier = modifier.fillMaxSize(), color = AuthInk) {
         Column(
-            modifier = Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding(),
+            modifier = Modifier.fillMaxSize().navigationBarsPadding(),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
         ) {
