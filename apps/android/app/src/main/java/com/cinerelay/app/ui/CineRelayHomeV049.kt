@@ -92,7 +92,7 @@ private val HomeBlue = CineEditorial.Info
 
 private val HomeColors = darkColorScheme(
     primary = HomeGold,
-    onPrimary = Color(0xFF261D08),
+    onPrimary = CineEditorial.Raised,
     secondary = HomeGreen,
     background = HomeInk,
     surface = HomePanel,
@@ -265,7 +265,7 @@ private fun HomeFeedV049(
 
 @Composable
 private fun HomeGuestStripV049(onCreateAccount: () -> Unit) {
-    Surface(color = HomeRaised, shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth()) {
+    Surface(color = HomeRaised, shape = RoundedCornerShape(CineEditorial.CardRadius), modifier = Modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -301,7 +301,7 @@ private fun HomeNewsroomCardV049(
 
     Card(
         colors = CardDefaults.cardColors(containerColor = HomePanel),
-        shape = RoundedCornerShape(20.dp),
+        shape = RoundedCornerShape(CineEditorial.CardRadius),
         modifier = Modifier.fillMaxWidth(),
     ) {
         Column {
@@ -598,7 +598,7 @@ private fun HomeEvidenceBundleV049(bundle: EvidenceBundle) {
 
 @Composable
 private fun HomeEvidenceItemV049(index: Int, item: EvidenceDetail, onOpen: (String) -> Unit) {
-    Surface(color = HomeRaised, shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth()) {
+    Surface(color = HomeRaised, shape = RoundedCornerShape(CineEditorial.CardRadius), modifier = Modifier.fillMaxWidth()) {
         Column(Modifier.padding(13.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Surface(color = HomeGold.copy(alpha = 0.12f), shape = CircleShape, modifier = Modifier.size(26.dp)) {
