@@ -130,8 +130,8 @@ fun OnThisDayV057(
                 item {
                     EditorialMastheadV2(
                         section = "CINEMA / TIME MACHINE",
-                        title = "On this day.",
-                        subtitle = "A date-led journey through memorable releases, organized by year.",
+                        title = "Today in Cinema",
+                        subtitle = "Discover movie history, one day at a time.",
                         modifier = Modifier.padding(horizontal = CineEditorial.Gutter),
                         actions = {
                             IconButton(onClick = onBack) {
@@ -174,7 +174,7 @@ fun OnThisDayV057(
                         item {
                             Surface(
                                 color = HistoryPanel,
-                                shape = RoundedCornerShape(20.dp),
+                                shape = RoundedCornerShape(CineEditorial.CardRadius),
                                 modifier = Modifier.fillMaxWidth()
                                     .padding(horizontal = CineEditorial.Gutter),
                             ) {
@@ -210,7 +210,7 @@ fun OnThisDayV057(
                         item {
                             Surface(
                                 color = HistoryPanel,
-                                shape = RoundedCornerShape(20.dp),
+                                shape = RoundedCornerShape(CineEditorial.CardRadius),
                                 modifier = Modifier.fillMaxWidth().padding(horizontal = CineEditorial.Gutter),
                             ) {
                                 Column(
@@ -293,7 +293,7 @@ private fun HistoryDateHeroV060(
 ) {
     Surface(
         color = HistoryRaised,
-        shape = RoundedCornerShape(22.dp),
+        shape = RoundedCornerShape(CineEditorial.CardRadius),
         modifier = Modifier.fillMaxWidth().padding(horizontal = CineEditorial.Gutter),
     ) {
         Column(Modifier.padding(19.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -337,7 +337,7 @@ private fun HistoryDateHeroV060(
 
 @Composable
 private fun HistoryStatV060(label: String, value: String, modifier: Modifier = Modifier) {
-    Surface(color = HistoryInk.copy(alpha = 0.52f), shape = RoundedCornerShape(16.dp), modifier = modifier) {
+    Surface(color = HistoryInk.copy(alpha = 0.52f), shape = RoundedCornerShape(CineEditorial.CardRadius), modifier = modifier) {
         Column(Modifier.padding(vertical = 9.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             Text(value, color = HistoryText, fontSize = 16.sp, fontWeight = FontWeight.Black)
             Text(label, color = HistoryMuted, fontSize = 12.sp, fontWeight = FontWeight.Bold)
@@ -403,10 +403,10 @@ private fun HistoryYearHeaderV060(year: Int, selectedYear: Int, count: Int) {
 
 @Composable
 private fun OnThisDayMovieRowV070(movie: OnThisDayMovie, modifier: Modifier = Modifier) {
-    Surface(color = HistoryPanel, shape = RoundedCornerShape(20.dp), modifier = modifier.fillMaxWidth()) {
+    Surface(color = HistoryPanel, shape = RoundedCornerShape(CineEditorial.CardRadius), modifier = modifier.fillMaxWidth()) {
         Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
             Box(
-                modifier = Modifier.size(width = 82.dp, height = 118.dp).clip(RoundedCornerShape(16.dp)).background(HistoryRaised),
+                modifier = Modifier.size(width = 82.dp, height = 118.dp).clip(RoundedCornerShape(CineEditorial.CardRadius)).background(HistoryRaised),
                 contentAlignment = Alignment.Center,
             ) {
                 val artwork = movie.posterUrl ?: movie.backdropUrl
