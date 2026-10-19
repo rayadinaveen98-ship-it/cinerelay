@@ -9,6 +9,7 @@ import com.cinerelay.app.data.ConsumerDeepLinkTarget
 import com.cinerelay.app.data.OnThisDayMovie
 import com.cinerelay.app.data.OnThisDaySnapshot
 import com.cinerelay.app.data.PersonalizationState
+import com.cinerelay.app.data.PersonalizationCacheV24
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
@@ -39,6 +40,7 @@ class ConsumerViewModelV055(application: Application) : AndroidViewModel(applica
     private val app = application as CineRelayApplication
     private val consumer = app.consumerClient
     private val onThisDay = app.onThisDayClient
+    private val personalizationCache = PersonalizationCacheV24(application)
 
     private val _state = MutableStateFlow(ConsumerUiStateV055())
     val state: StateFlow<ConsumerUiStateV055> = _state.asStateFlow()
@@ -52,9 +54,24 @@ class ConsumerViewModelV055(application: Application) : AndroidViewModel(applica
         if (!force && _state.value.personalization != null) return
 
         viewModelScope.launch {
+            val accountId = app.sessionStore.read()?.userId.orEmpty()
+            if (!force && _state.value.personalization == null) {
+                val cached = withContext(Dispatchers.IO) { personalizationCache.read(accountId) }
+                if (cached != null && app.sessionStore.read()?.userId == accountId) {
+                    _state.value = _state.value.copy(
+                        personalization = cached,
+                        selectedLanguages = cached.favoriteLanguages,
+                        selectedSourceIds = cached.favoriteSourceIdentityIds,
+                    )
+                }
+            }
             _state.value = _state.value.copy(personalizationLoading = true, personalizationError = null)
             runCatching { withContext(Dispatchers.IO) { consumer.personalization() } }
                 .onSuccess { personalization ->
+                val cacheAccount = app.sessionStore.read()?.userId.orEmpty()
+                viewModelScope.launch(Dispatchers.IO) {
+                    personalizationCache.write(cacheAccount, personalization)
+                }
                     _state.value = _state.value.copy(
                         personalizationLoading = false,
                         personalization = personalization,
@@ -161,6 +178,10 @@ class ConsumerViewModelV055(application: Application) : AndroidViewModel(applica
                     consumer.personalization()
                 }
             }.onSuccess { personalization ->
+                val cacheAccount = app.sessionStore.read()?.userId.orEmpty()
+                viewModelScope.launch(Dispatchers.IO) {
+                    personalizationCache.write(cacheAccount, personalization)
+                }
                 _state.value = _state.value.copy(
                     personalizationBusy = false,
                     personalization = personalization,
