@@ -265,18 +265,18 @@ fun OnThisDayV057(
 @Composable
 private fun HistoryPreviewCardV080(movie: OnThisDayMovie, onClick: () -> Unit) {
     Column(
-        modifier = Modifier.width(156.dp).clickable(onClick = onClick),
+        modifier = Modifier.width(144.dp).clickable(onClick = onClick),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         EditorialArtworkV2(
             url = movie.posterUrl ?: movie.backdropUrl,
             title = movie.title,
-            modifier = Modifier.fillMaxWidth().height(172.dp),
+            modifier = Modifier.fillMaxWidth().height(152.dp),
             label = movie.releaseYear.toString(),
         )
         EditorialDisplayV2(movie.title, size = 17, lines = 2)
         Text(listOfNotNull(movie.language, movie.countryCode).joinToString(" · "),
-            color = HistoryMuted, fontSize = 11.sp,
+            color = HistoryMuted, fontSize = 12.sp,
             maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
