@@ -167,7 +167,7 @@ fun RadarV058(
                 EditorialMastheadV2(
                     section = "SIGNAL DESK / FRESH STORIES",
                     title = "Radar",
-                    subtitle = "Important updates from sources you can verify.",
+                    subtitle = "",
                     modifier = Modifier.padding(horizontal = CineEditorial.Gutter),
                     actions = {
                         IconButton(onClick = onRefresh, enabled = !state.loading) {
@@ -192,7 +192,7 @@ fun RadarV058(
                         Spacer(Modifier.height(18.dp))
                         Text("Radar is scanning", color = RadarText58, fontSize = 20.sp, fontWeight = FontWeight.Bold)
                         Spacer(Modifier.height(7.dp))
-                        Text("CineRelay keeps rescoring trailers, casting, release changes, OTT, production activity and other creator-worthy signals as evidence arrives.", color = RadarMuted58, fontSize = 14.sp, lineHeight = 19.sp)
+                        Text("New updates will appear here.", color = RadarMuted58, fontSize = 14.sp, lineHeight = 19.sp)
                     }
                 } else {
                     LazyColumn(
