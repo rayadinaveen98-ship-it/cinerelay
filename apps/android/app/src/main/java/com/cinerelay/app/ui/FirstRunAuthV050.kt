@@ -99,24 +99,17 @@ private fun WelcomeGateV050(
         Spacer(Modifier.weight(0.5f))
         AuthBrandMarkV050(76.dp)
         Spacer(Modifier.height(22.dp))
-        EditorialEyebrowV2("CINERELAY / THE EDITORIAL EDITION")
+        EditorialEyebrowV2("CINERELAY")
         Spacer(Modifier.height(9.dp))
         EditorialDisplayV2("A new frame for cinema.", size = 34, lines = 3)
         Spacer(Modifier.height(15.dp))
         Text(
-            "Sign in before entering the newsroom so your source choices, follows, alerts and preferences stay tied to your account.",
+            "Sign in to keep your sources and alerts in sync.",
             color = AuthMuted,
             fontSize = 14.sp,
             lineHeight = 21.sp,
         )
         Spacer(Modifier.height(22.dp))
-        Surface(color = AuthRaised, shape = RoundedCornerShape(CineEditorial.CardRadius), modifier = Modifier.fillMaxWidth()) {
-            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(11.dp)) {
-                AuthPromiseV050("Official-source feed", "YouTube now; websites and feeds can join the same evidence pipeline.")
-                AuthPromiseV050("Your control room", "Notification, source and content preferences stay synced to you.")
-                AuthPromiseV050("Evidence first", "CineRelay keeps the original source attached to every useful update.")
-            }
-        }
         notice?.takeIf { it.isNotBlank() }?.let {
             Spacer(Modifier.height(12.dp))
             Text(it, color = AuthGreen, fontSize = 12.sp)
@@ -141,7 +134,6 @@ private fun WelcomeGateV050(
             Text("Create account", color = AuthText, fontWeight = FontWeight.Bold)
         }
         Spacer(Modifier.height(8.dp))
-        Text("No guest newsroom in this build.", color = AuthMuted, fontSize = 12.sp)
     }
 }
 
@@ -190,16 +182,16 @@ private fun AuthFormV050(
         AuthBrandMarkV050(60.dp)
         Spacer(Modifier.height(18.dp))
         Text(
-            if (create) "Create your CineRelay account" else "Welcome back",
+            if (create) "Create account" else "Welcome back",
             color = AuthText,
-            fontSize = 26.sp,
+            fontSize = CineEditorial.PageTitle,
             lineHeight = 32.sp,
             fontWeight = FontWeight.Bold,
         )
         Spacer(Modifier.height(8.dp))
         Text(
-            if (create) "Your first login will continue into source and notification setup."
-            else "Sign in to restore your source choices, follows and alert preferences.",
+            if (create) "Choose your sources after signing up."
+            else "Your sources and alerts, in one place.",
             color = AuthMuted,
             fontSize = 14.sp,
             lineHeight = 19.sp,
