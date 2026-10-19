@@ -47,6 +47,8 @@ class CineRelayApplication : Application() {
         if (!reset.getBoolean("applied", false)) {
             sessionStore.clear()
             homeCache.clearAll()
+            getSharedPreferences("cinerelay_personalization_cache", MODE_PRIVATE).edit().clear().commit()
+            getSharedPreferences("cinerelay_notification_setup_cache", MODE_PRIVATE).edit().clear().commit()
             getSharedPreferences("cinerelay_welcome", MODE_PRIVATE).edit().clear().commit()
             reset.edit().putBoolean("applied", true).commit()
         }
