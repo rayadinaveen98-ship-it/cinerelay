@@ -38,21 +38,34 @@ import coil3.compose.AsyncImage
  * Typography uses Android's serif font for Latin headlines and OS fallback for Telugu.
  * Never infer media, verification state, source identity or dates from design content.
  */
+/** Professional compact type roles shared across the app.
+ * The 40sp exception is only used for numeric dates in Today.
+ */
+internal fun cineCompactDisplaySize(size: Int): Int = when {
+    size >= 45 -> 40
+    size >= 29 -> 22
+    size >= 22 -> 18
+    size >= 19 -> 18
+    size >= 16 -> 16
+    else -> 14
+}
+
 @Composable
 internal fun EditorialDisplayV2(
     text: String,
     modifier: Modifier = Modifier,
-    size: Int = 32,
-    lines: Int = 3,
+    size: Int = 22,
+    lines: Int = 2,
 ) {
+    val font = cineCompactDisplaySize(size)
     Text(
         text = text,
         modifier = modifier,
         color = CineEditorial.Text,
-        fontFamily = FontFamily.Serif,
-        fontSize = size.sp,
-        lineHeight = (size * 1.18f).sp,
-        fontWeight = FontWeight.Normal,
+        fontFamily = FontFamily.SansSerif,
+        fontSize = font.sp,
+        lineHeight = (font * 1.35f).sp,
+        fontWeight = FontWeight.SemiBold,
         maxLines = lines,
         overflow = TextOverflow.Ellipsis,
     )
@@ -61,18 +74,17 @@ internal fun EditorialDisplayV2(
 @Composable
 internal fun EditorialEyebrowV2(text: String, modifier: Modifier = Modifier) {
     Text(
-        text = text.uppercase(),
+        text = text,
         modifier = modifier,
-        color = CineEditorial.Accent,
-        fontSize = 11.sp,
-        fontWeight = FontWeight.Bold,
-        letterSpacing = 1.3.sp,
-        maxLines = 2,
+        color = CineEditorial.Muted,
+        fontSize = 12.sp,
+        fontWeight = FontWeight.Medium,
+        maxLines = 1,
         overflow = TextOverflow.Ellipsis,
     )
 }
 
-/** The large two-level masthead is a deliberate composition change from legacy TopAppBar. */
+/** One consistent compact masthead on OTT, Radar and other destinations. */
 @Composable
 internal fun EditorialMastheadV2(
     section: String,
@@ -81,21 +93,24 @@ internal fun EditorialMastheadV2(
     modifier: Modifier = Modifier,
     actions: @Composable RowScope.() -> Unit = {},
 ) {
-    Column(modifier.fillMaxWidth().padding(top = 18.dp, bottom = 4.dp), verticalArrangement = Arrangement.spacedBy(9.dp)) {
+    Column(
+        modifier.fillMaxWidth().padding(top = 12.dp, bottom = 4.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Surface(color = CineEditorial.Accent, shape = RoundedCornerShape(8.dp), modifier = Modifier.size(31.dp)) {
-                Box(contentAlignment = Alignment.Center) {
-                    Text("C", color = CineEditorial.Background, fontSize = 19.sp, fontFamily = FontFamily.Serif, fontWeight = FontWeight.Bold)
-                }
-            }
-            Spacer(Modifier.width(9.dp))
-            Text("CINERELAY", color = CineEditorial.Text, fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.3.sp, modifier = Modifier.weight(1f))
+            EditorialDisplayV2(title, modifier = Modifier.weight(1f), size = 22)
             actions()
         }
-        Spacer(Modifier.height(4.dp))
-        EditorialEyebrowV2(section)
-        EditorialDisplayV2(title, size = 34)
-        Text(subtitle, color = CineEditorial.Muted, fontSize = 13.sp, lineHeight = 19.sp)
+        if (subtitle.isNotBlank()) {
+            Text(
+                subtitle,
+                color = CineEditorial.Muted,
+                fontSize = 12.sp,
+                maxLines = 2,
+                lineHeight = 17.sp,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
     }
 }
 
@@ -123,14 +138,13 @@ internal fun EditorialArtworkV2(
             AsyncImage(model = url, contentDescription = title, contentScale = ContentScale.Crop,
                 modifier = Modifier.matchParentSize())
         } else {
-            Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp),
-                modifier = Modifier.padding(10.dp)) {
-                Icon(Icons.Default.Movie, contentDescription = null, tint = CineEditorial.Accent.copy(alpha = 0.78f), modifier = Modifier.size(26.dp))
-                Text(title, color = CineEditorial.Text, fontFamily = FontFamily.Serif,
-                    fontSize = 17.sp, lineHeight = 20.sp, maxLines = 3,
-                    overflow = TextOverflow.Ellipsis)
-                Text("ARTWORK UNAVAILABLE", color = CineEditorial.Muted, fontSize = 9.sp, letterSpacing = 0.8.sp)
-            }
+            // No repeated headline inside an empty image frame.
+            Icon(
+                Icons.Default.Movie,
+                contentDescription = null,
+                tint = CineEditorial.Muted.copy(alpha = 0.65f),
+                modifier = Modifier.size(24.dp),
+            )
         }
         if (!label.isNullOrBlank()) {
             Surface(
@@ -154,12 +168,17 @@ internal fun EditorialSectionV2(
     modifier: Modifier = Modifier,
     trailing: @Composable RowScope.() -> Unit = {},
 ) {
-    Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        EditorialEyebrowV2(label)
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            EditorialDisplayV2(title, modifier = Modifier.weight(1f), size = 23, lines = 2)
-            trailing()
-        }
+    Row(
+        modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        EditorialDisplayV2(
+            title,
+            modifier = Modifier.weight(1f),
+            size = 18,
+            lines = 2,
+        )
+        trailing()
     }
 }
 
