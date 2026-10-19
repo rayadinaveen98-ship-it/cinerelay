@@ -19,6 +19,10 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -38,15 +42,14 @@ import coil3.compose.AsyncImage
  * Typography uses Android's serif font for Latin headlines and OS fallback for Telugu.
  * Never infer media, verification state, source identity or dates from design content.
  */
-/** Professional compact type roles shared across the app.
+/** Professional cinematic type roles shared across the entire app.
  * The 40sp exception is only used for numeric dates in Today.
  */
 internal fun cineCompactDisplaySize(size: Int): Int = when {
-    size >= 45 -> 40
-    size >= 29 -> 22
-    size >= 22 -> 18
-    size >= 19 -> 18
-    size >= 16 -> 16
+    size >= 40 -> 40 // date numerals only
+    size >= 22 -> 22 // all page titles
+    size >= 18 -> 18 // section titles
+    size >= 15 -> 15 // card titles
     else -> 14
 }
 
@@ -122,8 +125,9 @@ internal fun EditorialArtworkV2(
     modifier: Modifier = Modifier,
     label: String? = null,
 ) {
+    var imageFailed by remember(url) { mutableStateOf(false) }
     Box(
-        modifier = modifier.clip(RoundedCornerShape(16.dp)).background(
+        modifier = modifier.clip(RoundedCornerShape(CineEditorial.CardRadius)).background(
             Brush.linearGradient(
                 listOf(
                     CineEditorial.Raised,
@@ -134,8 +138,9 @@ internal fun EditorialArtworkV2(
         ),
         contentAlignment = Alignment.Center,
     ) {
-        if (!url.isNullOrBlank()) {
+        if (!url.isNullOrBlank() && !imageFailed) {
             AsyncImage(model = url, contentDescription = title, contentScale = ContentScale.Crop,
+                onError = { imageFailed = true },
                 modifier = Modifier.matchParentSize())
         } else {
             // No repeated headline inside an empty image frame.
