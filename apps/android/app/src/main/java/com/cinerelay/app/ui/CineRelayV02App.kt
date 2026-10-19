@@ -110,7 +110,7 @@ private val V2Blue = CineEditorial.Info
 
 private val V2Colors = darkColorScheme(
     primary = V2Gold,
-    onPrimary = Color(0xFF261D08),
+    onPrimary = CineEditorial.Raised,
     secondary = V2Green,
     background = V2Ink,
     surface = V2Panel,
@@ -207,7 +207,7 @@ private fun PremiumTopBar(state: CineRelayUiState, viewModel: CineRelayViewModel
 
 @Composable
 private fun PremiumBottomBar(selected: AppTab, onSelect: (AppTab) -> Unit) {
-    NavigationBar(containerColor = Color(0xFF12151A), tonalElevation = 0.dp) {
+    NavigationBar(containerColor = CineEditorial.Background, tonalElevation = 0.dp) {
         NavV2(AppTab.LIVE, selected, Icons.Default.Home, "Live", onSelect)
         NavV2(AppTab.FOLLOWING, selected, Icons.Default.Star, "Following", onSelect)
         NavV2(AppTab.RADAR, selected, Icons.Default.Movie, "Radar", onSelect)
@@ -292,7 +292,7 @@ private fun FeedV2(state: CineRelayUiState, viewModel: CineRelayViewModel, onEvi
 private fun GuestStripV2(viewModel: CineRelayViewModel) {
     Surface(
         color = V2PanelRaised,
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(CineEditorial.CardRadius),
         modifier = Modifier.fillMaxWidth(),
     ) {
         Row(
@@ -323,7 +323,7 @@ private fun NewsroomSignalCardV2(
     val event = signal.canonicalEvent
     Card(
         colors = CardDefaults.cardColors(containerColor = V2Panel),
-        shape = RoundedCornerShape(20.dp),
+        shape = RoundedCornerShape(CineEditorial.CardRadius),
         modifier = Modifier.fillMaxWidth(),
     ) {
         Column(Modifier.padding(16.dp)) {
@@ -445,7 +445,7 @@ private fun SignalCardV2(
     val context = LocalContext.current
     Card(
         colors = CardDefaults.cardColors(containerColor = V2Panel),
-        shape = RoundedCornerShape(20.dp),
+        shape = RoundedCornerShape(CineEditorial.CardRadius),
         modifier = Modifier.fillMaxWidth(),
     ) {
         Column(Modifier.padding(16.dp)) {
@@ -551,7 +551,7 @@ private fun EntityTileV2(card: EventCard) {
         modifier = Modifier
             .size(width = 54.dp, height = 62.dp)
             .background(
-                Brush.linearGradient(listOf(V2GoldDeep.copy(alpha = 0.9f), Color(0xFF2B303A))),
+                Brush.linearGradient(listOf(V2GoldDeep.copy(alpha = 0.9f), CineEditorial.Raised)),
                 RoundedCornerShape(12.dp),
             ),
         contentAlignment = Alignment.Center,
@@ -681,7 +681,7 @@ private fun MetricPillV2(text: String, color: Color) {
 
 @Composable
 private fun EvidenceItemV2(index: Int, item: EvidenceDetail, onOpen: (String) -> Unit) {
-    Surface(color = V2PanelRaised, shape = RoundedCornerShape(16.dp)) {
+    Surface(color = V2PanelRaised, shape = RoundedCornerShape(CineEditorial.CardRadius)) {
         Column(Modifier.fillMaxWidth().padding(14.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(
@@ -818,7 +818,7 @@ private fun AlertsV2(state: CineRelayUiState, viewModel: CineRelayViewModel) {
 
     LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         item {
-            Surface(color = V2PanelRaised, shape = RoundedCornerShape(18.dp)) {
+            Surface(color = V2PanelRaised, shape = RoundedCornerShape(CineEditorial.CardRadius)) {
                 Column(Modifier.padding(16.dp)) {
                     Text("REAL-DEVICE ALERTS", color = V2Gold, fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
                     Spacer(Modifier.height(5.dp))
@@ -851,7 +851,7 @@ private fun AlertsV2(state: CineRelayUiState, viewModel: CineRelayViewModel) {
 
 @Composable
 private fun AlertCardV2(alert: AlertItem) {
-    Card(colors = CardDefaults.cardColors(containerColor = V2Panel), shape = RoundedCornerShape(18.dp)) {
+    Card(colors = CardDefaults.cardColors(containerColor = V2Panel), shape = RoundedCornerShape(CineEditorial.CardRadius)) {
         Column(Modifier.padding(15.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(alert.deliveryKind, color = V2Gold, fontSize = 12.sp, fontWeight = FontWeight.Bold)
