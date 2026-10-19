@@ -991,10 +991,14 @@ private val HOME59_STOP_TOKENS = HOME59_GENERIC_TOKENS + setOf(
     "today", "tomorrow", "here", "out", "only", "your", "their", "our", "its", "you", "all", "2026",
 )
 
+internal fun homeHeroRecentV23(timestamp: Instant, now: Instant): Boolean =
+    timestamp.isAfter(now.minus(Duration.ofHours(24))) &&
+        !timestamp.isAfter(now.plus(Duration.ofMinutes(5)))
+
 private fun isFreshHomeSignalV058(signal: NewsroomSignal): Boolean {
-    val timestamp = signal.observedAt ?: signal.ingestedAt ?: return true
-    val instant = runCatching { Instant.parse(timestamp) }.getOrNull() ?: return true
-    return Duration.between(instant, Instant.now()).toHours() < 24
+    val timestamp = signal.observedAt ?: signal.ingestedAt ?: signal.sourceObservedAt ?: return false
+    val instant = runCatching { Instant.parse(timestamp) }.getOrNull() ?: return false
+    return homeHeroRecentV23(instant, Instant.now())
 }
 
 private fun home58StateLabel(state: String): String = when (state) {
