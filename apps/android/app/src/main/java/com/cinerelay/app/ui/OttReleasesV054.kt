@@ -55,6 +55,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -403,30 +404,70 @@ private fun OttCompactCardV080(release: OttRelease, onClick: () -> Unit) {
     val confirmed = release.evidenceStatus == "CONFIRMED"
     val status = if (confirmed) "Confirmed" else prettyOttV054(release.evidenceStatus)
     val date = ottDisplayDateV081(release.releaseDate, release.datePrecision, release.state)
-    // This API does not expose official artwork. Use informative, compact
-    // text cards instead of a large empty imitation of a movie poster.
+    // No official poster URL exists in this feed. Use original typography-based
+    // cover art, never an invented movie poster or an unlicensed thumbnail.
     Surface(
-        color = OttPanel, shape = RoundedCornerShape(CineEditorial.CardRadius),
-        modifier = Modifier.width(220.dp).clickable(onClick = onClick),
+        color = OttPanel,
+        shape = RoundedCornerShape(CineEditorial.CardRadius),
+        modifier = Modifier.width(168.dp).clickable(onClick = onClick),
     ) {
-        Column(
-            modifier = Modifier.padding(14.dp),
-            verticalArrangement = Arrangement.spacedBy(9.dp),
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                OttProviderMarkV066(release.provider)
-                Spacer(Modifier.width(8.dp))
-                Text(release.provider.name, modifier = Modifier.weight(1f),
-                    color = OttMuted, fontSize = 12.sp, maxLines = 1,
-                    overflow = TextOverflow.Ellipsis)
+        Column {
+            Box(
+                Modifier.fillMaxWidth().height(194.dp).background(
+                    Brush.linearGradient(
+                        listOf(OttRaised, OttInk, OttRaised),
+                    ),
+                ),
+            ) {
+                Text(
+                    "STREAMING  /  CINERELAY",
+                    color = OttGold,
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.align(Alignment.TopStart).padding(12.dp),
+                    maxLines = 1,
+                )
+                Text(
+                    release.entity.name,
+                    color = OttText,
+                    fontSize = 17.sp,
+                    lineHeight = 23.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 4,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.align(Alignment.BottomStart).padding(12.dp),
+                )
             }
-            Text(release.entity.name, color = OttText, fontSize = 15.sp,
-                lineHeight = 20.sp, fontWeight = FontWeight.SemiBold,
-                maxLines = 2, overflow = TextOverflow.Ellipsis)
-            Text(date, color = OttMuted, fontSize = 12.sp,
-                maxLines = 2, overflow = TextOverflow.Ellipsis)
-            Text(status, color = if (confirmed) OttGreen else OttAmber,
-                fontSize = 12.sp, fontWeight = FontWeight.Medium)
+            Column(
+                modifier = Modifier.fillMaxWidth().padding(12.dp),
+                verticalArrangement = Arrangement.spacedBy(7.dp),
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    OttProviderMarkV066(release.provider)
+                    Spacer(Modifier.width(6.dp))
+                    Text(
+                        release.provider.name,
+                        color = OttText,
+                        fontSize = 12.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+                Text(
+                    date,
+                    color = OttMuted,
+                    fontSize = CineEditorial.Metadata,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    status,
+                    color = if (confirmed) OttGreen else OttAmber,
+                    fontSize = CineEditorial.Metadata,
+                    fontWeight = FontWeight.Medium,
+                    maxLines = 1,
+                )
+            }
         }
     }
 }
