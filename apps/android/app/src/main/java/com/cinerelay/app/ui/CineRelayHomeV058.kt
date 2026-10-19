@@ -92,7 +92,7 @@ private val Home58Amber = CineEditorial.Developing
 internal const val HOME23_HERO_CAP = 10
 private const val HOME23_AUTO_REFRESH_MS = 10 * 60 * 1000L
 
-private data class HomeStoryV059(
+internal data class HomeStoryV059(
     val key: String,
     val representative: NewsroomSignal,
     val updates: List<NewsroomSignal>,
@@ -100,9 +100,9 @@ private data class HomeStoryV059(
     val officialSourceCount: Int,
 )
 
-private data class HomeRailV058(val title: String, val items: List<HomeStoryV059>)
+internal data class HomeRailV058(val title: String, val items: List<HomeStoryV059>)
 
-private data class HomeDisplayProjectionV1(
+internal data class HomeDisplayProjectionV1(
     val favoriteSources: List<PersonalizationSource>,
     val heroStories: List<HomeStoryV059>,
     val latest: List<HomeStoryV059>,
@@ -114,7 +114,7 @@ private data class HomeDisplayProjectionV1(
  * It is keyed to the authenticated identity, source content and personalization;
  * no other account can reuse a previous user's projection.
  */
-private class HomeProjectionCacheV25 : ViewModel() {
+internal class HomeProjectionCacheV25 : ViewModel() {
     val scrollState = LazyListState()
     private var account: String? = null
     private var signals: List<NewsroomSignal>? = null
@@ -480,8 +480,24 @@ private fun HomeCompactSectionV1(title: String, onSeeAll: (() -> Unit)? = null) 
 private fun HomeHeroPagerV066(
     heroStories: List<HomeStoryV059>,
     onOpenUpdate: (NewsroomSignal) -> Unit,
+    isVisible: Boolean,
 ) {
     val pager = rememberPagerState(initialPage = 0, pageCount = { heroStories.size })
+
+    // Five seconds per slide. Stop the timer offscreen or when the user leaves
+    // Home; manual horizontal gestures always remain possible.
+    LaunchedEffect(pager, heroStories.size, isVisible) {
+        if (heroStories.size > 1 && isVisible) {
+            while (true) {
+                delay(5_000L)
+                if (!pager.isScrollInProgress) {
+                    val nextPage = (pager.currentPage + 1) % heroStories.size
+                    if (nextPage == 0) pager.scrollToPage(0)
+                    else pager.animateScrollToPage(nextPage)
+                }
+            }
+        }
+    }
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         HorizontalPager(
             state = pager,
