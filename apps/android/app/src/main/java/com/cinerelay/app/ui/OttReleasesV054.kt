@@ -162,8 +162,8 @@ fun OttReleasesV054(
                     item {
                         EditorialMastheadV2(
                             section = "STREAMING JOURNAL / INDIA",
-                            title = "The streaming edit.",
-                            subtitle = "New releases at a glance. Original sources, clearer dates, fewer surprises.",
+                            title = "Streaming",
+                            subtitle = "New, upcoming and now streaming.",
                             actions = {
                                 IconButton(onClick = onRefresh, enabled = !state.loading) {
                                     if (state.loading) CircularProgressIndicator(
@@ -201,7 +201,7 @@ fun OttReleasesV054(
 
                     state.error?.let { message ->
                         item {
-                            Surface(color = OttRed.copy(alpha = 0.10f), shape = RoundedCornerShape(14.dp)) {
+                            Surface(color = OttRed.copy(alpha = 0.10f), shape = RoundedCornerShape(CineEditorial.CardRadius)) {
                                 Text(message, color = OttRed, fontSize = CineEditorial.Metadata, modifier = Modifier.fillMaxWidth().padding(12.dp))
                             }
                         }
@@ -279,7 +279,7 @@ private fun OttOverviewV069(state: OttUiState, onOpenCategory: (String) -> Unit)
 private fun OttCountPillV060(label: String, count: Int, onClick: () -> Unit) {
     Surface(
         color = OttPanel,
-        shape = RoundedCornerShape(13.dp),
+        shape = RoundedCornerShape(CineEditorial.CardRadius),
         modifier = Modifier.width(89.dp).heightIn(min = 80.dp).clickable(enabled = count > 0, onClick = onClick),
     ) {
         Column(
@@ -310,7 +310,7 @@ private fun OttFiltersV060(
         state.evidence != OttEvidenceFilter.ALL,
     ).count { it }
 
-    Surface(color = OttPanel, shape = RoundedCornerShape(20.dp), modifier = Modifier.fillMaxWidth()) {
+    Surface(color = OttPanel, shape = RoundedCornerShape(CineEditorial.CardRadius), modifier = Modifier.fillMaxWidth()) {
         Column {
             Row(
                 modifier = Modifier.fillMaxWidth().clickable(onClick = onToggle).padding(horizontal = 15.dp, vertical = 13.dp),
@@ -496,7 +496,7 @@ private fun OttReleaseCardV069(release: OttRelease, modifier: Modifier = Modifie
 
     Card(
         colors = CardDefaults.cardColors(containerColor = OttRaised),
-        shape = RoundedCornerShape(22.dp),
+        shape = RoundedCornerShape(CineEditorial.CardRadius),
         modifier = modifier,
     ) {
         Column(Modifier.padding(15.dp), verticalArrangement = Arrangement.spacedBy(11.dp)) {
@@ -526,7 +526,7 @@ private fun OttReleaseCardV069(release: OttRelease, modifier: Modifier = Modifie
             }
 
             Row(verticalAlignment = Alignment.Top) {
-                Surface(color = OttGold.copy(alpha = 0.10f), shape = RoundedCornerShape(15.dp)) {
+                Surface(color = OttGold.copy(alpha = 0.10f), shape = RoundedCornerShape(CineEditorial.CardRadius)) {
                     Column(
                         modifier = Modifier.width(62.dp).padding(horizontal = 7.dp, vertical = 10.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
@@ -615,7 +615,7 @@ private fun OttReleaseCardV069(release: OttRelease, modifier: Modifier = Modifie
 
             val sourceRef = release.evidence.refs.firstOrNull { !it.canonicalUrl.isNullOrBlank() }
             if (sourceRef != null) {
-                Surface(color = OttInk.copy(alpha = 0.34f), shape = RoundedCornerShape(13.dp), modifier = Modifier.fillMaxWidth()) {
+                Surface(color = OttInk.copy(alpha = 0.34f), shape = RoundedCornerShape(CineEditorial.CardRadius), modifier = Modifier.fillMaxWidth()) {
                     Row(
                         modifier = Modifier.padding(start = 10.dp, end = 5.dp, top = 6.dp, bottom = 6.dp),
                         verticalAlignment = Alignment.CenterVertically,
@@ -652,7 +652,7 @@ private fun OttReleaseCardV069(release: OttRelease, modifier: Modifier = Modifie
 
 @Composable
 private fun OttProviderMarkV066(provider: OttProvider) {
-    Surface(color = OttGold.copy(alpha = 0.12f), shape = RoundedCornerShape(13.dp), modifier = Modifier.size(42.dp)) {
+    Surface(color = OttGold.copy(alpha = 0.12f), shape = RoundedCornerShape(CineEditorial.CardRadius), modifier = Modifier.size(42.dp)) {
         Box(contentAlignment = Alignment.Center) {
             Text(
                 ottProviderMarkV066(provider.code, provider.name),
