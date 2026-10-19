@@ -17,7 +17,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -80,11 +79,7 @@ fun SourcesDirectoryV039(
     modifier: Modifier = Modifier,
 ) {
     Surface(modifier = modifier.fillMaxSize(), color = SourcesInk) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .statusBarsPadding(),
-        ) {
+        Column(modifier = Modifier.fillMaxSize()) {
             SourcesTopBar(
                 state = state,
                 onRefresh = onRefresh,
@@ -143,12 +138,8 @@ private fun SourcesTopBar(
 ) {
     val selectedSource = state.selectedSource
     val subtitle = selectedSource?.let {
-        listOfNotNull(
-            prettySourcePlatform(it.platform),
-            it.handle,
-            prettySourceRole(it.role),
-        ).joinToString(" • ")
-    } ?: "Official movie, streaming and music sources"
+        listOfNotNull(prettySourcePlatform(it.platform), it.handle).joinToString(" • ")
+    }
     CineScreenHeader(
         title = selectedSource?.name ?: "Sources",
         subtitle = subtitle,
@@ -230,28 +221,6 @@ private fun SourcesDirectoryList(
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         item { SourcesSummaryCard(state) }
-        item {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 4.dp, bottom = 2.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    when (state.platform) {
-                        NewsroomPlatform.YOUTUBE -> "OFFICIAL SOURCES"
-                        NewsroomPlatform.WEB -> "WEB SOURCES"
-                        NewsroomPlatform.X -> "X SOURCES"
-                    },
-                    color = SourcesMuted,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 1.2.sp,
-                )
-                Spacer(Modifier.weight(1f))
-                Text("Recent activity first", color = SourcesMuted, fontSize = 12.sp)
-            }
-        }
         items(state.sources, key = { it.identityId }) { source ->
             val selected = source.identityId in state.notificationSourceIds
             SourceRow(
@@ -269,47 +238,13 @@ private fun SourcesDirectoryList(
 
 @Composable
 private fun SourcesSummaryCard(state: SourcesUiState) {
-    Surface(
-        color = SourcesPanelRaised,
-        shape = RoundedCornerShape(CineEditorial.CardRadius),
-        modifier = Modifier.fillMaxWidth(),
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 5.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Column(Modifier.padding(16.dp)) {
-            Text(
-                when (state.platform) {
-                    NewsroomPlatform.YOUTUBE -> "YouTube source desk"
-                    NewsroomPlatform.WEB -> "Web source desk"
-                    NewsroomPlatform.X -> "X source desk"
-                },
-                color = SourcesText,
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Bold,
-            )
-            Spacer(Modifier.height(4.dp))
-            Text(
-                if (state.platform == NewsroomPlatform.YOUTUBE)
-                    "${state.sourceCount} official sources • ${state.activeInLast24h} active in the last 24h"
-                else
-                    "${state.sourceCount} tracked sources • ${state.activeInLast24h} active in the last 24h",
-                color = SourcesMuted,
-                fontSize = 12.sp,
-            )
-            if (state.platform == NewsroomPlatform.YOUTUBE && state.authenticated && state.notificationSetupCompleted) {
-                Spacer(Modifier.height(5.dp))
-                Text(
-                    "${state.notificationSourceIds.size} notification sources • ${if (state.notificationMasterEnabled) "alerts on" else "alerts paused"}",
-                    color = if (state.notificationMasterEnabled) SourcesGreen else SourcesAmber,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold,
-                )
-            }
-            Spacer(Modifier.height(13.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                MetricPill(label = "Sources", value = state.sourceCount.toString())
-                MetricPill(label = "Active 24h", value = state.activeInLast24h.toString())
-                MetricPill(label = "New posts", value = state.newItems24h.toString())
-            }
-        }
+        MetricPill(label = "Sources", value = state.sourceCount.toString())
+        MetricPill(label = "Active", value = state.activeInLast24h.toString())
+        MetricPill(label = "New posts", value = state.newItems24h.toString())
     }
 }
 
@@ -349,16 +284,16 @@ private fun SourceRow(
         ) {
             SourceAvatar(source, size = 52.dp)
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                EditorialDisplayV2(source.name, size = 18, lines = 2)
+                EditorialDisplayV2(source.name, size = 15, lines = 2)
                 Text(
                     listOfNotNull(prettySourcePlatform(source.platform), source.handle,
                         prettySourceRole(source.role)).joinToString(" · "),
-                    color = SourcesMuted, fontSize = 11.sp,
+                    color = SourcesMuted, fontSize = CineEditorial.Metadata,
                     maxLines = 2, overflow = TextOverflow.Ellipsis,
                 )
                 if (source.newCount24h > 0) {
                     Text("${source.newCount24h} new updates", color = SourcesGreen,
-                        fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        fontSize = CineEditorial.Metadata, fontWeight = FontWeight.Bold)
                 }
             }
             if (canManageNotifications) {
