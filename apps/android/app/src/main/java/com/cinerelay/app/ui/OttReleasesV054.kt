@@ -157,7 +157,7 @@ fun OttReleasesV054(
                     state=landingListState,
                     modifier = Modifier.fillMaxSize().padding(padding),
                     contentPadding = PaddingValues(start = CineEditorial.Gutter, end = CineEditorial.Gutter, top = 0.dp, bottom = 118.dp),
-                    verticalArrangement = Arrangement.spacedBy(24.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
                 ) {
                     item {
                         EditorialMastheadV2(
@@ -402,22 +402,32 @@ private fun OttReleaseSectionV066(
 private fun OttCompactCardV080(release: OttRelease, onClick: () -> Unit) {
     val confirmed = release.evidenceStatus == "CONFIRMED"
     val status = if (confirmed) "Confirmed" else prettyOttV054(release.evidenceStatus)
-    val dateLabel = ottDisplayDateV081(release.releaseDate, release.datePrecision, release.state)
-    Column(
-        Modifier.width(159.dp).clickable(onClick = onClick),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+    val date = ottDisplayDateV081(release.releaseDate, release.datePrecision, release.state)
+    // This API does not expose official artwork. Use informative, compact
+    // text cards instead of a large empty imitation of a movie poster.
+    Surface(
+        color = OttPanel, shape = RoundedCornerShape(CineEditorial.CardRadius),
+        modifier = Modifier.width(220.dp).clickable(onClick = onClick),
     ) {
-        EditorialArtworkV2(
-            url = null, // OTT feed has no official poster URL. Never synthesize artwork.
-            title = release.entity.name,
-            label = release.provider.name,
-            modifier = Modifier.fillMaxWidth().height(190.dp),
-        )
-        EditorialDisplayV2(release.entity.name, size = 18, lines = 2)
-        Text(dateLabel, color = OttMuted, fontSize = 11.sp,
-            maxLines = 2, overflow = TextOverflow.Ellipsis)
-        Text(status, color = if (confirmed) OttGreen else OttAmber, fontSize = 11.sp,
-            fontWeight = FontWeight.Bold)
+        Column(
+            modifier = Modifier.padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(9.dp),
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                OttProviderMarkV066(release.provider)
+                Spacer(Modifier.width(8.dp))
+                Text(release.provider.name, modifier = Modifier.weight(1f),
+                    color = OttMuted, fontSize = 12.sp, maxLines = 1,
+                    overflow = TextOverflow.Ellipsis)
+            }
+            Text(release.entity.name, color = OttText, fontSize = 15.sp,
+                lineHeight = 20.sp, fontWeight = FontWeight.SemiBold,
+                maxLines = 2, overflow = TextOverflow.Ellipsis)
+            Text(date, color = OttMuted, fontSize = 12.sp,
+                maxLines = 2, overflow = TextOverflow.Ellipsis)
+            Text(status, color = if (confirmed) OttGreen else OttAmber,
+                fontSize = 12.sp, fontWeight = FontWeight.Medium)
+        }
     }
 }
 
