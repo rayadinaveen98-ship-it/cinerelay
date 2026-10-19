@@ -211,7 +211,7 @@ private fun SettingsSectionV055(
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         EditorialDisplayV2(title, modifier = Modifier.padding(horizontal = 4.dp),
             size = 22, lines = 1)
-        Surface(color = SettingsPanel55, shape = RoundedCornerShape(18.dp), modifier = Modifier.fillMaxWidth()) {
+        Surface(color = SettingsPanel55, shape = RoundedCornerShape(CineEditorial.CardRadius), modifier = Modifier.fillMaxWidth()) {
             Column { content() }
         }
     }
