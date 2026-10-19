@@ -271,7 +271,7 @@ private fun HistoryPreviewCardV080(movie: OnThisDayMovie, onClick: () -> Unit) {
         EditorialArtworkV2(
             url = movie.posterUrl ?: movie.backdropUrl,
             title = movie.title,
-            modifier = Modifier.fillMaxWidth().height(152.dp),
+            modifier = Modifier.fillMaxWidth().height(216.dp),
             label = movie.releaseYear.toString(),
         )
         EditorialDisplayV2(movie.title, size = 17, lines = 2)
