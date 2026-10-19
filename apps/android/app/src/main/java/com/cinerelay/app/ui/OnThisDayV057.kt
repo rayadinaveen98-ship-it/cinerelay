@@ -274,7 +274,7 @@ private fun HistoryPreviewCardV080(movie: OnThisDayMovie, onClick: () -> Unit) {
             modifier = Modifier.fillMaxWidth().height(216.dp),
             label = movie.releaseYear.toString(),
         )
-        EditorialDisplayV2(movie.title, size = 17, lines = 2)
+        EditorialDisplayV2(movie.title, size = 15, lines = 2)
         Text(listOfNotNull(movie.language, movie.countryCode).joinToString(" · "),
             color = HistoryMuted, fontSize = 12.sp,
             maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -296,23 +296,42 @@ private fun HistoryDateHeroV060(
         shape = RoundedCornerShape(CineEditorial.CardRadius),
         modifier = Modifier.fillMaxWidth().padding(horizontal = CineEditorial.Gutter),
     ) {
-        Column(Modifier.padding(19.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            EditorialEyebrowV2(
-                selected.format(DateTimeFormatter.ofPattern("EEEE / MMMM", Locale.ENGLISH)),
-            )
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 EditorialDisplayV2(
                     selected.format(DateTimeFormatter.ofPattern("dd", Locale.ENGLISH)),
-                    modifier = Modifier.weight(1f), size = 68, lines = 1,
+                    size = 45,
+                    lines = 1,
                 )
-                Column(verticalArrangement = Arrangement.spacedBy(5.dp),
-                    horizontalAlignment = Alignment.End) {
-                    Text("${movieCount} releases", color = HistoryText,
-                        fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                Spacer(Modifier.width(14.dp))
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                    Text(
+                        selected.format(DateTimeFormatter.ofPattern("MMMM", Locale.ENGLISH)),
+                        color = HistoryText,
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    Text(
+                        selected.format(DateTimeFormatter.ofPattern("EEEE", Locale.ENGLISH)),
+                        color = HistoryMuted,
+                        fontSize = CineEditorial.Metadata,
+                    )
+                }
+                Column(horizontalAlignment = Alignment.End) {
+                    Text(
+                        "$movieCount releases",
+                        color = HistoryText,
+                        fontSize = CineEditorial.Body,
+                        fontWeight = FontWeight.SemiBold,
+                    )
                     Text(
                         if (earliestYear != null && latestYear != null)
-                            "Across ${earliestYear}–${latestYear}" else "On this date",
-                        color = HistoryMuted, fontSize = 12.sp,
+                            "$earliestYear–$latestYear" else "On this date",
+                        color = HistoryMuted,
+                        fontSize = CineEditorial.Metadata,
                     )
                 }
             }
@@ -320,15 +339,23 @@ private fun HistoryDateHeroV060(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 TextButton(onClick = onPrevious, modifier = Modifier.weight(1f)) {
                     Icon(Icons.Default.ChevronLeft, contentDescription = null, tint = HistoryText)
-                    Text("Previous day", color = HistoryText, fontSize = 12.sp)
+                    Text("Previous", color = HistoryText, fontSize = 13.sp)
                 }
-                TextButton(onClick = onNext, enabled = selected < today,
-                    modifier = Modifier.weight(1f)) {
-                    Text("Next day", color = if (selected < today) HistoryText else HistoryMuted,
-                        fontSize = 12.sp)
-                    Icon(Icons.Default.ChevronRight,
+                TextButton(
+                    onClick = onNext,
+                    enabled = selected < today,
+                    modifier = Modifier.weight(1f),
+                ) {
+                    Text(
+                        "Next",
+                        color = if (selected < today) HistoryText else HistoryMuted,
+                        fontSize = 13.sp,
+                    )
+                    Icon(
+                        Icons.Default.ChevronRight,
                         contentDescription = null,
-                        tint = if (selected < today) HistoryText else HistoryMuted)
+                        tint = if (selected < today) HistoryText else HistoryMuted,
+                    )
                 }
             }
         }
