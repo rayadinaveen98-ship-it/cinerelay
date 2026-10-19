@@ -63,6 +63,12 @@ class CineRelayViewModel(application: Application) : AndroidViewModel(applicatio
     private val lastLoadedElapsed = mutableMapOf<AppTab, Long>()
     private val tabReuseWindowMs = 90_000L
 
+    private fun activeAccountId(): String? =
+        backend.currentSession()?.userId?.takeIf { it.isNotBlank() }
+
+    private fun isCurrentAccount(accountId: String): Boolean =
+        _state.value.authenticated && activeAccountId() == accountId
+
     private val existingSession = backend.currentSession()
     private val _state = MutableStateFlow(
         CineRelayUiState(
@@ -387,9 +393,11 @@ class CineRelayViewModel(application: Application) : AndroidViewModel(applicatio
 
     private fun refreshAll() {
         if (!_state.value.authenticated) return
+        val accountId = activeAccountId() ?: return
         viewModelScope.launch {
             runCatching { withContext(Dispatchers.IO) { backend.bootstrap() } }
                 .onSuccess { bootstrap ->
+                    if (!isCurrentAccount(accountId)) return@onSuccess
                     _state.value = _state.value.copy(
                         authenticated = true,
                         email = bootstrap.email ?: _state.value.email,
@@ -398,6 +406,7 @@ class CineRelayViewModel(application: Application) : AndroidViewModel(applicatio
                     )
                 }
                 .onFailure { error ->
+                    if (!isCurrentAccount(accountId)) return@onFailure
                     if (error is ApiException && error.statusCode == 401) handleFailure(error)
                 }
         }
@@ -435,9 +444,14 @@ class CineRelayViewModel(application: Application) : AndroidViewModel(applicatio
 
     private fun refreshPushState() {
         if (!_state.value.authenticated) return
+        val accountId = activeAccountId() ?: return
         viewModelScope.launch {
             runCatching { withContext(Dispatchers.IO) { pushManager.currentDeviceState() } }
-                .onSuccess { push -> _state.value = _state.value.copy(pushState = push) }
+                .onSuccess { push ->
+                    if (isCurrentAccount(accountId)) {
+                        _state.value = _state.value.copy(pushState = push)
+                    }
+                }
         }
     }
 
