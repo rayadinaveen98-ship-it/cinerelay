@@ -164,7 +164,7 @@ fun OttReleasesV054(
                         EditorialMastheadV2(
                             section = "STREAMING JOURNAL / INDIA",
                             title = "Streaming",
-                            subtitle = "New, upcoming and now streaming.",
+                            subtitle = "",
                             actions = {
                                 IconButton(onClick = onRefresh, enabled = !state.loading) {
                                     if (state.loading) CircularProgressIndicator(
@@ -241,7 +241,7 @@ fun OttReleasesV054(
                             OttReleaseSectionV066(
                                 eyebrow = "AVAILABLE NOW",
                                 title = "Now Streaming",
-                                subtitle = "Recently verified movies and series already available",
+                                subtitle = "",
                                 items = state.nowStreamingItems,
                                 emptyMessage = "No matching now-streaming releases are currently backed by retained evidence.",
                                 onSeeAll = { openedCategory="streaming" },
@@ -252,7 +252,7 @@ fun OttReleasesV054(
                             OttReleaseSectionV066(
                                 eyebrow = "COMING SOON",
                                 title = "Coming in the Next 30 Days",
-                                subtitle = state.windowEnd?.let { "Through ${formatOttDateV054(it)}" } ?: "Confirmed and reported upcoming premieres",
+                                subtitle = state.windowEnd?.let { "Through ${formatOttDateV054(it)}" } ?: "",
                                 items = state.upcomingItems,
                                 emptyMessage = "No matching upcoming releases are currently backed by retained evidence.",
                                 onSeeAll = { openedCategory="upcoming" },
