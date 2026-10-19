@@ -8,7 +8,7 @@ import androidx.compose.ui.unit.sp
  * Shared, design-reviewed visual primitives for the CineRelay Android editorial UI.
  *
  * Source: approved CineRelay Editorial Edition V2 concept, October 2026.
- * Accessible serif editorial display roles are defined in EditorialV2Components.
+ * All screen headlines use a standard sans-serif type system, including Telugu fallback.
  * This is presentation-only; source verification, release dates and ranking
  * must always come from existing app state rather than presentation constants.
  */
@@ -25,15 +25,15 @@ internal object CineEditorial {
     val Error = Color(0xFFEC9E99)
     val Info = Color(0xFFA9BED5)
 
-    val Gutter = 20.dp
-    val SectionGap = 28.dp
-    val CardRadius = 20.dp
-    val HeroRadius = 22.dp
+    val Gutter = 16.dp
+    val SectionGap = 24.dp
+    val CardRadius = 12.dp
+    val HeroRadius = 14.dp
     val TargetSize = 48.dp
 
-    val PageTitle = 26.sp
-    val SectionTitle = 20.sp
-    val CardTitle = 16.sp
+    val PageTitle = 22.sp
+    val SectionTitle = 18.sp
+    val CardTitle = 15.sp
     val Body = 14.sp
     val Metadata = 12.sp
 }
