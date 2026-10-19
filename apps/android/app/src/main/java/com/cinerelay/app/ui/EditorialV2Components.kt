@@ -192,13 +192,14 @@ internal fun EditorialBriefV2(
 ) {
     Surface(
         modifier = modifier.fillMaxWidth(),
-        color = CineEditorial.Raised,
-        shape = RoundedCornerShape(17.dp),
+        color = CineEditorial.Surface,
+        shape = RoundedCornerShape(CineEditorial.CardRadius),
     ) {
-        Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
+        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
             EditorialEyebrowV2(kicker)
-            EditorialDisplayV2(title, size = 21, lines = 2)
-            Text(description, color = CineEditorial.Muted, fontSize = 12.sp, lineHeight = 18.sp)
+            EditorialDisplayV2(title, size = 18, lines = 2)
+            Text(description, color = CineEditorial.Muted, fontSize = 12.sp, lineHeight = 17.sp,
+                maxLines = 2, overflow = TextOverflow.Ellipsis)
         }
     }
 }
