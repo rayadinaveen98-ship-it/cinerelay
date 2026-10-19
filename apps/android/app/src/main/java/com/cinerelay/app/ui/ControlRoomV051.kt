@@ -61,7 +61,7 @@ fun ControlRoomV051(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .statusBarsPadding()
+                
                 .navigationBarsPadding(),
         ) {
             ControlHeader(onBack)
