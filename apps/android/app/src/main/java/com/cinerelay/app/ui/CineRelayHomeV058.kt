@@ -89,6 +89,7 @@ private val Home58Gold = CineEditorial.Accent
 private val Home58Green = CineEditorial.Confirmed
 private val Home58Amber = CineEditorial.Developing
 
+internal const val HOME25_HERO_INTERVAL_MS = 5_000L
 internal const val HOME23_HERO_CAP = 10
 private const val HOME23_AUTO_REFRESH_MS = 10 * 60 * 1000L
 
@@ -489,7 +490,7 @@ private fun HomeHeroPagerV066(
     LaunchedEffect(pager, heroStories.size, isVisible) {
         if (heroStories.size > 1 && isVisible) {
             while (true) {
-                delay(5_000L)
+                delay(HOME25_HERO_INTERVAL_MS)
                 if (!pager.isScrollInProgress) {
                     val nextPage = (pager.currentPage + 1) % heroStories.size
                     if (nextPage == 0) pager.scrollToPage(0)
@@ -869,12 +870,21 @@ private fun clusterHomeStoriesV059(signals: List<NewsroomSignal>): List<HomeStor
     if (signals.isEmpty()) return emptyList()
     val ordered = signals.distinctBy { it.id }.sortedByDescending(::homeSignalInstantV059)
     val clusters = mutableListOf<MutableList<NewsroomSignal>>()
+    // Keep one representative per cluster rather than re-scoring and sorting
+    // an entire cluster for every incoming candidate.
+    val representatives = mutableListOf<NewsroomSignal>()
 
     for (signal in ordered) {
-        val index = clusters.indexOfFirst { existing ->
-            existing.isNotEmpty() && shouldShareHomeStoryV059(signal, bestHomeRepresentativeV059(existing))
+        val index = representatives.indexOfFirst { representative ->
+            shouldShareHomeStoryV059(signal, representative)
         }
-        if (index >= 0) clusters[index].add(signal) else clusters += mutableListOf(signal)
+        if (index >= 0) {
+            clusters[index].add(signal)
+            representatives[index] = bestHomeRepresentativeV059(listOf(representatives[index], signal))
+        } else {
+            clusters.add(mutableListOf(signal))
+            representatives.add(signal)
+        }
     }
 
     return clusters.map { cluster ->
