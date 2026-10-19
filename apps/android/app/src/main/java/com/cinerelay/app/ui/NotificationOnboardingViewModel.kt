@@ -1,6 +1,7 @@
 package com.cinerelay.app.ui
 
 import android.app.Application
+import android.content.Context
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.cinerelay.app.CineRelayApplication
@@ -38,6 +39,22 @@ class NotificationOnboardingViewModel(application: Application) : AndroidViewMod
     private val sourcesClient = SourcesClient()
     private val preferencesClient = NotificationPreferencesClient(app.sessionStore, app.backendClient)
     private val pushManager = PushManager(application, app.sessionStore, app.backendClient)
+    private val completedCache = application.getSharedPreferences(
+        "cinerelay_notification_setup_cache", Context.MODE_PRIVATE,
+    )
+
+    private fun cachedCompleted(): Boolean {
+        val account = app.sessionStore.read()?.userId.orEmpty()
+        return account.isNotBlank() && completedCache.getBoolean("done_$account", false)
+    }
+
+    private fun persistCompleted(value: Boolean) {
+        val account = app.sessionStore.read()?.userId.orEmpty()
+        if (account.isNotBlank()) {
+            completedCache.edit().putBoolean("done_$account", value).apply()
+        }
+    }
+
     private var syncGeneration = 0
 
     private val _state = MutableStateFlow(NotificationOnboardingState())
@@ -52,11 +69,13 @@ class NotificationOnboardingViewModel(application: Application) : AndroidViewMod
         }
         if (!force && current.authenticated && current.setupKnown) return
 
-        val preserveCompletedSetup = force && current.setupKnown && current.setupCompleted
+        val preserveCompletedSetup = (force && current.setupKnown && current.setupCompleted) ||
+            cachedCompleted()
         val generation = ++syncGeneration
         _state.value = current.copy(
             authenticated = true,
             setupKnown = preserveCompletedSetup,
+            setupCompleted = preserveCompletedSetup,
             loading = true,
             error = null,
         )
@@ -70,6 +89,7 @@ class NotificationOnboardingViewModel(application: Application) : AndroidViewMod
                 }
             }.onSuccess { (preferences, directory) ->
                 if (generation != syncGeneration) return@onSuccess
+                persistCompleted(preferences.setupCompleted)
                 val firstRun = !preferences.setupCompleted
                 _state.value = NotificationOnboardingState(
                     authenticated = true,
@@ -207,6 +227,7 @@ class NotificationOnboardingViewModel(application: Application) : AndroidViewMod
     }
 
     private fun applyCompleted(preferences: NotificationPreferenceState, effectiveEnable: Boolean) {
+        persistCompleted(true)
         _state.value = _state.value.copy(
             setupKnown = true,
             setupCompleted = true,
