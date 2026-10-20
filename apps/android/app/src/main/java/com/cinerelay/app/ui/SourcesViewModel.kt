@@ -44,6 +44,12 @@ class SourcesViewModel(application: Application) : AndroidViewModel(application)
     private val _state = MutableStateFlow(SourcesUiState())
     val state: StateFlow<SourcesUiState> = _state.asStateFlow()
 
+    fun reset() {
+        ++directoryRequest
+        ++feedRequest
+        _state.value = SourcesUiState()
+    }
+
     fun load(platform: NewsroomPlatform, authenticated: Boolean = false, force: Boolean = false) {
         val current = _state.value
         if (
@@ -142,6 +148,8 @@ class SourcesViewModel(application: Application) : AndroidViewModel(application)
 
     fun toggleNotification(source: SourceDirectoryItem, enabled: Boolean) {
         val current = _state.value
+        val accountId = app.sessionStore.read()?.userId
+        val requestId = directoryRequest
         if (!current.authenticated || current.platform != NewsroomPlatform.YOUTUBE || current.notificationBusySourceId != null) return
 
         _state.value = current.copy(notificationBusySourceId = source.identityId, error = null)
@@ -156,6 +164,7 @@ class SourcesViewModel(application: Application) : AndroidViewModel(application)
                     )
                 }
             }.onSuccess { preferences ->
+                if (requestId != directoryRequest || accountId != app.sessionStore.read()?.userId) return@onSuccess
                 _state.value = _state.value.copy(
                     notificationSourceIds = preferences.selectedSourceIds,
                     notificationMasterEnabled = preferences.masterEnabled,
@@ -166,6 +175,7 @@ class SourcesViewModel(application: Application) : AndroidViewModel(application)
                     error = null,
                 )
             }.onFailure { error ->
+                if (requestId != directoryRequest || accountId != app.sessionStore.read()?.userId) return@onFailure
                 _state.value = _state.value.copy(
                     notificationBusySourceId = null,
                     error = error.message ?: "Could not update this source notification",

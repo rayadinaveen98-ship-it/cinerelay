@@ -2,6 +2,7 @@ package com.cinerelay.app.ui
 
 import android.content.Intent
 import android.net.Uri
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -56,16 +57,16 @@ import com.cinerelay.app.data.ConsumerStoryTimelineEntry
 import java.time.Duration
 import java.time.Instant
 
-private val DetailInk = Color(0xFF0D0F13)
-private val DetailPanel = Color(0xFF171A20)
-private val DetailRaised = Color(0xFF20242C)
-private val DetailText = Color(0xFFF4F1EA)
-private val DetailMuted = Color(0xFFA8ADB7)
-private val DetailGold = Color(0xFFE8C56D)
-private val DetailGreen = Color(0xFF73D6A5)
-private val DetailAmber = Color(0xFFF0B862)
-private val DetailBlue = Color(0xFF8CB9FF)
-private val DetailRed = Color(0xFFF08079)
+private val DetailInk = CineEditorial.Background
+private val DetailPanel = CineEditorial.Surface
+private val DetailRaised = CineEditorial.Raised
+private val DetailText = CineEditorial.Text
+private val DetailMuted = CineEditorial.Muted
+private val DetailGold = CineEditorial.Accent
+private val DetailGreen = CineEditorial.Confirmed
+private val DetailAmber = CineEditorial.Developing
+private val DetailBlue = CineEditorial.Info
+private val DetailRed = CineEditorial.Error
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -75,6 +76,9 @@ fun NotificationDetailV055(
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
+    // The story is an overlay, not a full navigation-root replacement.
+    // System Back must dismiss it instead of exiting the app.
+    BackHandler(onBack = onBack)
 
     MaterialTheme(
         colorScheme = darkColorScheme(
@@ -92,20 +96,7 @@ fun NotificationDetailV055(
             Scaffold(
                 containerColor = DetailInk,
                 topBar = {
-                    TopAppBar(
-                        colors = TopAppBarDefaults.topAppBarColors(containerColor = DetailInk),
-                        navigationIcon = {
-                            IconButton(onClick = onBack) {
-                                Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = DetailText)
-                            }
-                        },
-                        title = {
-                            Column {
-                                Text("CINERELAY", color = DetailGold, fontSize = 9.sp, fontWeight = FontWeight.Black, letterSpacing = 1.5.sp)
-                                Text("Story", color = DetailText, fontSize = 22.sp, fontWeight = FontWeight.Bold)
-                            }
-                        },
-                    )
+                    CineScreenHeader(title = "Story", onBack = onBack)
                 },
             ) { padding ->
                 when {
@@ -138,8 +129,8 @@ fun NotificationDetailV055(
                                         if (story.timeline.isNotEmpty()) {
                                             item {
                                                 Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                                                    Text("Story timeline", color = DetailText, fontSize = 19.sp, fontWeight = FontWeight.Bold)
-                                                    Text("How this title has evolved across retained, evidence-backed updates", color = DetailMuted, fontSize = 10.sp)
+                                                    Text("Story timeline", color = DetailText, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                                                    Text("How this title has evolved across retained, evidence-backed updates", color = DetailMuted, fontSize = 12.sp)
                                                 }
                                             }
                                             items(story.timeline, key = { "story:${it.id}" }) { entry ->
@@ -150,8 +141,8 @@ fun NotificationDetailV055(
                                     if (target.event.evidence.isNotEmpty()) {
                                         item {
                                             Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                                                Text("Evidence & sources", color = DetailText, fontSize = 19.sp, fontWeight = FontWeight.Bold)
-                                                Text("Original retained sources behind this specific update", color = DetailMuted, fontSize = 10.sp)
+                                                Text("Evidence & sources", color = DetailText, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                                                Text("Original retained sources behind this specific update", color = DetailMuted, fontSize = 12.sp)
                                             }
                                         }
                                         items(target.event.evidence) { evidence -> EventEvidenceCardV055(evidence) }
@@ -168,12 +159,12 @@ fun NotificationDetailV055(
                         ) {
                             Text("This update isn't available in CineRelay anymore.", color = DetailText, fontSize = 20.sp, fontWeight = FontWeight.Bold)
                             Spacer(Modifier.height(8.dp))
-                            Text(state.deepLinkError ?: "The original post may still be available.", color = DetailMuted, fontSize = 13.sp, lineHeight = 19.sp)
+                            Text(state.deepLinkError ?: "The original post may still be available.", color = DetailMuted, fontSize = 14.sp, lineHeight = 19.sp)
                             state.deepLinkFallbackUrl?.let { url ->
                                 Spacer(Modifier.height(18.dp))
                                 Button(
                                     onClick = { runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) } },
-                                    colors = ButtonDefaults.buttonColors(containerColor = DetailGold, contentColor = Color(0xFF241C09)),
+                                    colors = ButtonDefaults.buttonColors(containerColor = DetailGold, contentColor = Color.White),
                                 ) {
                                     Icon(Icons.Default.OpenInNew, contentDescription = null, modifier = Modifier.size(17.dp))
                                     Spacer(Modifier.width(8.dp))
@@ -193,6 +184,13 @@ private fun SourceUpdateDetailV055(target: ConsumerDeepLinkTarget.SourceUpdate) 
     val context = LocalContext.current
     val item = target.item
     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        if (!item.thumbnailUrl.isNullOrBlank()) {
+            EditorialArtworkV2(
+                url = item.thumbnailUrl,
+                title = item.title,
+                modifier = Modifier.fillMaxWidth().aspectRatio(CineEditorial.ArtworkRatio),
+            )
+        }
         Row(verticalAlignment = Alignment.CenterVertically) {
             if (!item.source.artworkUrl.isNullOrBlank()) {
                 AsyncImage(
@@ -208,34 +206,25 @@ private fun SourceUpdateDetailV055(target: ConsumerDeepLinkTarget.SourceUpdate) 
             }
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
-                Text(item.source.name ?: "Official source", color = DetailText, fontSize = 15.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text(item.source.handle ?: friendlyDetailRoleV055(item.source.role), color = DetailMuted, fontSize = 11.sp, maxLines = 1)
+                Text(item.source.name ?: "Official source", color = DetailText, fontSize = 16.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(item.source.handle ?: friendlyDetailRoleV055(item.source.role), color = DetailMuted, fontSize = 12.sp, maxLines = 1)
             }
         }
 
-        item.thumbnailUrl?.let { image ->
-            AsyncImage(
-                model = image,
-                contentDescription = item.title,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxWidth().aspectRatio(16f / 9f).clip(RoundedCornerShape(22.dp)).background(DetailRaised),
-            )
-        }
-
-        Text(item.title, color = DetailText, fontSize = 25.sp, fontWeight = FontWeight.Bold, lineHeight = 31.sp)
+        EditorialDisplayV2(item.title, size = 27, lines = 5)
         item.text?.takeIf { it.isNotBlank() && it != item.title }?.let {
             Text(it, color = DetailMuted, fontSize = 14.sp, lineHeight = 21.sp)
         }
 
         Surface(color = DetailGold.copy(alpha = 0.10f), shape = RoundedCornerShape(50)) {
-            Text("Official update", color = DetailGold, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp))
+            Text("Official update", color = DetailGold, fontSize = 12.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp))
         }
 
         item.canonicalUrl?.let { url ->
             Button(
                 onClick = { runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) } },
                 modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.buttonColors(containerColor = DetailGold, contentColor = Color(0xFF241C09)),
+                colors = ButtonDefaults.buttonColors(containerColor = DetailGold, contentColor = Color.White),
             ) {
                 Icon(Icons.Default.OpenInNew, contentDescription = null, modifier = Modifier.size(17.dp))
                 Spacer(Modifier.width(8.dp))
@@ -257,7 +246,7 @@ private fun EventDetailHeaderV061(target: ConsumerDeepLinkTarget.Event) {
                 Text(
                     friendlyStoryLifecycleV061(lifecycle),
                     color = lifecycleColor,
-                    fontSize = 11.sp,
+                    fontSize = 12.sp,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
                 )
@@ -266,19 +255,19 @@ private fun EventDetailHeaderV061(target: ConsumerDeepLinkTarget.Event) {
                 Text(
                     friendlyVerificationV055(event.verificationState),
                     color = verificationColor,
-                    fontSize = 10.sp,
+                    fontSize = 12.sp,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.padding(horizontal = 10.dp, vertical = 7.dp),
                 )
             }
         }
-        event.entityName?.let { Text(it, color = DetailGold, fontSize = 13.sp, fontWeight = FontWeight.Bold) }
-        Text(event.headline, color = DetailText, fontSize = 27.sp, fontWeight = FontWeight.Bold, lineHeight = 33.sp)
+        event.entityName?.let { Text(it, color = DetailGold, fontSize = 14.sp, fontWeight = FontWeight.Bold) }
+        EditorialDisplayV2(event.headline, size = 28, lines = 5)
         event.summary?.takeIf { it.isNotBlank() }?.let {
             Text(it, color = DetailMuted, fontSize = 14.sp, lineHeight = 21.sp)
         }
         event.detectedAt?.let {
-            Text("Updated ${detailTimeAgoV061(it)}", color = DetailMuted, fontSize = 10.sp)
+            Text("Updated ${detailTimeAgoV061(it)}", color = DetailMuted, fontSize = 12.sp)
         }
     }
 }
@@ -292,30 +281,30 @@ private fun StoryChangeNowV066(story: ConsumerStory) {
     else story.timeline.firstOrNull { it.id != current.id }
     Surface(
         color = DetailGold.copy(alpha = 0.08f),
-        shape = RoundedCornerShape(22.dp),
+        shape = RoundedCornerShape(CineEditorial.CardRadius),
         modifier = Modifier.fillMaxWidth(),
     ) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
-                    Text("WHAT CHANGED NOW", color = DetailGold, fontSize = 9.sp, fontWeight = FontWeight.Black, letterSpacing = 1.0.sp)
-                    Text(friendlyEventTypeV061(current.eventType), color = DetailMuted, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
+                    Text("WHAT CHANGED NOW", color = DetailGold, fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 1.0.sp)
+                    Text(friendlyEventTypeV061(current.eventType), color = DetailMuted, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
                 }
                 current.detectedAt?.let {
                     Surface(color = DetailInk.copy(alpha = 0.58f), shape = RoundedCornerShape(50)) {
-                        Text(detailTimeAgoV061(it), color = DetailText, fontSize = 9.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 9.dp, vertical = 5.dp))
+                        Text(detailTimeAgoV061(it), color = DetailText, fontSize = 12.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 9.dp, vertical = 5.dp))
                     }
                 }
             }
-            Text(current.headline, color = DetailText, fontSize = 17.sp, lineHeight = 22.sp, fontWeight = FontWeight.Bold)
+            Text(current.headline, color = DetailText, fontSize = 18.sp, lineHeight = 22.sp, fontWeight = FontWeight.Bold)
             current.summary?.takeIf { it.isNotBlank() }?.let {
-                Text(it, color = DetailMuted, fontSize = 11.sp, lineHeight = 17.sp)
+                Text(it, color = DetailMuted, fontSize = 12.sp, lineHeight = 17.sp)
             }
             if (previous != null) {
-                Surface(color = DetailInk.copy(alpha = 0.40f), shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth()) {
+                Surface(color = DetailInk.copy(alpha = 0.40f), shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(horizontal = 11.dp, vertical = 9.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                        Text("PREVIOUS CONTEXT", color = DetailMuted, fontSize = 8.sp, fontWeight = FontWeight.Black, letterSpacing = 0.7.sp)
-                        Text(previous.headline, color = DetailText.copy(alpha = 0.78f), fontSize = 10.sp, lineHeight = 15.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                        Text("PREVIOUS CONTEXT", color = DetailMuted, fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 0.7.sp)
+                        Text(previous.headline, color = DetailText.copy(alpha = 0.78f), fontSize = 12.sp, lineHeight = 15.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
                     }
                 }
             }
@@ -324,19 +313,19 @@ private fun StoryChangeNowV066(story: ConsumerStory) {
                 if (story.officialSourceCount > 0) add("${story.officialSourceCount} official")
                 if (story.evidenceCount > 0) add("${story.evidenceCount} evidence")
             }.joinToString(" • ")
-            Text(strength, color = DetailGreen, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+            Text(strength, color = DetailGreen, fontSize = 12.sp, fontWeight = FontWeight.Bold)
         }
     }
 }
 
 @Composable
 private fun StoryIntelligenceOverviewV061(story: ConsumerStory) {
-    Surface(color = DetailPanel, shape = RoundedCornerShape(22.dp), modifier = Modifier.fillMaxWidth()) {
+    Surface(color = DetailPanel, shape = RoundedCornerShape(CineEditorial.CardRadius), modifier = Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
-                    Text("Story Intelligence", color = DetailGold, fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 0.7.sp)
-                    Text("One evolving story, original evidence intact", color = DetailText, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                    Text("Story Intelligence", color = DetailGold, fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 0.7.sp)
+                    Text("One evolving story, original evidence intact", color = DetailText, fontSize = 16.sp, fontWeight = FontWeight.Bold)
                 }
                 Box(Modifier.size(9.dp).clip(CircleShape).background(storyLifecycleColorV061(story.lifecycle)))
             }
@@ -349,11 +338,11 @@ private fun StoryIntelligenceOverviewV061(story: ConsumerStory) {
                 if (story.sourceCount > 1) "Multiple retained sources support this evolving story. Each update stays traceable to its original evidence."
                 else "This story currently has one retained source. CineRelay will keep the same thread updated when stronger evidence arrives.",
                 color = DetailMuted,
-                fontSize = 10.sp,
+                fontSize = 12.sp,
                 lineHeight = 16.sp,
             )
             story.latestEvidenceAt?.let {
-                Text("Latest evidence ${detailTimeAgoV061(it)}", color = DetailMuted, fontSize = 9.sp)
+                Text("Latest evidence ${detailTimeAgoV061(it)}", color = DetailMuted, fontSize = 12.sp)
             }
         }
     }
@@ -361,10 +350,10 @@ private fun StoryIntelligenceOverviewV061(story: ConsumerStory) {
 
 @Composable
 private fun StoryStatV061(value: String, label: String, modifier: Modifier = Modifier) {
-    Surface(color = DetailRaised, shape = RoundedCornerShape(15.dp), modifier = modifier) {
+    Surface(color = DetailRaised, shape = RoundedCornerShape(CineEditorial.CardRadius), modifier = modifier) {
         Column(Modifier.padding(vertical = 10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             Text(value, color = DetailText, fontSize = 18.sp, fontWeight = FontWeight.Black)
-            Text(label, color = DetailMuted, fontSize = 8.sp, fontWeight = FontWeight.Bold)
+            Text(label, color = DetailMuted, fontSize = 12.sp, fontWeight = FontWeight.Bold)
         }
     }
 }
@@ -384,7 +373,7 @@ private fun StoryTimelineEntryV061(entry: ConsumerStoryTimelineEntry) {
         Spacer(Modifier.width(12.dp))
         Surface(
             color = if (entry.current) DetailGold.copy(alpha = 0.08f) else DetailPanel,
-            shape = RoundedCornerShape(17.dp),
+            shape = RoundedCornerShape(CineEditorial.CardRadius),
             modifier = Modifier.weight(1f),
         ) {
             Column(Modifier.padding(13.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -392,15 +381,15 @@ private fun StoryTimelineEntryV061(entry: ConsumerStoryTimelineEntry) {
                     Text(
                         if (entry.current) "CURRENT UPDATE" else friendlyEventTypeV061(entry.eventType),
                         color = if (entry.current) DetailGold else verificationColor,
-                        fontSize = 8.sp,
+                        fontSize = 12.sp,
                         fontWeight = FontWeight.Black,
                         letterSpacing = 0.8.sp,
                         modifier = Modifier.weight(1f),
                     )
-                    entry.detectedAt?.let { Text(detailTimeAgoV061(it), color = DetailMuted, fontSize = 9.sp) }
+                    entry.detectedAt?.let { Text(detailTimeAgoV061(it), color = DetailMuted, fontSize = 12.sp) }
                 }
-                Text(entry.headline, color = DetailText, fontSize = 13.sp, lineHeight = 18.sp, fontWeight = FontWeight.SemiBold)
-                Text(friendlyVerificationV055(entry.verificationState), color = DetailMuted, fontSize = 9.sp)
+                Text(entry.headline, color = DetailText, fontSize = 14.sp, lineHeight = 18.sp, fontWeight = FontWeight.SemiBold)
+                Text(friendlyVerificationV055(entry.verificationState), color = DetailMuted, fontSize = 12.sp)
             }
         }
     }
@@ -411,7 +400,7 @@ private fun EventEvidenceCardV055(evidence: ConsumerEvidence) {
     val context = LocalContext.current
     Surface(
         color = DetailPanel,
-        shape = RoundedCornerShape(18.dp),
+        shape = RoundedCornerShape(CineEditorial.CardRadius),
         modifier = Modifier.fillMaxWidth().let { base ->
             val url = evidence.canonicalUrl
             if (url.isNullOrBlank()) base else base.clickable {
@@ -431,13 +420,13 @@ private fun EventEvidenceCardV055(evidence: ConsumerEvidence) {
                     Spacer(Modifier.width(10.dp))
                 }
                 Column(Modifier.weight(1f)) {
-                    Text(evidence.source.name ?: "Source", color = DetailText, fontSize = 13.sp, fontWeight = FontWeight.Bold, maxLines = 1)
-                    Text(friendlyDetailRoleV055(evidence.source.role), color = DetailMuted, fontSize = 10.sp)
+                    Text(evidence.source.name ?: "Source", color = DetailText, fontSize = 14.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+                    Text(friendlyDetailRoleV055(evidence.source.role), color = DetailMuted, fontSize = 12.sp)
                 }
                 if (!evidence.canonicalUrl.isNullOrBlank()) Icon(Icons.Default.OpenInNew, contentDescription = null, tint = DetailGold, modifier = Modifier.size(16.dp))
             }
-            evidence.title?.let { Text(it, color = DetailText, fontSize = 13.sp, lineHeight = 18.sp) }
-            evidence.publishedAt?.let { Text(detailTimeAgoV061(it), color = DetailMuted, fontSize = 9.sp) }
+            evidence.title?.let { Text(it, color = DetailText, fontSize = 14.sp, lineHeight = 18.sp) }
+            evidence.publishedAt?.let { Text(detailTimeAgoV061(it), color = DetailMuted, fontSize = 12.sp) }
         }
     }
 }

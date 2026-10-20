@@ -33,6 +33,31 @@ val updateSigningConfigured = listOf(
     signingKeyPassword,
 ).all { !it.isNullOrBlank() }
 
+// S2 release gate: installing a lower versionCode or using a different signer
+// would prevent an update over the already-distributed Build 677 preview.
+// Debug CI builds remain unaffected.
+val releaseArtifactRequested = gradle.startParameter.taskNames.any { requested ->
+    val task = requested.substringAfterLast(':').lowercase()
+    task in setOf("assemble", "bundle", "build") ||
+        (task.contains("release") && listOf("assemble", "bundle", "package", "install", "publish").any {
+            task.startsWith(it)
+        })
+}
+if (releaseArtifactRequested) {
+    require(updateSigningConfigured) {
+        "CineRelay release requires permanent update-signing configuration."
+    }
+    require(configuredVersionCode != null && configuredVersionCode >= 221000) {
+        "Stable release versionCode must be >= 221000, above distributed 220xxx preview builds."
+    }
+    require(
+        !configuredVersionName.isNullOrBlank() &&
+            !configuredVersionName.contains("canary", ignoreCase = true)
+    ) {
+        "Release versionName must be explicitly set and cannot be a canary version."
+    }
+}
+
 android {
     namespace = "com.cinerelay.app"
     compileSdk = 36

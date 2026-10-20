@@ -23,9 +23,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 private val LanePanel = Color(0xF215181E)
-private val LaneGold = Color(0xFFE7C36B)
-private val LaneMuted = Color(0xFFA7ADB7)
-private val YouTubeRed = Color(0xFFFF3B30)
+private val LaneGold = CineEditorial.Accent
+private val LaneMuted = CineEditorial.Muted
+private val YouTubeRed = CineEditorial.Error
 
 @Composable
 fun NewsroomPlatformOverlay(
@@ -38,7 +38,7 @@ fun NewsroomPlatformOverlay(
     Surface(
         modifier = modifier,
         color = LanePanel,
-        shape = RoundedCornerShape(18.dp),
+        shape = RoundedCornerShape(CineEditorial.CardRadius),
         shadowElevation = 7.dp,
     ) {
         Row(
@@ -110,7 +110,7 @@ private fun PlatformIconButton(
                 Text(
                     "WEB",
                     color = if (selected) LaneGold else LaneMuted,
-                    fontSize = 9.sp,
+                    fontSize = 12.sp,
                     fontWeight = FontWeight.Black,
                     letterSpacing = 0.5.sp,
                 )
@@ -119,7 +119,7 @@ private fun PlatformIconButton(
                 Text(
                     "X",
                     color = if (selected) LaneGold else LaneMuted,
-                    fontSize = 17.sp,
+                    fontSize = 18.sp,
                     fontWeight = FontWeight.Black,
                 )
             }

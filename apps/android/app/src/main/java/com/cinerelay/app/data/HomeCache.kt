@@ -30,6 +30,10 @@ class HomeCache(context: Context) {
             .apply()
     }
 
+    fun clearAll() {
+        prefs.edit().clear().commit()
+    }
+
     private fun key(userId: String, lane: String): String = "home_v1_${userId}_$lane"
 
     private fun parseSignals(raw: String): List<NewsroomSignal> {

@@ -11,6 +11,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -112,6 +113,8 @@ class MainActivity : ComponentActivity() {
 
             LaunchedEffect(state.authenticated) {
                 if (!state.authenticated) {
+                    sourcesViewModel.reset()
+                    archiveViewModel.reset()
                     settingsVisible = false
                     personalizationEditorVisible = false
                     ottVisible = false
@@ -158,7 +161,7 @@ class MainActivity : ComponentActivity() {
             }
 
             LaunchedEffect(historyVisible, state.authenticated) {
-                if (historyVisible && state.authenticated) consumerViewModel.loadOnThisDay(force = true)
+                if (historyVisible && state.authenticated) consumerViewModel.loadOnThisDay()
             }
 
             LaunchedEffect(archiveVisible, state.authenticated) {
@@ -179,7 +182,8 @@ class MainActivity : ComponentActivity() {
                 consumerState.deepLinkError != null
             val notificationRouteWaiting = state.authenticated && pendingNotificationRoute != null && !deepLinkVisible
 
-            Box(Modifier.fillMaxSize()) {
+            // Edge-to-edge window: scrolling content must stay below the status bar.
+            Box(Modifier.fillMaxSize().statusBarsPadding()) {
                 when {
                     !state.authenticated -> {
                         FirstRunAuthV050(
@@ -193,14 +197,6 @@ class MainActivity : ComponentActivity() {
                     }
 
                     notificationRouteWaiting -> CineRelaySetupLoadingV050(Modifier.fillMaxSize())
-
-                    deepLinkVisible -> {
-                        NotificationDetailV055(
-                            state = consumerState,
-                            onBack = consumerViewModel::closeNotification,
-                            modifier = Modifier.fillMaxSize(),
-                        )
-                    }
 
                     setupResolving -> CineRelaySetupLoadingV050(Modifier.fillMaxSize())
 
@@ -243,7 +239,7 @@ class MainActivity : ComponentActivity() {
                             onQueryChange = archiveViewModel::setQuery,
                             onLoadMore = archiveViewModel::loadMore,
                             onOpen = { update ->
-                                archiveVisible = false
+                                // Keep archive and its scroll position mounted behind details.
                                 consumerViewModel.openNotification(
                                     eventId = update.eventId,
                                     rawItemId = update.id,
@@ -256,18 +252,17 @@ class MainActivity : ComponentActivity() {
 
                     else -> {
                         val personalization = consumerState.personalization!!
-                        if (state.tab == AppTab.LIVE && state.authMode == null && !historyVisible) {
+                        if (
+                            state.tab == AppTab.LIVE && state.authMode == null &&
+                            !historyVisible && !ottVisible
+                        ) {
                             CineRelayHomeV058(
                                 state = state,
                                 personalization = personalization,
-                                onRefresh = {
-                                    viewModel.refresh()
-                                    consumerViewModel.syncPersonalization(authenticated = true, force = true)
-                                },
+                                onRefresh = viewModel::refresh,
                                 onSearch = searchViewModel::open,
                                 onOpenArchive = {
                                     archiveVisible = true
-                                    archiveViewModel.load()
                                 },
                                 onOpenUpdate = { signal ->
                                     consumerViewModel.openNotification(
@@ -278,13 +273,14 @@ class MainActivity : ComponentActivity() {
                                 },
                                 modifier = Modifier.fillMaxSize(),
                             )
-                        } else if (!historyVisible) {
+                        } else if (
+                            !historyVisible && !ottVisible && state.tab != AppTab.RADAR &&
+                            state.tab != AppTab.FOLLOWING
+                        ) {
                             CineRelayRootV049(viewModel)
                         }
 
                         if (
-                            !settingsVisible &&
-                            !searchState.visible &&
                             !ottVisible &&
                             !historyVisible &&
                             state.tab == AppTab.FOLLOWING &&
@@ -301,8 +297,6 @@ class MainActivity : ComponentActivity() {
                         }
 
                         if (
-                            !settingsVisible &&
-                            !searchState.visible &&
                             !ottVisible &&
                             !historyVisible &&
                             state.tab == AppTab.RADAR &&
@@ -329,7 +323,7 @@ class MainActivity : ComponentActivity() {
                             )
                         }
 
-                        if (!settingsVisible && !searchState.visible && ottVisible && !historyVisible && state.authMode == null) {
+                        if (ottVisible && !historyVisible && state.authMode == null) {
                             OttReleasesV054(
                                 state = ottState,
                                 onRefresh = ottViewModel::refresh,
@@ -338,16 +332,23 @@ class MainActivity : ComponentActivity() {
                                 onSelectLanguage = ottViewModel::selectLanguage,
                                 onSelectContentType = ottViewModel::selectContentType,
                                 onSelectEvidence = ottViewModel::selectEvidence,
+                                onClearFilters = ottViewModel::clearFilters,
                                 modifier = Modifier.fillMaxSize(),
                             )
                         }
 
-                        if (!settingsVisible && !searchState.visible && historyVisible && state.authMode == null) {
+                        if (historyVisible && state.authMode == null) {
                             OnThisDayV057(
                                 state = consumerState,
                                 onBack = { historyVisible = false },
                                 onLoadDate = { date -> consumerViewModel.loadOnThisDay(force = true, date = date) },
                                 onToday = { consumerViewModel.loadOnThisDay(force = true, date = null) },
+                                onRetry = {
+                                    consumerViewModel.loadOnThisDay(
+                                        force = true,
+                                        date = consumerState.onThisDayDate,
+                                    )
+                                },
                                 modifier = Modifier.fillMaxSize(),
                             )
                         }
@@ -366,13 +367,11 @@ class MainActivity : ComponentActivity() {
                                     settingsVisible = false
                                     historyVisible = false
                                     ottVisible = true
-                                    ottViewModel.load()
                                 },
                                 onOpenHistory = {
                                     settingsVisible = false
                                     ottVisible = false
                                     historyVisible = true
-                                    consumerViewModel.loadOnThisDay(force = true)
                                 },
                                 onOpenControlRoom = {
                                     ottVisible = false
@@ -462,6 +461,17 @@ class MainActivity : ComponentActivity() {
                             )
                         }
                     }
+                }
+                // Keep the active destination composed behind story details.
+                // The old exclusive branch disposed Home/Radar on every story open,
+                // recreating its carousel, feed, image layout and scroll state on Back.
+                // Draw the detail last so it receives taps and system Back first.
+                if (state.authenticated && deepLinkVisible) {
+                    NotificationDetailV055(
+                        state = consumerState,
+                        onBack = consumerViewModel::closeNotification,
+                        modifier = Modifier.fillMaxSize(),
+                    )
                 }
             }
         }

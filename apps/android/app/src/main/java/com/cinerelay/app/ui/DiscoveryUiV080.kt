@@ -24,44 +24,27 @@ import androidx.compose.ui.unit.sp
 
 /** Compact discovery hierarchy shared by OTT, Radar, and Indian cinema history. */
 internal object DiscoveryUiV080 {
-    val Gold = Color(0xFFE8C56D)
-    val Text = Color(0xFFF5F2EA)
-    val Muted = Color(0xFFA8ADB7)
-    val Panel = Color(0xFF171A20)
-    val Raised = Color(0xFF20242C)
-    val Gutter = 16.dp
+    val Gold = CineEditorial.Accent
+    val Text = CineEditorial.Text
+    val Muted = CineEditorial.Muted
+    val Panel = CineEditorial.Surface
+    val Raised = CineEditorial.Raised
+    val Gutter = CineEditorial.Gutter
     val CardWidth = 236.dp
-    val CardRadius = 18.dp
+    val CardRadius = CineEditorial.CardRadius
 }
 @Composable
-internal fun DiscoverySectionHeadingV080(title:String,subtitle:String,count:Int,onSeeAll:()->Unit){
-    Row(Modifier.fillMaxWidth().padding(horizontal=DiscoveryUiV080.Gutter),
-        verticalAlignment=Alignment.CenterVertically){
-        Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(3.dp)){
-            Text(title,color=DiscoveryUiV080.Text,fontSize=19.sp,fontWeight=FontWeight.Bold,
-                maxLines=2,overflow=TextOverflow.Ellipsis)
-            if(subtitle.isNotBlank()) Text(subtitle,color=DiscoveryUiV080.Muted,fontSize=12.sp,
-                maxLines=2,overflow=TextOverflow.Ellipsis)
-        }
-        TextButton(onClick=onSeeAll,enabled=count>0){
-            Text("See all ("+count+")",color=if(count>0)DiscoveryUiV080.Gold else DiscoveryUiV080.Muted,
-                fontSize=12.sp,fontWeight=FontWeight.SemiBold)
-            Icon(Icons.Default.ChevronRight,contentDescription=null,
-                tint=DiscoveryUiV080.Gold,modifier=Modifier.size(17.dp))
-        }
-    }
+internal fun DiscoverySectionHeadingV080(title: String, subtitle: String, count: Int, onSeeAll: () -> Unit) {
+    CineSectionHeader(
+        title = title,
+        subtitle = subtitle,
+        count = count,
+        onSeeAll = onSeeAll,
+        modifier = Modifier.padding(horizontal = DiscoveryUiV080.Gutter),
+    )
 }
+
 @Composable
-internal fun DiscoverySubpageHeaderV080(title:String,subtitle:String,onBack:()->Unit){
-    Row(Modifier.fillMaxWidth().padding(start=6.dp,end=16.dp,top=12.dp,bottom=12.dp),
-        verticalAlignment=Alignment.CenterVertically){
-        IconButton(onClick=onBack){
-            Icon(Icons.Default.ArrowBack,contentDescription="Back",tint=DiscoveryUiV080.Text)
-        }
-        Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(3.dp)){
-            Text(title,color=DiscoveryUiV080.Text,fontSize=23.sp,fontWeight=FontWeight.Bold,
-                maxLines=2,overflow=TextOverflow.Ellipsis)
-            if(subtitle.isNotBlank())Text(subtitle,color=DiscoveryUiV080.Muted,fontSize=12.sp,maxLines=2)
-        }
-    }
+internal fun DiscoverySubpageHeaderV080(title: String, subtitle: String, onBack: () -> Unit) {
+    CineScreenHeader(title = title, subtitle = subtitle, onBack = onBack)
 }

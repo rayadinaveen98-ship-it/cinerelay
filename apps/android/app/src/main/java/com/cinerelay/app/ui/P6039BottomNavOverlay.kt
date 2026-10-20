@@ -1,5 +1,6 @@
 package com.cinerelay.app.ui
 
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
@@ -10,6 +11,7 @@ import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Movie
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.Icon
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
@@ -21,9 +23,9 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-private val NavInk = Color(0xFF12151A)
-private val NavGold = Color(0xFFE7C36B)
-private val NavMuted = Color(0xFFA7ADB7)
+private val NavInk = CineEditorial.Background
+private val NavGold = CineEditorial.Accent
+private val NavMuted = CineEditorial.Muted
 
 @Composable
 fun P6039BottomNavOverlay(
@@ -36,8 +38,10 @@ fun P6039BottomNavOverlay(
     onOpenControlRoom: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    Column(modifier = modifier.fillMaxWidth()) {
+        HorizontalDivider(color = CineEditorial.Outline, thickness = 1.dp)
     NavigationBar(
-        modifier = modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth(),
         containerColor = NavInk,
         tonalElevation = 0.dp,
     ) {
@@ -46,6 +50,7 @@ fun P6039BottomNavOverlay(
         NavItem(AppTab.RADAR, !ottSelected && !historySelected && selected == AppTab.RADAR, Icons.Default.Movie, "Radar", onSelect)
         HistoryNavItem(historySelected, onOpenHistory)
         ControlNavItem(onOpenControlRoom)
+    }
     }
 }
 
@@ -60,8 +65,8 @@ private fun RowScope.NavItem(
     NavigationBarItem(
         selected = selected,
         onClick = { onSelect(tab) },
-        icon = { Icon(icon, contentDescription = label, modifier = Modifier.size(22.dp)) },
-        label = { Text(label, maxLines = 1, fontSize = 10.sp) },
+        icon = { Icon(icon, contentDescription = label, modifier = Modifier.size(24.dp)) },
+        label = { Text(label, maxLines = 1, fontSize = 12.sp) },
         colors = navigationItemColors(),
     )
 }
@@ -71,8 +76,8 @@ private fun RowScope.OttNavItem(selected: Boolean, onOpenOtt: () -> Unit) {
     NavigationBarItem(
         selected = selected,
         onClick = onOpenOtt,
-        icon = { Icon(Icons.Default.PlayArrow, contentDescription = "OTT releases", modifier = Modifier.size(22.dp)) },
-        label = { Text("OTT", maxLines = 1, fontSize = 10.sp) },
+        icon = { Icon(Icons.Default.PlayArrow, contentDescription = "OTT releases", modifier = Modifier.size(24.dp)) },
+        label = { Text("OTT", maxLines = 1, fontSize = 12.sp) },
         colors = navigationItemColors(),
     )
 }
@@ -82,8 +87,8 @@ private fun RowScope.HistoryNavItem(selected: Boolean, onOpenHistory: () -> Unit
     NavigationBarItem(
         selected = selected,
         onClick = onOpenHistory,
-        icon = { Icon(Icons.Default.CalendarMonth, contentDescription = "On This Day", modifier = Modifier.size(22.dp)) },
-        label = { Text("Today", maxLines = 1, fontSize = 10.sp) },
+        icon = { Icon(Icons.Default.CalendarMonth, contentDescription = "On This Day", modifier = Modifier.size(24.dp)) },
+        label = { Text("Today", maxLines = 1, fontSize = 12.sp) },
         colors = navigationItemColors(),
     )
 }
@@ -97,10 +102,10 @@ private fun RowScope.ControlNavItem(onOpenControlRoom: () -> Unit) {
             Icon(
                 Icons.Default.AccountCircle,
                 contentDescription = "Open settings",
-                modifier = Modifier.size(22.dp),
+                modifier = Modifier.size(24.dp),
             )
         },
-        label = { Text("You", maxLines = 1, fontSize = 10.sp) },
+        label = { Text("You", maxLines = 1, fontSize = 12.sp) },
         colors = navigationItemColors(),
     )
 }
@@ -109,7 +114,7 @@ private fun RowScope.ControlNavItem(onOpenControlRoom: () -> Unit) {
 private fun navigationItemColors() = NavigationBarItemDefaults.colors(
     selectedIconColor = NavGold,
     selectedTextColor = NavGold,
-    indicatorColor = NavGold.copy(alpha = 0.13f),
+    indicatorColor = CineEditorial.Raised,
     unselectedIconColor = NavMuted,
     unselectedTextColor = NavMuted,
 )

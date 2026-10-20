@@ -36,15 +36,15 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-private val SourceRoleInk = Color(0xFF0D0F13)
-private val SourceRolePanel = Color(0xFF15181E)
-private val SourceRoleRaised = Color(0xFF1B1F27)
-private val SourceRoleText = Color(0xFFF4F1EA)
-private val SourceRoleMuted = Color(0xFFA7ADB7)
-private val SourceRoleGold = Color(0xFFE7C36B)
-private val SourceRoleProduction = Color(0xFF8CB9FF)
-private val SourceRoleOtt = Color(0xFF72D6A4)
-private val SourceRoleMusic = Color(0xFFF0B862)
+private val SourceRoleInk = CineEditorial.Background
+private val SourceRolePanel = CineEditorial.Surface
+private val SourceRoleRaised = CineEditorial.Raised
+private val SourceRoleText = CineEditorial.Text
+private val SourceRoleMuted = CineEditorial.Muted
+private val SourceRoleGold = CineEditorial.Accent
+private val SourceRoleProduction = CineEditorial.Info
+private val SourceRoleOtt = CineEditorial.Confirmed
+private val SourceRoleMusic = CineEditorial.Developing
 
 private val SourceRoleColors = darkColorScheme(
     primary = SourceRoleGold,
@@ -74,10 +74,10 @@ fun NewsroomSourceRoleOverlay(
         ) {
             Icon(Icons.Default.Movie, contentDescription = null, modifier = Modifier.size(17.dp))
             Spacer(Modifier.width(6.dp))
-            Text(selected.shortLabel(), fontSize = 11.sp, fontWeight = FontWeight.Bold)
+            Text(selected.shortLabel(), fontSize = 12.sp, fontWeight = FontWeight.Bold)
             counts[selected]?.let { count ->
                 Spacer(Modifier.width(6.dp))
-                Text(count.toString(), color = SourceRoleMuted, fontSize = 10.sp)
+                Text(count.toString(), color = SourceRoleMuted, fontSize = 12.sp)
             }
         }
 
@@ -88,15 +88,15 @@ fun NewsroomSourceRoleOverlay(
                 contentColor = SourceRoleText,
             ) {
                 Column(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 18.dp).padding(bottom = 28.dp),
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = CineEditorial.Gutter).padding(bottom = 28.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    Text("YOUTUBE SOURCE TYPE", color = SourceRoleGold, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.2.sp)
-                    Text("Choose the kind of source", color = SourceRoleText, fontSize = 19.sp, fontWeight = FontWeight.Bold)
+                    Text("YOUTUBE SOURCE TYPE", color = SourceRoleGold, fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.2.sp)
+                    Text("Choose the kind of source", color = SourceRoleText, fontSize = 20.sp, fontWeight = FontWeight.Bold)
                     Text(
                         "This changes only the YouTube lane you see. Confidence filtering stays independent, so you can combine source type with Verified, Developing or other newsroom states.",
                         color = SourceRoleMuted,
-                        fontSize = 11.sp,
+                        fontSize = 12.sp,
                         lineHeight = 17.sp,
                         modifier = Modifier.padding(bottom = 7.dp),
                     )
@@ -105,7 +105,7 @@ fun NewsroomSourceRoleOverlay(
                         val selectedRow = role == selected
                         Surface(
                             color = if (selectedRow) SourceRoleGold.copy(alpha = 0.10f) else SourceRoleRaised,
-                            shape = RoundedCornerShape(15.dp),
+                            shape = RoundedCornerShape(CineEditorial.CardRadius),
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clickable {
@@ -125,10 +125,10 @@ fun NewsroomSourceRoleOverlay(
                                 )
                                 Spacer(Modifier.width(11.dp))
                                 Column(Modifier.weight(1f)) {
-                                    Text(role.label(), color = if (selectedRow) SourceRoleGold else SourceRoleText, fontSize = 13.sp, fontWeight = FontWeight.Bold)
-                                    Text(role.description(), color = SourceRoleMuted, fontSize = 10.sp)
+                                    Text(role.label(), color = if (selectedRow) SourceRoleGold else SourceRoleText, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                                    Text(role.description(), color = SourceRoleMuted, fontSize = 12.sp)
                                 }
-                                Text((counts[role] ?: 0).toString(), color = SourceRoleMuted, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                Text((counts[role] ?: 0).toString(), color = SourceRoleMuted, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                             }
                         }
                     }

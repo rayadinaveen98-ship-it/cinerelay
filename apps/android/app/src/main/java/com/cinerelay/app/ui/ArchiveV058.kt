@@ -47,12 +47,12 @@ import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
-private val ArchiveInk58 = Color(0xFF0C0E12)
-private val ArchivePanel58 = Color(0xFF171A20)
-private val ArchiveRaised58 = Color(0xFF20242C)
-private val ArchiveText58 = Color(0xFFF5F2EA)
-private val ArchiveMuted58 = Color(0xFFA8ADB7)
-private val ArchiveGold58 = Color(0xFFE8C56D)
+private val ArchiveInk58 = CineEditorial.Background
+private val ArchivePanel58 = CineEditorial.Surface
+private val ArchiveRaised58 = CineEditorial.Raised
+private val ArchiveText58 = CineEditorial.Text
+private val ArchiveMuted58 = CineEditorial.Muted
+private val ArchiveGold58 = CineEditorial.Accent
 
 @Composable
 fun ArchiveV058(
@@ -76,28 +76,18 @@ fun ArchiveV058(
     MaterialTheme(colorScheme = darkColorScheme(background = ArchiveInk58, surface = ArchivePanel58, primary = ArchiveGold58)) {
         Surface(modifier.fillMaxSize(), color = ArchiveInk58) {
             Column(Modifier.fillMaxSize()) {
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(start = 10.dp, end = 10.dp, top = 24.dp, bottom = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = ArchiveText58)
-                    }
-                    Surface(color = ArchiveGold58.copy(alpha = 0.12f), shape = RoundedCornerShape(14.dp), modifier = Modifier.size(44.dp)) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(Icons.Default.Archive, contentDescription = null, tint = ArchiveGold58)
+                CineScreenHeader(
+                    title = "Archive",
+                    subtitle = "Updates from the last ${state.retentionDays} days",
+                    onBack = onBack,
+                    actions = {
+                        IconButton(onClick = onRefresh, enabled = !state.loading) {
+                            if (state.loading) CircularProgressIndicator(Modifier.size(18.dp),
+                                strokeWidth = 2.dp, color = ArchiveGold58)
+                            else Icon(Icons.Default.Refresh, contentDescription = "Refresh archive", tint = ArchiveMuted58)
                         }
-                    }
-                    Spacer(Modifier.width(12.dp))
-                    Column(Modifier.weight(1f)) {
-                        Text("Archive", color = ArchiveText58, fontSize = 25.sp, fontWeight = FontWeight.Bold)
-                        Text("Updates from the last ${state.retentionDays} days", color = ArchiveMuted58, fontSize = 11.sp)
-                    }
-                    IconButton(onClick = onRefresh, enabled = !state.loading) {
-                        if (state.loading) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp, color = ArchiveGold58)
-                        else Icon(Icons.Default.Refresh, contentDescription = "Refresh archive", tint = ArchiveMuted58)
-                    }
-                }
+                    },
+                )
 
                 OutlinedTextField(
                     value = state.query,
@@ -105,7 +95,7 @@ fun ArchiveV058(
                     singleLine = true,
                     leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
                     placeholder = { Text("Search archived updates") },
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 8.dp),
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = CineEditorial.Gutter, vertical = 8.dp),
                 )
 
                 when {
@@ -132,7 +122,7 @@ fun ArchiveV058(
                             item {
                                 Surface(
                                     color = ArchiveRaised58,
-                                    shape = RoundedCornerShape(18.dp),
+                                    shape = RoundedCornerShape(CineEditorial.CardRadius),
                                     modifier = Modifier.fillMaxWidth().clickable(enabled = !state.loadingMore) { onLoadMore() },
                                 ) {
                                     Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
@@ -153,25 +143,23 @@ fun ArchiveV058(
 private fun ArchiveCardV058(item: ConsumerUpdate, onClick: () -> Unit) {
     Surface(
         color = ArchivePanel58,
-        shape = RoundedCornerShape(18.dp),
+        shape = RoundedCornerShape(CineEditorial.CardRadius),
         modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
     ) {
-        Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(
-                modifier = Modifier.size(width = 112.dp, height = 72.dp).clip(RoundedCornerShape(13.dp)).background(ArchiveRaised58),
-                contentAlignment = Alignment.Center,
-            ) {
-                if (!item.thumbnailUrl.isNullOrBlank()) {
-                    AsyncImage(model = item.thumbnailUrl, contentDescription = item.title, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
-                } else {
-                    Text((item.source.name ?: "C").take(1).uppercase(), color = ArchiveGold58, fontSize = 24.sp, fontWeight = FontWeight.Black)
-                }
-            }
-            Spacer(Modifier.width(12.dp))
+        Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(13.dp)) {
+            EditorialArtworkV2(
+                url = item.thumbnailUrl,
+                title = item.title,
+                modifier = Modifier.width(108.dp).height(72.dp),
+            )
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
-                Text(item.title, color = ArchiveText58, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                Text(item.source.name ?: "CineRelay source", color = ArchiveMuted58, fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text(archiveDateV058(item.observedAt), color = ArchiveMuted58, fontSize = 10.sp)
+                EditorialDisplayV2(item.title, size = 15, lines = 2)
+                Text(item.source.name ?: "CineRelay source",
+                    color = ArchiveMuted58, fontSize = CineEditorial.Metadata, maxLines = 1,
+                    overflow = TextOverflow.Ellipsis)
+                Text(archiveDateV058(item.observedAt),
+                    color = ArchiveGold58, fontSize = CineEditorial.Metadata)
             }
         }
     }

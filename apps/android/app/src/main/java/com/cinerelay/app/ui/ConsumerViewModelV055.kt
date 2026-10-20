@@ -9,6 +9,7 @@ import com.cinerelay.app.data.ConsumerDeepLinkTarget
 import com.cinerelay.app.data.OnThisDayMovie
 import com.cinerelay.app.data.OnThisDaySnapshot
 import com.cinerelay.app.data.PersonalizationState
+import com.cinerelay.app.data.PersonalizationCacheV24
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
@@ -39,22 +40,57 @@ class ConsumerViewModelV055(application: Application) : AndroidViewModel(applica
     private val app = application as CineRelayApplication
     private val consumer = app.consumerClient
     private val onThisDay = app.onThisDayClient
+    private val personalizationCache = PersonalizationCacheV24(application)
+    private val personalizationEpoch = RequestEpochV25()
+    private val detailEpoch = RequestEpochV25()
+    private var personalizationAccountId: String? = null
+
+    private fun currentAccountId(): String? =
+        app.sessionStore.read()?.userId?.takeIf { it.isNotBlank() }
+
+    private fun validPersonalizationResult(requestId: Long, accountId: String): Boolean =
+        personalizationEpoch.isCurrent(requestId) && currentAccountId() == accountId
 
     private val _state = MutableStateFlow(ConsumerUiStateV055())
     val state: StateFlow<ConsumerUiStateV055> = _state.asStateFlow()
 
     fun syncPersonalization(authenticated: Boolean, force: Boolean = false) {
         if (!authenticated) {
+            personalizationEpoch.invalidate()
+            detailEpoch.invalidate()
+            personalizationAccountId = null
             _state.value = ConsumerUiStateV055()
             return
         }
+        val accountId = currentAccountId() ?: return
+        if (personalizationAccountId != accountId) {
+            personalizationEpoch.invalidate()
+            personalizationAccountId = accountId
+            _state.value = ConsumerUiStateV055()
+        }
         if (_state.value.personalizationLoading) return
         if (!force && _state.value.personalization != null) return
+        val requestId = personalizationEpoch.advance()
 
         viewModelScope.launch {
+            if (!force && _state.value.personalization == null) {
+                val cached = withContext(Dispatchers.IO) { personalizationCache.read(accountId) }
+                if (cached != null && validPersonalizationResult(requestId, accountId)) {
+                    _state.value = _state.value.copy(
+                        personalization = cached,
+                        selectedLanguages = cached.favoriteLanguages,
+                        selectedSourceIds = cached.favoriteSourceIdentityIds,
+                    )
+                }
+            }
+            if (!validPersonalizationResult(requestId, accountId)) return@launch
             _state.value = _state.value.copy(personalizationLoading = true, personalizationError = null)
             runCatching { withContext(Dispatchers.IO) { consumer.personalization() } }
                 .onSuccess { personalization ->
+                    if (!validPersonalizationResult(requestId, accountId)) return@onSuccess
+                    viewModelScope.launch(Dispatchers.IO) {
+                        personalizationCache.write(accountId, personalization)
+                    }
                     _state.value = _state.value.copy(
                         personalizationLoading = false,
                         personalization = personalization,
@@ -64,6 +100,7 @@ class ConsumerViewModelV055(application: Application) : AndroidViewModel(applica
                     )
                 }
                 .onFailure { error ->
+                    if (!validPersonalizationResult(requestId, accountId)) return@onFailure
                     _state.value = _state.value.copy(
                         personalizationLoading = false,
                         personalizationError = friendlyError(error),
@@ -72,41 +109,32 @@ class ConsumerViewModelV055(application: Application) : AndroidViewModel(applica
         }
     }
 
+    /**
+     * Fetch one date only. The old implementation made a redundant, language-filtered
+     * request on every visit; the Worker expects human-readable language names, not
+     * the user's ISO language code. Its D1 backing store is quota-limited.
+     */
     fun loadOnThisDay(force: Boolean = false, date: String? = null) {
+        val requestDate = date?.trim()?.takeIf { it.isNotBlank() }
+            ?: java.time.LocalDate.now(java.time.ZoneId.of("Asia/Kolkata")).toString()
         val current = _state.value
         if (current.onThisDayLoading) return
-        if (!force && date == null && current.onThisDayDate != null && current.onThisDayMovies.isNotEmpty()) return
+        if (!force && current.onThisDayDate == requestDate &&
+            (current.onThisDayMovies.isNotEmpty() || current.onThisDayError == null)
+        ) return
 
         viewModelScope.launch {
-            _state.value = _state.value.copy(onThisDayLoading = true, onThisDayError = null)
+            val prior = _state.value
+            _state.value = prior.copy(
+                onThisDayLoading = true,
+                onThisDayDate = requestDate,
+                onThisDayMovies = if (prior.onThisDayDate == requestDate)
+                    prior.onThisDayMovies else emptyList(),
+                onThisDayError = null,
+            )
             runCatching {
                 withContext(Dispatchers.IO) {
-                    coroutineScope {
-                        val preferredLanguage = _state.value.personalization?.favoriteLanguages
-                            ?.firstOrNull()
-                            ?.trim()
-                            ?.lowercase()
-                            ?.takeIf { it.isNotBlank() }
-                            ?: "te"
-                        val allRequest = async {
-                            runCatching { onThisDay.load(date = date, limit = 60) }
-                        }
-                        val preferredRequest = async {
-                            runCatching { onThisDay.load(date = date, language = preferredLanguage, limit = 40) }.getOrNull()
-                        }
-                        val allSnapshot = allRequest.await().getOrElse { error ->
-                            preferredRequest.await() ?: throw error
-                        }
-                        val preferredSnapshot = preferredRequest.await()
-                        val merged = buildList {
-                            preferredSnapshot?.movies?.let(::addAll)
-                            addAll(allSnapshot.movies)
-                        }.distinctBy { it.id }.take(100)
-                        OnThisDaySnapshot(
-                            selectedDate = allSnapshot.selectedDate,
-                            movies = merged,
-                        )
-                    }
+                    onThisDay.load(date = requestDate, limit = 100)
                 }
             }.onSuccess { snapshot ->
                 _state.value = _state.value.copy(
@@ -115,10 +143,10 @@ class ConsumerViewModelV055(application: Application) : AndroidViewModel(applica
                     onThisDayMovies = snapshot.movies,
                     onThisDayError = null,
                 )
-            }.onFailure {
+            }.onFailure { error ->
                 _state.value = _state.value.copy(
                     onThisDayLoading = false,
-                    onThisDayError = "Cinema history is temporarily unavailable.",
+                    onThisDayError = "Cinema history couldn't load right now. Please retry later.",
                 )
             }
         }
@@ -158,7 +186,10 @@ class ConsumerViewModelV055(application: Application) : AndroidViewModel(applica
             return
         }
 
+        val accountId = currentAccountId() ?: return
+        val requestId = personalizationEpoch.advance()
         viewModelScope.launch {
+            if (!validPersonalizationResult(requestId, accountId)) return@launch
             _state.value = _state.value.copy(personalizationBusy = true, personalizationError = null)
             runCatching {
                 withContext(Dispatchers.IO) {
@@ -170,6 +201,10 @@ class ConsumerViewModelV055(application: Application) : AndroidViewModel(applica
                     consumer.personalization()
                 }
             }.onSuccess { personalization ->
+                if (!validPersonalizationResult(requestId, accountId)) return@onSuccess
+                viewModelScope.launch(Dispatchers.IO) {
+                    personalizationCache.write(accountId, personalization)
+                }
                 _state.value = _state.value.copy(
                     personalizationBusy = false,
                     personalization = personalization,
@@ -179,6 +214,7 @@ class ConsumerViewModelV055(application: Application) : AndroidViewModel(applica
                 )
                 onSaved?.invoke()
             }.onFailure { error ->
+                if (!validPersonalizationResult(requestId, accountId)) return@onFailure
                 _state.value = _state.value.copy(
                     personalizationBusy = false,
                     personalizationError = friendlyError(error),
@@ -188,6 +224,8 @@ class ConsumerViewModelV055(application: Application) : AndroidViewModel(applica
     }
 
     fun openNotification(eventId: String?, rawItemId: String?, canonicalUrl: String?) {
+        val requestId = detailEpoch.advance()
+        val accountId = currentAccountId()
         val normalizedEventId = eventId?.trim().orEmpty()
         val normalizedRawItemId = rawItemId?.trim().orEmpty()
         if (normalizedEventId.isBlank() && normalizedRawItemId.isBlank()) {
@@ -213,12 +251,14 @@ class ConsumerViewModelV055(application: Application) : AndroidViewModel(applica
                     else consumer.rawItem(normalizedRawItemId)
                 }
             }.onSuccess { target ->
+                if (!detailEpoch.isCurrent(requestId) || accountId != currentAccountId()) return@onSuccess
                 _state.value = _state.value.copy(
                     deepLinkLoading = false,
                     deepLinkTarget = target,
                     deepLinkError = null,
                 )
             }.onFailure { error ->
+                if (!detailEpoch.isCurrent(requestId) || accountId != currentAccountId()) return@onFailure
                 _state.value = _state.value.copy(
                     deepLinkLoading = false,
                     deepLinkTarget = null,
@@ -229,6 +269,7 @@ class ConsumerViewModelV055(application: Application) : AndroidViewModel(applica
     }
 
     fun closeNotification() {
+        detailEpoch.invalidate()
         _state.value = _state.value.copy(
             deepLinkLoading = false,
             deepLinkTarget = null,

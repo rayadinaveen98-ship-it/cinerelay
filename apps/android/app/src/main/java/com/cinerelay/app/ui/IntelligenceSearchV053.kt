@@ -58,17 +58,17 @@ import com.cinerelay.app.data.OttRelease
 import java.time.Duration
 import java.time.Instant
 
-private val IntelligenceInk = Color(0xFF0D0F13)
-private val IntelligencePanel = Color(0xFF15181E)
-private val IntelligenceRaised = Color(0xFF1B1F27)
-private val IntelligenceLine = Color(0xFF2A303A)
-private val IntelligenceText = Color(0xFFF4F1EA)
-private val IntelligenceMuted = Color(0xFFA7ADB7)
-private val IntelligenceGold = Color(0xFFE7C36B)
-private val IntelligenceGreen = Color(0xFF72D6A4)
-private val IntelligenceAmber = Color(0xFFF0B862)
-private val IntelligenceRed = Color(0xFFF08079)
-private val IntelligenceBlue = Color(0xFF8CB9FF)
+private val IntelligenceInk = CineEditorial.Background
+private val IntelligencePanel = CineEditorial.Surface
+private val IntelligenceRaised = CineEditorial.Raised
+private val IntelligenceLine = CineEditorial.Outline
+private val IntelligenceText = CineEditorial.Text
+private val IntelligenceMuted = CineEditorial.Muted
+private val IntelligenceGold = CineEditorial.Accent
+private val IntelligenceGreen = CineEditorial.Confirmed
+private val IntelligenceAmber = CineEditorial.Developing
+private val IntelligenceRed = CineEditorial.Error
+private val IntelligenceBlue = CineEditorial.Info
 
 @Composable
 fun IntelligenceSearchV053(
@@ -84,7 +84,7 @@ fun IntelligenceSearchV053(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .statusBarsPadding()
+                
                 .navigationBarsPadding(),
         ) {
             IntelligenceHeader(
@@ -99,7 +99,7 @@ fun IntelligenceSearchV053(
                     shape = RoundedCornerShape(12.dp),
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 5.dp).fillMaxWidth(),
                 ) {
-                    Text(error, color = IntelligenceRed, fontSize = 11.sp, modifier = Modifier.padding(11.dp))
+                    Text(error, color = IntelligenceRed, fontSize = 12.sp, modifier = Modifier.padding(11.dp))
                 }
             }
 
@@ -122,29 +122,11 @@ fun IntelligenceSearchV053(
 
 @Composable
 private fun IntelligenceHeader(title: String, subtitle: String, onBack: () -> Unit) {
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        IconButton(onClick = onBack) {
-            Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = IntelligenceText)
-        }
-        Surface(
-            color = IntelligenceGold.copy(alpha = 0.10f),
-            shape = RoundedCornerShape(13.dp),
-            modifier = Modifier.size(40.dp),
-        ) {
-            Box(contentAlignment = Alignment.Center) {
-                Icon(Icons.Default.Search, contentDescription = null, tint = IntelligenceGold, modifier = Modifier.size(21.dp))
-            }
-        }
-        Spacer(Modifier.width(10.dp))
-        Column(Modifier.weight(1f)) {
-            Text("CINERELAY INTELLIGENCE", color = IntelligenceGold, fontSize = 8.sp, fontWeight = FontWeight.Black, letterSpacing = 1.2.sp)
-            Text(title, color = IntelligenceText, fontSize = 20.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text(subtitle, color = IntelligenceMuted, fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-        }
-    }
+    CineScreenHeader(
+        title = title,
+        subtitle = if (subtitle == "Films, series and canonical stories") null else subtitle,
+        onBack = onBack,
+    )
 }
 
 @Composable
@@ -176,12 +158,12 @@ private fun SearchBody(
             !state.loading && state.query.trim().length >= 2 && state.results.isEmpty() && state.error == null -> {
                 Box(Modifier.fillMaxSize().padding(horizontal = 28.dp, vertical = 50.dp), contentAlignment = Alignment.TopCenter) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("No canonical title found", color = IntelligenceText, fontSize = 17.sp, fontWeight = FontWeight.Bold)
+                        Text("No canonical title found", color = IntelligenceText, fontSize = 18.sp, fontWeight = FontWeight.Bold)
                         Spacer(Modifier.height(7.dp))
                         Text(
-                            "CineRelay only shows reviewed film and series hubs. Raw posts do not become titles automatically.",
+                            "Try a different title.",
                             color = IntelligenceMuted,
-                            fontSize = 11.sp,
+                            fontSize = 12.sp,
                             lineHeight = 17.sp,
                         )
                     }
@@ -195,9 +177,9 @@ private fun SearchBody(
                     if (state.results.isNotEmpty()) {
                         item {
                             Text(
-                                "CANONICAL RESULTS",
+                                "Results",
                                 color = IntelligenceMuted,
-                                fontSize = 9.sp,
+                                fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold,
                                 letterSpacing = 1.1.sp,
                             )
@@ -224,7 +206,7 @@ private fun SearchEmptyIntro() {
             }
         }
         Spacer(Modifier.height(14.dp))
-        Text("Find the story, not the post", color = IntelligenceText, fontSize = 19.sp, fontWeight = FontWeight.Bold)
+        Text("Find the story, not the post", color = IntelligenceText, fontSize = CineEditorial.SectionTitle, fontWeight = FontWeight.SemiBold)
         Spacer(Modifier.height(7.dp))
         Text(
             "Search across reviewed CineRelay film and series identities. One hub collects the canonical story and its resolved source evidence.",
@@ -239,13 +221,13 @@ private fun SearchEmptyIntro() {
 private fun EntitySearchRow(entity: IntelligenceEntity, onClick: () -> Unit) {
     Surface(
         color = IntelligencePanel,
-        shape = RoundedCornerShape(18.dp),
+        shape = RoundedCornerShape(CineEditorial.CardRadius),
         modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
     ) {
         Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
             Surface(color = IntelligenceGold.copy(alpha = 0.10f), shape = CircleShape, modifier = Modifier.size(42.dp)) {
                 Box(contentAlignment = Alignment.Center) {
-                    Text(entity.name.take(1).uppercase(), color = IntelligenceGold, fontSize = 15.sp, fontWeight = FontWeight.Black)
+                    Text(entity.name.take(1).uppercase(), color = IntelligenceGold, fontSize = 16.sp, fontWeight = FontWeight.Black)
                 }
             }
             Spacer(Modifier.width(12.dp))
@@ -254,10 +236,10 @@ private fun EntitySearchRow(entity: IntelligenceEntity, onClick: () -> Unit) {
                 Text(
                     listOfNotNull(prettyIntelligenceValue(entity.type), entity.primaryLanguage?.uppercase()).joinToString(" • "),
                     color = IntelligenceMuted,
-                    fontSize = 10.sp,
+                    fontSize = 12.sp,
                 )
                 entity.aliases.firstOrNull { it.value != entity.name }?.let { alias ->
-                    Text(alias.value, color = IntelligenceMuted, fontSize = 9.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(alias.value, color = IntelligenceMuted, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
             }
             if (entity.followed) Icon(Icons.Default.Star, contentDescription = null, tint = IntelligenceGold, modifier = Modifier.size(18.dp))
@@ -273,15 +255,15 @@ private fun HubBody(state: IntelligenceUiState, onToggleFollow: () -> Unit) {
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         item {
-            Surface(color = IntelligenceRaised, shape = RoundedCornerShape(22.dp), modifier = Modifier.fillMaxWidth()) {
+            Surface(color = IntelligenceRaised, shape = RoundedCornerShape(CineEditorial.CardRadius), modifier = Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(16.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Column(Modifier.weight(1f)) {
-                            Text(hub.entity.name, color = IntelligenceText, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+                            Text(hub.entity.name, color = IntelligenceText, fontSize = CineEditorial.SectionTitle, fontWeight = FontWeight.SemiBold)
                             Text(
                                 listOfNotNull(prettyIntelligenceValue(hub.entity.type), hub.entity.primaryLanguage?.uppercase()).joinToString(" • "),
                                 color = IntelligenceMuted,
-                                fontSize = 10.sp,
+                                fontSize = 12.sp,
                             )
                         }
                         IconButton(onClick = onToggleFollow, enabled = !state.loading) {
@@ -297,7 +279,7 @@ private fun HubBody(state: IntelligenceUiState, onToggleFollow: () -> Unit) {
                         Text(
                             hub.entity.aliases.map { it.value }.distinct().take(4).joinToString(" • "),
                             color = IntelligenceMuted,
-                            fontSize = 9.sp,
+                            fontSize = 12.sp,
                             maxLines = 2,
                             overflow = TextOverflow.Ellipsis,
                         )
@@ -332,9 +314,9 @@ private fun HubBody(state: IntelligenceUiState, onToggleFollow: () -> Unit) {
 @Composable
 private fun IntelligenceSectionLabel(title: String, detail: String) {
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Text(title, color = IntelligenceMuted, fontSize = 9.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.1.sp)
+        Text(title, color = IntelligenceMuted, fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.1.sp)
         Spacer(Modifier.weight(1f))
-        Text(detail, color = IntelligenceMuted, fontSize = 9.sp)
+        Text(detail, color = IntelligenceMuted, fontSize = 12.sp)
     }
 }
 
@@ -346,27 +328,27 @@ private fun IntelligenceEventCard(event: IntelligenceEvent) {
         "RUMOR" -> IntelligenceRed
         else -> IntelligenceBlue
     }
-    Card(colors = CardDefaults.cardColors(containerColor = IntelligencePanel), shape = RoundedCornerShape(20.dp), modifier = Modifier.fillMaxWidth()) {
+    Card(colors = CardDefaults.cardColors(containerColor = IntelligencePanel), shape = RoundedCornerShape(CineEditorial.CardRadius), modifier = Modifier.fillMaxWidth()) {
         Column(Modifier.padding(15.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Surface(color = stateColor.copy(alpha = 0.10f), shape = RoundedCornerShape(50)) {
                     Text(
                         prettyIntelligenceValue(event.verificationState),
                         color = stateColor,
-                        fontSize = 8.sp,
+                        fontSize = 12.sp,
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp),
                     )
                 }
                 Spacer(Modifier.width(7.dp))
-                Text(prettyIntelligenceValue(event.eventType), color = IntelligenceMuted, fontSize = 9.sp, modifier = Modifier.weight(1f))
-                Text(intelligenceTimeAgo(event.detectedAt), color = IntelligenceMuted, fontSize = 9.sp)
+                Text(prettyIntelligenceValue(event.eventType), color = IntelligenceMuted, fontSize = 12.sp, modifier = Modifier.weight(1f))
+                Text(intelligenceTimeAgo(event.detectedAt), color = IntelligenceMuted, fontSize = 12.sp)
             }
             Spacer(Modifier.height(10.dp))
             Text(event.headline, color = IntelligenceText, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, lineHeight = 22.sp)
             event.summary?.takeIf { it.isNotBlank() }?.let { summary ->
                 Spacer(Modifier.height(6.dp))
-                Text(summary, color = IntelligenceMuted, fontSize = 11.sp, lineHeight = 17.sp, maxLines = 3, overflow = TextOverflow.Ellipsis)
+                Text(summary, color = IntelligenceMuted, fontSize = 12.sp, lineHeight = 17.sp, maxLines = 3, overflow = TextOverflow.Ellipsis)
             }
             Spacer(Modifier.height(10.dp))
             HorizontalDivider(color = IntelligenceLine)
@@ -374,10 +356,10 @@ private fun IntelligenceEventCard(event: IntelligenceEvent) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Default.CheckCircle, contentDescription = null, tint = IntelligenceGreen, modifier = Modifier.size(13.dp))
                 Spacer(Modifier.width(5.dp))
-                Text("${event.evidence.total} evidence", color = IntelligenceMuted, fontSize = 9.sp)
+                Text("${event.evidence.total} evidence", color = IntelligenceMuted, fontSize = 12.sp)
                 if (event.evidence.conflicting > 0) {
                     Spacer(Modifier.width(8.dp))
-                    Text("${event.evidence.conflicting} conflict", color = IntelligenceRed, fontSize = 9.sp)
+                    Text("${event.evidence.conflicting} conflict", color = IntelligenceRed, fontSize = 12.sp)
                 }
             }
         }
@@ -400,7 +382,7 @@ private fun IntelligenceOttReleaseCard(release: OttRelease) {
 
     Card(
         colors = CardDefaults.cardColors(containerColor = IntelligencePanel),
-        shape = RoundedCornerShape(20.dp),
+        shape = RoundedCornerShape(CineEditorial.CardRadius),
         modifier = Modifier.fillMaxWidth(),
     ) {
         Column(Modifier.padding(15.dp)) {
@@ -409,7 +391,7 @@ private fun IntelligenceOttReleaseCard(release: OttRelease) {
                     Text(
                         prettyIntelligenceValue(release.evidenceStatus),
                         color = statusColor,
-                        fontSize = 8.sp,
+                        fontSize = 12.sp,
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp),
                     )
@@ -418,22 +400,22 @@ private fun IntelligenceOttReleaseCard(release: OttRelease) {
                 Text(
                     prettyIntelligenceValue(release.state),
                     color = IntelligenceMuted,
-                    fontSize = 9.sp,
+                    fontSize = 12.sp,
                     modifier = Modifier.weight(1f),
                 )
                 release.lastVerifiedAt?.let { verifiedAt ->
-                    Text("checked ${intelligenceTimeAgo(verifiedAt)}", color = IntelligenceMuted, fontSize = 9.sp)
+                    Text("checked ${intelligenceTimeAgo(verifiedAt)}", color = IntelligenceMuted, fontSize = 12.sp)
                 }
             }
             Spacer(Modifier.height(10.dp))
             Text(release.provider.name, color = IntelligenceGold, fontSize = 12.sp, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(3.dp))
-            Text(dateLabel, color = IntelligenceText, fontSize = 19.sp, fontWeight = FontWeight.Bold)
-            Text(secondary, color = IntelligenceMuted, fontSize = 9.sp)
+            Text(dateLabel, color = IntelligenceText, fontSize = CineEditorial.SectionTitle, fontWeight = FontWeight.SemiBold)
+            Text(secondary, color = IntelligenceMuted, fontSize = 12.sp)
 
             release.previousReleaseDate?.takeIf { it.isNotBlank() && it != release.releaseDate }?.let { previous ->
                 Spacer(Modifier.height(7.dp))
-                Text("Changed from $previous", color = IntelligenceAmber, fontSize = 9.sp)
+                Text("Changed from $previous", color = IntelligenceAmber, fontSize = 12.sp)
             }
 
             Spacer(Modifier.height(10.dp))
@@ -442,14 +424,14 @@ private fun IntelligenceOttReleaseCard(release: OttRelease) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Default.CheckCircle, contentDescription = null, tint = statusColor, modifier = Modifier.size(13.dp))
                 Spacer(Modifier.width(5.dp))
-                Text("${release.evidence.total} release evidence", color = IntelligenceMuted, fontSize = 9.sp)
+                Text("${release.evidence.total} release evidence", color = IntelligenceMuted, fontSize = 12.sp)
                 if (release.evidence.firstParty > 0) {
                     Spacer(Modifier.width(8.dp))
-                    Text("${release.evidence.firstParty} first-party", color = IntelligenceGreen, fontSize = 9.sp)
+                    Text("${release.evidence.firstParty} first-party", color = IntelligenceGreen, fontSize = 12.sp)
                 }
                 if (release.evidence.conflicting > 0) {
                     Spacer(Modifier.width(8.dp))
-                    Text("${release.evidence.conflicting} conflict", color = IntelligenceRed, fontSize = 9.sp)
+                    Text("${release.evidence.conflicting} conflict", color = IntelligenceRed, fontSize = 12.sp)
                 }
             }
         }
@@ -459,22 +441,22 @@ private fun IntelligenceOttReleaseCard(release: OttRelease) {
 @Composable
 private fun IntelligenceActivityCard(item: IntelligenceActivity) {
     val context = LocalContext.current
-    Surface(color = IntelligencePanel, shape = RoundedCornerShape(18.dp), modifier = Modifier.fillMaxWidth()) {
+    Surface(color = IntelligencePanel, shape = RoundedCornerShape(CineEditorial.CardRadius), modifier = Modifier.fillMaxWidth()) {
         Column(Modifier.padding(14.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(item.source.name ?: "CineRelay source", color = IntelligenceGold, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text(intelligenceTimeAgo(item.observedAt), color = IntelligenceMuted, fontSize = 9.sp)
+                Text(item.source.name ?: "CineRelay source", color = IntelligenceGold, fontSize = 12.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(intelligenceTimeAgo(item.observedAt), color = IntelligenceMuted, fontSize = 12.sp)
             }
             Text(
                 listOfNotNull(item.source.platform, item.source.handle).joinToString(" • "),
                 color = IntelligenceMuted,
-                fontSize = 9.sp,
+                fontSize = 12.sp,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
             item.title?.takeIf { it.isNotBlank() }?.let { title ->
                 Spacer(Modifier.height(8.dp))
-                Text(title, color = IntelligenceText, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, lineHeight = 19.sp, maxLines = 3, overflow = TextOverflow.Ellipsis)
+                Text(title, color = IntelligenceText, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, lineHeight = 19.sp, maxLines = 3, overflow = TextOverflow.Ellipsis)
             }
             item.canonicalUrl?.takeIf { it.isNotBlank() }?.let { url ->
                 TextButton(
@@ -483,7 +465,7 @@ private fun IntelligenceActivityCard(item: IntelligenceActivity) {
                 ) {
                     Icon(Icons.Default.OpenInNew, contentDescription = null, modifier = Modifier.size(13.dp), tint = IntelligenceGold)
                     Spacer(Modifier.width(4.dp))
-                    Text("Open source", color = IntelligenceGold, fontSize = 9.sp)
+                    Text("Open source", color = IntelligenceGold, fontSize = 12.sp)
                 }
             }
         }
@@ -492,11 +474,11 @@ private fun IntelligenceActivityCard(item: IntelligenceActivity) {
 
 @Composable
 private fun HubEmptyCard(title: String, body: String) {
-    Surface(color = IntelligencePanel, shape = RoundedCornerShape(18.dp), modifier = Modifier.fillMaxWidth()) {
+    Surface(color = IntelligencePanel, shape = RoundedCornerShape(CineEditorial.CardRadius), modifier = Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp)) {
-            Text(title, color = IntelligenceText, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+            Text(title, color = IntelligenceText, fontSize = 14.sp, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(5.dp))
-            Text(body, color = IntelligenceMuted, fontSize = 10.sp, lineHeight = 16.sp)
+            Text(body, color = IntelligenceMuted, fontSize = 12.sp, lineHeight = 16.sp)
         }
     }
 }

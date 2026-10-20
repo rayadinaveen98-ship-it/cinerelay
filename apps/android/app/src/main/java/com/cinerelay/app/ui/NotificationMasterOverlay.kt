@@ -29,14 +29,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-private val MasterPanel = Color(0xFF171A20)
-private val MasterLine = Color(0xFF2A303A)
-private val MasterText = Color(0xFFF4F1EA)
-private val MasterMuted = Color(0xFFA7ADB7)
-private val MasterGold = Color(0xFFE7C36B)
-private val MasterGreen = Color(0xFF72D6A4)
-private val MasterRed = Color(0xFFF08079)
-private val MasterInk = Color(0xFF0D0F13)
+private val MasterPanel = CineEditorial.Surface
+private val MasterLine = CineEditorial.Outline
+private val MasterText = CineEditorial.Text
+private val MasterMuted = CineEditorial.Muted
+private val MasterGold = CineEditorial.Accent
+private val MasterGreen = CineEditorial.Confirmed
+private val MasterRed = CineEditorial.Error
+private val MasterInk = CineEditorial.Background
 
 @Composable
 fun NotificationMasterOverlay(
@@ -55,7 +55,7 @@ fun NotificationMasterOverlay(
     Surface(
         modifier = modifier.fillMaxWidth(),
         color = MasterPanel.copy(alpha = 0.98f),
-        shape = RoundedCornerShape(20.dp),
+        shape = RoundedCornerShape(CineEditorial.CardRadius),
         shadowElevation = 10.dp,
         tonalElevation = 0.dp,
     ) {
@@ -82,7 +82,7 @@ fun NotificationMasterOverlay(
                     Text(
                         text = "Source notifications",
                         color = MasterText,
-                        fontSize = 13.sp,
+                        fontSize = 14.sp,
                         fontWeight = FontWeight.Bold,
                     )
                     Text(
@@ -92,7 +92,7 @@ fun NotificationMasterOverlay(
                             else -> "$selectedCount channels • $typeLabel • Paused"
                         },
                         color = if (state.masterEnabled) MasterGreen else MasterMuted,
-                        fontSize = 10.sp,
+                        fontSize = 12.sp,
                     )
                 }
                 if (state.saving) {
@@ -121,7 +121,7 @@ fun NotificationMasterOverlay(
                 Text(
                     text = message,
                     color = MasterRed,
-                    fontSize = 10.sp,
+                    fontSize = 12.sp,
                     lineHeight = 15.sp,
                 )
             }

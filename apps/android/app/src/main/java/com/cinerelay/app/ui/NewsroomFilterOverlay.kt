@@ -36,16 +36,16 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-private val FilterInk = Color(0xFF0D0F13)
-private val FilterPanel = Color(0xFF15181E)
-private val FilterRaised = Color(0xFF1B1F27)
-private val FilterText = Color(0xFFF4F1EA)
-private val FilterMuted = Color(0xFFA7ADB7)
-private val FilterGold = Color(0xFFE7C36B)
-private val FilterGreen = Color(0xFF72D6A4)
-private val FilterAmber = Color(0xFFF0B862)
-private val FilterOrange = Color(0xFFFF9D63)
-private val FilterRed = Color(0xFFF08079)
+private val FilterInk = CineEditorial.Background
+private val FilterPanel = CineEditorial.Surface
+private val FilterRaised = CineEditorial.Raised
+private val FilterText = CineEditorial.Text
+private val FilterMuted = CineEditorial.Muted
+private val FilterGold = CineEditorial.Accent
+private val FilterGreen = CineEditorial.Confirmed
+private val FilterAmber = CineEditorial.Developing
+private val FilterOrange = CineEditorial.Developing
+private val FilterRed = CineEditorial.Error
 
 private val FilterColors = darkColorScheme(
     primary = FilterGold,
@@ -77,12 +77,12 @@ fun NewsroomFilterOverlay(
             Spacer(Modifier.width(6.dp))
             Text(
                 if (selected == NewsroomFilter.ALL) "Filter" else selected.label(),
-                fontSize = 11.sp,
+                fontSize = 12.sp,
                 fontWeight = FontWeight.Bold,
             )
             counts[selected]?.let { count ->
                 Spacer(Modifier.width(6.dp))
-                Text(count.toString(), color = FilterMuted, fontSize = 10.sp)
+                Text(count.toString(), color = FilterMuted, fontSize = 12.sp)
             }
         }
 
@@ -93,15 +93,15 @@ fun NewsroomFilterOverlay(
                 contentColor = FilterText,
             ) {
                 Column(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 18.dp).padding(bottom = 28.dp),
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = CineEditorial.Gutter).padding(bottom = 28.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    Text("NEWSROOM FILTER", color = FilterGold, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.2.sp)
-                    Text("Show signals by confidence state", color = FilterText, fontSize = 19.sp, fontWeight = FontWeight.Bold)
+                    Text("NEWSROOM FILTER", color = FilterGold, fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.2.sp)
+                    Text("Show signals by confidence state", color = FilterText, fontSize = 20.sp, fontWeight = FontWeight.Bold)
                     Text(
                         "Filtering changes only what you see. CineRelay keeps ingesting and enriching every accepted newsroom signal in the background.",
                         color = FilterMuted,
-                        fontSize = 11.sp,
+                        fontSize = 12.sp,
                         lineHeight = 17.sp,
                         modifier = Modifier.padding(bottom = 7.dp),
                     )
@@ -110,7 +110,7 @@ fun NewsroomFilterOverlay(
                         val selectedRow = filter == selected
                         Surface(
                             color = if (selectedRow) FilterGold.copy(alpha = 0.10f) else FilterRaised,
-                            shape = RoundedCornerShape(15.dp),
+                            shape = RoundedCornerShape(CineEditorial.CardRadius),
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clickable {
@@ -134,12 +134,12 @@ fun NewsroomFilterOverlay(
                                 }
                                 Spacer(Modifier.width(11.dp))
                                 Column(Modifier.weight(1f)) {
-                                    Text(filter.label(), color = if (selectedRow) FilterGold else FilterText, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                                    Text(filter.label(), color = if (selectedRow) FilterGold else FilterText, fontSize = 14.sp, fontWeight = FontWeight.Bold)
                                     if (filter != NewsroomFilter.ALL) {
-                                        Text(filter.description(), color = FilterMuted, fontSize = 10.sp)
+                                        Text(filter.description(), color = FilterMuted, fontSize = 12.sp)
                                     }
                                 }
-                                Text((counts[filter] ?: 0).toString(), color = FilterMuted, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                Text((counts[filter] ?: 0).toString(), color = FilterMuted, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                             }
                         }
                     }

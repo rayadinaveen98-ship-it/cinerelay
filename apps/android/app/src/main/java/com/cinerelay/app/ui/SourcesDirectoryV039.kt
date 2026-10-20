@@ -17,7 +17,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -58,17 +57,17 @@ import com.cinerelay.app.data.SourceDirectoryItem
 import java.time.Duration
 import java.time.Instant
 
-private val SourcesInk = Color(0xFF0D0F13)
-private val SourcesPanel = Color(0xFF15181E)
-private val SourcesPanelRaised = Color(0xFF1B1F27)
-private val SourcesLine = Color(0xFF2A303A)
-private val SourcesText = Color(0xFFF4F1EA)
-private val SourcesMuted = Color(0xFFA7ADB7)
-private val SourcesGold = Color(0xFFE7C36B)
-private val SourcesGreen = Color(0xFF72D6A4)
-private val SourcesAmber = Color(0xFFF0B862)
-private val SourcesRed = Color(0xFFF08079)
-private val SourcesBlue = Color(0xFF8CB9FF)
+private val SourcesInk = CineEditorial.Background
+private val SourcesPanel = CineEditorial.Surface
+private val SourcesPanelRaised = CineEditorial.Raised
+private val SourcesLine = CineEditorial.Outline
+private val SourcesText = CineEditorial.Text
+private val SourcesMuted = CineEditorial.Muted
+private val SourcesGold = CineEditorial.Accent
+private val SourcesGreen = CineEditorial.Confirmed
+private val SourcesAmber = CineEditorial.Developing
+private val SourcesRed = CineEditorial.Error
+private val SourcesBlue = CineEditorial.Info
 
 @Composable
 fun SourcesDirectoryV039(
@@ -80,11 +79,7 @@ fun SourcesDirectoryV039(
     modifier: Modifier = Modifier,
 ) {
     Surface(modifier = modifier.fillMaxSize(), color = SourcesInk) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .statusBarsPadding(),
-        ) {
+        Column(modifier = Modifier.fillMaxSize()) {
             SourcesTopBar(
                 state = state,
                 onRefresh = onRefresh,
@@ -102,7 +97,7 @@ fun SourcesDirectoryV039(
                     Text(
                         message,
                         color = SourcesRed,
-                        fontSize = 11.sp,
+                        fontSize = 12.sp,
                         modifier = Modifier.padding(horizontal = 12.dp, vertical = 9.dp),
                     )
                 }
@@ -141,66 +136,32 @@ private fun SourcesTopBar(
     onRefresh: () -> Unit,
     onBack: () -> Unit,
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 12.dp, vertical = 10.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        if (state.selectedSource != null) {
-            IconButton(onClick = onBack) {
-                Icon(Icons.Default.ArrowBack, contentDescription = "Back to sources", tint = SourcesText)
-            }
-        } else {
-            SourceBrandMark()
-            Spacer(Modifier.width(10.dp))
-        }
-
-        Column(Modifier.weight(1f)) {
-            Text(
-                "CINERELAY",
-                color = SourcesGold,
-                fontSize = 9.sp,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = 1.4.sp,
-            )
-            Text(
-                state.selectedSource?.name ?: "Sources",
-                color = SourcesText,
-                fontSize = if (state.selectedSource == null) 22.sp else 18.sp,
-                fontWeight = FontWeight.Bold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            if (state.selectedSource != null) {
-                Text(
-                    listOfNotNull(
-                        prettySourcePlatform(state.selectedSource.platform),
-                        state.selectedSource.handle,
-                        prettySourceRole(state.selectedSource.role),
-                    ).joinToString(" • "),
-                    color = SourcesMuted,
-                    fontSize = 10.sp,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-        }
-
-        IconButton(onClick = onRefresh, enabled = !state.loading) {
-            if (state.loading) {
-                CircularProgressIndicator(Modifier.size(19.dp), strokeWidth = 2.dp, color = SourcesGold)
-            } else {
-                Icon(Icons.Default.Refresh, contentDescription = "Refresh sources", tint = SourcesMuted)
-            }
-        }
+    val selectedSource = state.selectedSource
+    val subtitle = selectedSource?.let {
+        listOfNotNull(prettySourcePlatform(it.platform), it.handle).joinToString(" • ")
     }
+    CineScreenHeader(
+        title = selectedSource?.name ?: "Sources",
+        subtitle = subtitle,
+        onBack = if (selectedSource != null) onBack else null,
+        actions = {
+            IconButton(onClick = onRefresh, enabled = !state.loading) {
+                if (state.loading) {
+                    CircularProgressIndicator(
+                        Modifier.size(19.dp), strokeWidth = 2.dp, color = SourcesGold,
+                    )
+                } else {
+                    Icon(Icons.Default.Refresh, contentDescription = "Refresh sources", tint = SourcesMuted)
+                }
+            }
+        },
+    )
 }
 
 @Composable
 private fun SourceBrandMark() {
     Surface(
-        shape = RoundedCornerShape(13.dp),
+        shape = RoundedCornerShape(12.dp),
         color = SourcesGold.copy(alpha = 0.08f),
         modifier = Modifier.size(40.dp),
     ) {
@@ -260,28 +221,6 @@ private fun SourcesDirectoryList(
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         item { SourcesSummaryCard(state) }
-        item {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 4.dp, bottom = 2.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    when (state.platform) {
-                        NewsroomPlatform.YOUTUBE -> "OFFICIAL SOURCES"
-                        NewsroomPlatform.WEB -> "WEB SOURCES"
-                        NewsroomPlatform.X -> "X SOURCES"
-                    },
-                    color = SourcesMuted,
-                    fontSize = 9.sp,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 1.2.sp,
-                )
-                Spacer(Modifier.weight(1f))
-                Text("Recent activity first", color = SourcesMuted, fontSize = 9.sp)
-            }
-        }
         items(state.sources, key = { it.identityId }) { source ->
             val selected = source.identityId in state.notificationSourceIds
             SourceRow(
@@ -299,47 +238,13 @@ private fun SourcesDirectoryList(
 
 @Composable
 private fun SourcesSummaryCard(state: SourcesUiState) {
-    Surface(
-        color = SourcesPanelRaised,
-        shape = RoundedCornerShape(20.dp),
-        modifier = Modifier.fillMaxWidth(),
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 5.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Column(Modifier.padding(16.dp)) {
-            Text(
-                when (state.platform) {
-                    NewsroomPlatform.YOUTUBE -> "YouTube source desk"
-                    NewsroomPlatform.WEB -> "Web source desk"
-                    NewsroomPlatform.X -> "X source desk"
-                },
-                color = SourcesText,
-                fontSize = 15.sp,
-                fontWeight = FontWeight.Bold,
-            )
-            Spacer(Modifier.height(4.dp))
-            Text(
-                if (state.platform == NewsroomPlatform.YOUTUBE)
-                    "${state.sourceCount} official sources • ${state.activeInLast24h} active in the last 24h"
-                else
-                    "${state.sourceCount} tracked sources • ${state.activeInLast24h} active in the last 24h",
-                color = SourcesMuted,
-                fontSize = 11.sp,
-            )
-            if (state.platform == NewsroomPlatform.YOUTUBE && state.authenticated && state.notificationSetupCompleted) {
-                Spacer(Modifier.height(5.dp))
-                Text(
-                    "${state.notificationSourceIds.size} notification sources • ${if (state.notificationMasterEnabled) "alerts on" else "alerts paused"}",
-                    color = if (state.notificationMasterEnabled) SourcesGreen else SourcesAmber,
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.Bold,
-                )
-            }
-            Spacer(Modifier.height(13.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                MetricPill(label = "Sources", value = state.sourceCount.toString())
-                MetricPill(label = "Active 24h", value = state.activeInLast24h.toString())
-                MetricPill(label = "New posts", value = state.newItems24h.toString())
-            }
-        }
+        MetricPill(label = "Sources", value = state.sourceCount.toString())
+        MetricPill(label = "Active", value = state.activeInLast24h.toString())
+        MetricPill(label = "New posts", value = state.newItems24h.toString())
     }
 }
 
@@ -347,12 +252,12 @@ private fun SourcesSummaryCard(state: SourcesUiState) {
 private fun RowScope.MetricPill(label: String, value: String) {
     Surface(
         color = SourcesInk.copy(alpha = 0.6f),
-        shape = RoundedCornerShape(14.dp),
+        shape = RoundedCornerShape(12.dp),
         modifier = Modifier.weight(1f),
     ) {
         Column(Modifier.padding(horizontal = 10.dp, vertical = 9.dp)) {
             Text(value, color = SourcesGold, fontSize = 16.sp, fontWeight = FontWeight.Bold)
-            Text(label, color = SourcesMuted, fontSize = 9.sp)
+            Text(label, color = SourcesMuted, fontSize = 12.sp)
         }
     }
 }
@@ -369,82 +274,47 @@ private fun SourceRow(
 ) {
     Surface(
         color = SourcesPanel,
-        shape = RoundedCornerShape(18.dp),
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(CineEditorial.CardRadius),
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 13.dp, vertical = 12.dp),
+            Modifier.padding(horizontal = 14.dp, vertical = 17.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            SourceAvatar(source)
-            Spacer(Modifier.width(12.dp))
-            Column(Modifier.weight(1f)) {
+            SourceAvatar(source, size = 52.dp)
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                EditorialDisplayV2(source.name, size = 15, lines = 2)
                 Text(
-                    source.name,
-                    color = SourcesText,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
+                    listOfNotNull(prettySourcePlatform(source.platform), source.handle,
+                        prettySourceRole(source.role)).joinToString(" · "),
+                    color = SourcesMuted, fontSize = CineEditorial.Metadata,
+                    maxLines = 2, overflow = TextOverflow.Ellipsis,
                 )
-                Spacer(Modifier.height(2.dp))
-                Text(
-                    listOfNotNull(
-                        prettySourcePlatform(source.platform),
-                        source.handle,
-                        prettySourceRole(source.role),
-                    ).joinToString(" • "),
-                    color = SourcesMuted,
-                    fontSize = 10.sp,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-
-            if (source.newCount24h > 0) {
-                Surface(
-                    color = SourcesGreen.copy(alpha = 0.12f),
-                    shape = RoundedCornerShape(50),
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 9.dp, vertical = 6.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Box(Modifier.size(6.dp).clip(CircleShape).background(SourcesGreen))
-                        Spacer(Modifier.width(6.dp))
-                        Text(
-                            "${source.newCount24h} new",
-                            color = SourcesGreen,
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Bold,
-                        )
-                    }
+                if (source.newCount24h > 0) {
+                    Text("${source.newCount24h} new updates", color = SourcesGreen,
+                        fontSize = CineEditorial.Metadata, fontWeight = FontWeight.Bold)
                 }
-                Spacer(Modifier.width(2.dp))
             }
-
             if (canManageNotifications) {
                 IconButton(onClick = onToggleNotification, enabled = !notificationBusy) {
                     if (notificationBusy) {
-                        CircularProgressIndicator(Modifier.size(17.dp), strokeWidth = 2.dp, color = SourcesGold)
+                        CircularProgressIndicator(
+                            Modifier.size(17.dp), strokeWidth = 2.dp, color = SourcesGold,
+                        )
                     } else {
                         Icon(
                             Icons.Default.Notifications,
-                            contentDescription = if (notificationSelected) "Disable source notifications" else "Enable source notifications",
-                            tint = when {
-                                notificationSelected && notificationMasterEnabled -> SourcesGold
-                                notificationSelected -> SourcesAmber
-                                else -> SourcesMuted.copy(alpha = 0.55f)
-                            },
-                            modifier = Modifier.size(19.dp),
+                            contentDescription = if (notificationSelected)
+                                "Disable source notifications" else "Enable source notifications",
+                            tint = if (notificationSelected && notificationMasterEnabled) SourcesGold
+                                else if (notificationSelected) SourcesAmber else SourcesMuted,
                         )
                     }
                 }
             }
-
-            Icon(Icons.Default.KeyboardArrowRight, contentDescription = null, tint = SourcesMuted, modifier = Modifier.size(20.dp))
+            Icon(Icons.Default.KeyboardArrowRight, contentDescription = null,
+                tint = SourcesMuted, modifier = Modifier.size(19.dp))
         }
     }
 }
@@ -509,7 +379,7 @@ private fun SourceDetailFeed(
             item {
                 Surface(
                     color = SourcesPanel,
-                    shape = RoundedCornerShape(18.dp),
+                    shape = RoundedCornerShape(CineEditorial.CardRadius),
                     modifier = Modifier.fillMaxWidth(),
                 ) {
                     Column(Modifier.padding(18.dp)) {
@@ -518,7 +388,7 @@ private fun SourceDetailFeed(
                         Text(
                             "This source is active in CineRelay, but none of its recent tracked items are in the current newsroom window.",
                             color = SourcesMuted,
-                            fontSize = 11.sp,
+                            fontSize = 12.sp,
                             lineHeight = 17.sp,
                         )
                     }
@@ -541,7 +411,7 @@ private fun SourceDetailHeader(
 ) {
     Surface(
         color = SourcesPanelRaised,
-        shape = RoundedCornerShape(20.dp),
+        shape = RoundedCornerShape(CineEditorial.CardRadius),
         modifier = Modifier.fillMaxWidth(),
     ) {
         Row(
@@ -551,7 +421,7 @@ private fun SourceDetailHeader(
             SourceAvatar(source, size = 56.dp)
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
-                Text(source.name, color = SourcesText, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                Text(source.name, color = SourcesText, fontSize = 16.sp, fontWeight = FontWeight.Bold)
                 Text(
                     listOfNotNull(
                         prettySourcePlatform(source.platform),
@@ -559,10 +429,10 @@ private fun SourceDetailHeader(
                         prettySourceRole(source.role),
                     ).joinToString(" • "),
                     color = SourcesMuted,
-                    fontSize = 10.sp,
+                    fontSize = 12.sp,
                 )
                 source.latestObservedAt?.let {
-                    Text("Latest activity ${sourceTimeAgo(it)}", color = SourcesMuted, fontSize = 9.sp)
+                    Text("Latest activity ${sourceTimeAgo(it)}", color = SourcesMuted, fontSize = 12.sp)
                 }
             }
             if (source.newCount24h > 0) {
@@ -570,7 +440,7 @@ private fun SourceDetailHeader(
                     Text(
                         "${source.newCount24h} new / 24h",
                         color = SourcesGreen,
-                        fontSize = 10.sp,
+                        fontSize = 12.sp,
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.padding(horizontal = 9.dp, vertical = 6.dp),
                     )
@@ -603,7 +473,7 @@ private fun SourceNewsroomCard(signal: NewsroomSignal) {
     val context = LocalContext.current
     Card(
         colors = CardDefaults.cardColors(containerColor = SourcesPanel),
-        shape = RoundedCornerShape(20.dp),
+        shape = RoundedCornerShape(CineEditorial.CardRadius),
         modifier = Modifier.fillMaxWidth(),
     ) {
         Column(Modifier.padding(15.dp)) {
@@ -613,13 +483,13 @@ private fun SourceNewsroomCard(signal: NewsroomSignal) {
                 Text(
                     signal.source.name ?: signal.source.handle ?: "CineRelay source",
                     color = SourcesGold,
-                    fontSize = 11.sp,
+                    fontSize = 12.sp,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.weight(1f),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
-                Text(sourceTimeAgo(signal.observedAt), color = SourcesMuted, fontSize = 9.sp)
+                Text(sourceTimeAgo(signal.observedAt), color = SourcesMuted, fontSize = 12.sp)
             }
 
             signal.thumbnailUrl?.takeIf { it.isNotBlank() }?.let { thumbnailUrl ->
@@ -628,7 +498,7 @@ private fun SourceNewsroomCard(signal: NewsroomSignal) {
                     modifier = Modifier
                         .fillMaxWidth()
                         .aspectRatio(16f / 9f)
-                        .clip(RoundedCornerShape(14.dp))
+                        .clip(RoundedCornerShape(12.dp))
                         .background(SourcesPanelRaised)
                         .clickable(enabled = !signal.canonicalUrl.isNullOrBlank()) {
                             signal.canonicalUrl?.let { sourceUrl ->
@@ -646,18 +516,18 @@ private fun SourceNewsroomCard(signal: NewsroomSignal) {
             }
 
             Spacer(Modifier.height(12.dp))
-            Text(signal.title, color = SourcesText, fontSize = 17.sp, fontWeight = FontWeight.SemiBold, lineHeight = 23.sp)
+            Text(signal.title, color = SourcesText, fontSize = 18.sp, fontWeight = FontWeight.SemiBold, lineHeight = 23.sp)
             signal.text?.takeIf { it.isNotBlank() && it.trim() != signal.title.trim() }?.let { body ->
                 Spacer(Modifier.height(7.dp))
-                Text(body, color = SourcesMuted, fontSize = 11.sp, lineHeight = 17.sp, maxLines = 3, overflow = TextOverflow.Ellipsis)
+                Text(body, color = SourcesMuted, fontSize = 12.sp, lineHeight = 17.sp, maxLines = 3, overflow = TextOverflow.Ellipsis)
             }
 
             signal.canonicalEvent?.let { event ->
                 Spacer(Modifier.height(10.dp))
                 Surface(color = SourcesGold.copy(alpha = 0.07f), shape = RoundedCornerShape(12.dp)) {
                     Column(Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 8.dp)) {
-                        Text("CANONICAL", color = SourcesGold, fontSize = 8.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.7.sp)
-                        Text(event.entityName ?: event.headline, color = SourcesText, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                        Text("CANONICAL", color = SourcesGold, fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.7.sp)
+                        Text(event.entityName ?: event.headline, color = SourcesText, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                     }
                 }
             }
@@ -671,7 +541,7 @@ private fun SourceNewsroomCard(signal: NewsroomSignal) {
                 Text(
                     listOfNotNull(signal.mediaType, signal.languageCode).joinToString(" • ").ifBlank { "Source activity" },
                     color = SourcesMuted,
-                    fontSize = 9.sp,
+                    fontSize = 12.sp,
                     modifier = Modifier.weight(1f),
                 )
                 signal.canonicalUrl?.let { url ->
@@ -682,7 +552,7 @@ private fun SourceNewsroomCard(signal: NewsroomSignal) {
                     ) {
                         Icon(Icons.Default.OpenInNew, contentDescription = null, modifier = Modifier.size(14.dp), tint = SourcesGold)
                         Spacer(Modifier.width(4.dp))
-                        Text("Open", color = SourcesGold, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                        Text("Open", color = SourcesGold, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                     }
                 }
             }
@@ -702,7 +572,7 @@ private fun SourceStateBadge(state: String) {
         Text(
             state.replace('_', ' '),
             color = color,
-            fontSize = 8.sp,
+            fontSize = 12.sp,
             fontWeight = FontWeight.Bold,
             modifier = Modifier.padding(horizontal = 7.dp, vertical = 4.dp),
         )

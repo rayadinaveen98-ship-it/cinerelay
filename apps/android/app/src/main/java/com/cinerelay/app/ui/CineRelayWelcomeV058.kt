@@ -38,7 +38,7 @@ import kotlin.math.sin
 private const val WelcomePreferencesNameV023 = "cinerelay_welcome"
 private const val WelcomeVersionKeyV023 = "last_played_version"
 private const val WelcomeDurationMsV023 = 2_950
-private val WelcomeRedV023 = Color(0xFFE3282F)
+private val WelcomeRedV023 = CineEditorial.Accent
 
 internal object WelcomeVersionGateV023 {
     fun shouldPlay(lastPlayedVersion: String?, currentVersion: String): Boolean =
@@ -102,12 +102,12 @@ fun CineRelayWelcomeV058(
     }
 
     Box(
-        modifier = modifier.fillMaxSize().background(Color.Black),
+        modifier = modifier.fillMaxSize().background(CineEditorial.Background),
         contentAlignment = Alignment.Center,
     ) {
         Canvas(Modifier.fillMaxSize()) {
             if (firstScene) {
-                drawRect(Color(0xFF08090C))
+                drawRect(CineEditorial.Background)
 
                 // Diagonal projector-like spill from upper-left, intentionally restrained.
                 drawRect(
@@ -135,7 +135,7 @@ fun CineRelayWelcomeV058(
                     )
                 }
             } else {
-                drawRect(Color.Black)
+                drawRect(CineEditorial.Background)
 
                 if (!removeAnimations && p in 0.56f..0.76f) {
                     val scan = ((p - 0.56f) / 0.20f).coerceIn(0f, 1f)
@@ -174,14 +174,14 @@ fun CineRelayWelcomeV058(
                 Text(
                     text = "CineRelay",
                     color = Color.White,
-                    fontSize = 42.sp,
-                    fontFamily = FontFamily.Serif,
+                    fontSize = 36.sp,
+                    fontFamily = FontFamily.SansSerif,
                     fontWeight = FontWeight.Medium,
                     letterSpacing = 0.4.sp,
                     modifier = Modifier.alpha(titleAlpha),
                 )
                 Text(
-                    text = "The signal behind the story",
+                    text = "A new frame for cinema.",
                     color = Color.White.copy(alpha = 0.74f),
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Normal,
@@ -199,22 +199,22 @@ fun CineRelayWelcomeV058(
                     contentAlignment = Alignment.Center,
                     modifier = Modifier
                         .size(32.dp)
-                        .clip(RoundedCornerShape(9.dp))
+                        .clip(RoundedCornerShape(8.dp))
                         .background(Color.White),
                 ) {
                     Text(
                         text = "C",
-                        color = Color.Black,
-                        fontSize = 19.sp,
-                        fontFamily = FontFamily.Serif,
+                        color = CineEditorial.Background,
+                        fontSize = 20.sp,
+                        fontFamily = FontFamily.SansSerif,
                         fontWeight = FontWeight.Bold,
                     )
                 }
                 Text(
                     text = "CineRelay",
                     color = Color.White,
-                    fontSize = 34.sp,
-                    fontFamily = FontFamily.Serif,
+                    fontSize = 32.sp,
+                    fontFamily = FontFamily.SansSerif,
                     fontWeight = FontWeight.Medium,
                     letterSpacing = 0.25.sp,
                 )

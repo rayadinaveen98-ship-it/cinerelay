@@ -38,8 +38,22 @@ class CineRelayApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         sessionStore = SessionStore(this)
-        backendClient = BackendClient(sessionStore)
         homeCache = HomeCache(this)
+
+        // One-time fresh-start migration for the V2.4 public test build.
+        // Retain shared news / film catalogue on the server; only this device's
+        // former login, Home cache and splash-state preference are cleared.
+        val reset = getSharedPreferences("cinerelay_v24_fresh_start", MODE_PRIVATE)
+        if (!reset.getBoolean("applied", false)) {
+            sessionStore.clear()
+            homeCache.clearAll()
+            getSharedPreferences("cinerelay_personalization_cache", MODE_PRIVATE).edit().clear().commit()
+            getSharedPreferences("cinerelay_notification_setup_cache", MODE_PRIVATE).edit().clear().commit()
+            getSharedPreferences("cinerelay_welcome", MODE_PRIVATE).edit().clear().commit()
+            reset.edit().putBoolean("applied", true).commit()
+        }
+
+        backendClient = BackendClient(sessionStore)
         evidenceClient = EvidenceClient(sessionStore, backendClient)
         intelligenceClient = IntelligenceClient(sessionStore, backendClient)
         ottCalendarClient = OttCalendarClient(sessionStore, backendClient)

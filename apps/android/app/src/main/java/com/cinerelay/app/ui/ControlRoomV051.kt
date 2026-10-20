@@ -36,14 +36,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-private val ControlInk = Color(0xFF0D0F13)
-private val ControlPanel = Color(0xFF15181E)
-private val ControlRaised = Color(0xFF1B1F27)
-private val ControlLine = Color(0xFF2A303A)
-private val ControlText = Color(0xFFF4F1EA)
-private val ControlMuted = Color(0xFFA7ADB7)
-private val ControlGold = Color(0xFFE7C36B)
-private val ControlGreen = Color(0xFF72D6A4)
+private val ControlInk = CineEditorial.Background
+private val ControlPanel = CineEditorial.Surface
+private val ControlRaised = CineEditorial.Raised
+private val ControlLine = CineEditorial.Outline
+private val ControlText = CineEditorial.Text
+private val ControlMuted = CineEditorial.Muted
+private val ControlGold = CineEditorial.Accent
+private val ControlGreen = CineEditorial.Confirmed
 
 @Composable
 fun ControlRoomV051(
@@ -61,7 +61,7 @@ fun ControlRoomV051(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .statusBarsPadding()
+                
                 .navigationBarsPadding(),
         ) {
             ControlHeader(onBack)
@@ -100,31 +100,12 @@ fun ControlRoomV051(
 
 @Composable
 private fun ControlHeader(onBack: () -> Unit) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 8.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        IconButton(onClick = onBack) {
-            Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = ControlText)
-        }
-        Surface(
-            color = ControlGold.copy(alpha = 0.10f),
-            shape = RoundedCornerShape(13.dp),
-            modifier = Modifier.size(40.dp),
-        ) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
-                Icon(Icons.Default.Settings, contentDescription = null, tint = ControlGold, modifier = Modifier.size(22.dp))
-            }
-        }
-        Spacer(Modifier.size(10.dp))
-        Column {
-            Text("CINERELAY", color = ControlGold, fontSize = 9.sp, fontWeight = FontWeight.Black, letterSpacing = 1.5.sp)
-            Text("Control Room", color = ControlText, fontSize = 21.sp, fontWeight = FontWeight.Bold)
-            Text("Newsroom, notifications and account", color = ControlMuted, fontSize = 10.sp)
-        }
-    }
+    CineScreenHeader(
+        title = "Your CineRelay.",
+        subtitle = "Your account, followed sources and notification preferences.",
+        eyebrow = "THE EDITORIAL EDITION / YOU",
+        onBack = onBack,
+    )
 }
 
 @Composable
@@ -136,7 +117,7 @@ private fun ControlAccountCard(email: String?, onSignOut: () -> Unit) {
         ) {
             Column(Modifier.weight(1f)) {
                 Text(email ?: "Signed in", color = ControlText, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
-                Text("Authenticated session", color = ControlGreen, fontSize = 10.sp)
+                Text("Authenticated session", color = ControlGreen, fontSize = 12.sp)
             }
             TextButton(onClick = onSignOut) {
                 Text("Sign out", color = ControlGold, fontWeight = FontWeight.Bold)
@@ -172,7 +153,7 @@ private fun ControlNewsroomCard(
                 selected = state.newsroomPlatform == NewsroomPlatform.X,
                 onClick = {},
                 enabled = false,
-                label = { Text("X • paused", fontSize = 11.sp) },
+                label = { Text("X • paused", fontSize = 12.sp) },
                 colors = controlChipColors(),
             )
         }
@@ -229,7 +210,7 @@ private fun ControlNotificationsCard(
                 Text(
                     "${state.selectedSourceIds.size} selected YouTube sources",
                     color = ControlMuted,
-                    fontSize = 11.sp,
+                    fontSize = 12.sp,
                 )
             }
             Switch(
@@ -256,14 +237,14 @@ private fun ControlNotificationsCard(
                 modifier = Modifier.padding(horizontal = 12.dp, vertical = 11.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
-                Text(if (state.includeVideos) "Videos • on" else "Videos • off", color = ControlMuted, fontSize = 11.sp)
-                Text(if (state.includeShorts) "Shorts • on" else "Shorts • off", color = ControlMuted, fontSize = 11.sp)
+                Text(if (state.includeVideos) "Videos • on" else "Videos • off", color = ControlMuted, fontSize = 12.sp)
+                Text(if (state.includeShorts) "Shorts • on" else "Shorts • off", color = ControlMuted, fontSize = 12.sp)
             }
         }
 
         state.error?.let {
             Spacer(Modifier.height(10.dp))
-            Text(it, color = Color(0xFFF08079), fontSize = 10.sp, lineHeight = 15.sp)
+            Text(it, color = CineEditorial.Error, fontSize = 12.sp, lineHeight = 15.sp)
         }
     }
 }
@@ -276,13 +257,13 @@ private fun ControlCard(
 ) {
     Card(
         colors = CardDefaults.cardColors(containerColor = ControlPanel),
-        shape = RoundedCornerShape(18.dp),
+        shape = RoundedCornerShape(CineEditorial.CardRadius),
         modifier = Modifier.fillMaxWidth(),
     ) {
         Column(Modifier.fillMaxWidth().padding(16.dp)) {
             Text(title, color = ControlText, fontSize = 16.sp, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(3.dp))
-            Text(subtitle, color = ControlMuted, fontSize = 11.sp, lineHeight = 16.sp)
+            Text(subtitle, color = ControlMuted, fontSize = 12.sp, lineHeight = 16.sp)
             Spacer(Modifier.height(14.dp))
             content()
         }
@@ -291,7 +272,7 @@ private fun ControlCard(
 
 @Composable
 private fun ControlLabel(text: String) {
-    Text(text, color = ControlMuted, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+    Text(text, color = ControlMuted, fontSize = 12.sp, fontWeight = FontWeight.Bold)
     Spacer(Modifier.height(7.dp))
 }
 
@@ -300,7 +281,7 @@ private fun ControlChip(label: String, selected: Boolean, onClick: () -> Unit) {
     FilterChip(
         selected = selected,
         onClick = onClick,
-        label = { Text(label, fontSize = 11.sp) },
+        label = { Text(label, fontSize = 12.sp) },
         colors = controlChipColors(),
     )
 }

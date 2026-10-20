@@ -36,21 +36,21 @@ import com.cinerelay.app.data.EventCard
 import java.time.Duration
 import java.time.Instant
 
-private val Ink = Color(0xFF111318)
-private val Panel = Color(0xFF191C22)
-private val PanelRaised = Color(0xFF20242C)
-private val Line = Color(0xFF303640)
-private val TextPrimary = Color(0xFFF1F3F5)
-private val TextSecondary = Color(0xFFA9B0BA)
-private val Signal = Color(0xFFE8C26A)
-private val Trusted = Color(0xFF73D9A6)
-private val Developing = Color(0xFFF2B85B)
-private val Caution = Color(0xFFF07A75)
-private val InfoBlue = Color(0xFF86B9FF)
+private val Ink = CineEditorial.Background
+private val Panel = CineEditorial.Surface
+private val PanelRaised = CineEditorial.Raised
+private val Line = CineEditorial.Outline
+private val TextPrimary = CineEditorial.Text
+private val TextSecondary = CineEditorial.Text
+private val Signal = CineEditorial.Accent
+private val Trusted = CineEditorial.Confirmed
+private val Developing = CineEditorial.Developing
+private val Caution = CineEditorial.Error
+private val InfoBlue = CineEditorial.Info
 
 private val CineRelayColors = darkColorScheme(
     primary = Signal,
-    onPrimary = Color(0xFF231B08),
+    onPrimary = CineEditorial.Raised,
     secondary = Trusted,
     background = Ink,
     surface = Panel,
@@ -104,7 +104,7 @@ private fun SignalRoom(state: CineRelayUiState, viewModel: CineRelayViewModel) {
                             Text(
                                 if (state.authenticated) "CineRelay signal room" else "Exploring as guest",
                                 color = TextSecondary,
-                                fontSize = 11.sp,
+                                fontSize = 12.sp,
                             )
                         }
                     }
@@ -190,7 +190,7 @@ private fun AuthSheet(
                     Text(
                         if (mode == AuthMode.CREATE_ACCOUNT) "Create your CineRelay account" else "Welcome back",
                         fontWeight = FontWeight.Bold,
-                        fontSize = 21.sp,
+                        fontSize = 20.sp,
                     )
                     Text(
                         if (mode == AuthMode.CREATE_ACCOUNT) "Follow titles, save your signal feed and unlock alerts."
@@ -224,11 +224,11 @@ private fun AuthSheet(
 
             if (!notice.isNullOrBlank()) {
                 Spacer(Modifier.height(10.dp))
-                Text(notice, color = Trusted, fontSize = 13.sp, lineHeight = 18.sp)
+                Text(notice, color = Trusted, fontSize = 14.sp, lineHeight = 18.sp)
             }
             if (!error.isNullOrBlank()) {
                 Spacer(Modifier.height(10.dp))
-                Text(error, color = Caution, fontSize = 13.sp, lineHeight = 18.sp)
+                Text(error, color = Caution, fontSize = 14.sp, lineHeight = 18.sp)
             }
 
             Spacer(Modifier.height(18.dp))
@@ -256,7 +256,7 @@ private fun AuthSheet(
             Text(
                 "You can always close this and continue exploring Live + Creator Radar as a guest.",
                 color = TextSecondary,
-                fontSize = 11.sp,
+                fontSize = 12.sp,
                 lineHeight = 16.sp,
             )
         }
@@ -289,7 +289,7 @@ private fun GuestLockedContent(tab: AppTab, viewModel: CineRelayViewModel) {
             else
                 "Create an account to follow films and series. Their updates will collect here automatically.",
             color = TextSecondary,
-            fontSize = 13.sp,
+            fontSize = 14.sp,
             lineHeight = 19.sp,
         )
         Spacer(Modifier.height(22.dp))
@@ -321,11 +321,11 @@ private fun StatusStrip(state: CineRelayUiState) {
         Text(
             if (state.authenticated) "Hosted backend connected" else "Guest access • Live + Radar",
             color = TextSecondary,
-            fontSize = 11.sp,
+            fontSize = 12.sp,
         )
         Spacer(Modifier.weight(1f))
         state.bootstrap?.let {
-            Text("${it.followCount} followed  •  ${it.alertCount} alerts", color = TextSecondary, fontSize = 11.sp)
+            Text("${it.followCount} followed  •  ${it.alertCount} alerts", color = TextSecondary, fontSize = 12.sp)
         }
         if (state.loading) {
             Spacer(Modifier.width(10.dp))
@@ -378,7 +378,7 @@ private fun FeedContent(state: CineRelayUiState, viewModel: CineRelayViewModel) 
 
 @Composable
 private fun GuestWelcomeCard(viewModel: CineRelayViewModel) {
-    Card(colors = CardDefaults.cardColors(containerColor = PanelRaised), shape = RoundedCornerShape(18.dp)) {
+    Card(colors = CardDefaults.cardColors(containerColor = PanelRaised), shape = RoundedCornerShape(CineEditorial.CardRadius)) {
         Column(Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 BrandMark(34.dp)
@@ -408,16 +408,16 @@ private fun SignalCard(card: EventCard, authenticated: Boolean, onFollow: () -> 
     val context = LocalContext.current
     Card(
         colors = CardDefaults.cardColors(containerColor = Panel),
-        shape = RoundedCornerShape(18.dp),
+        shape = RoundedCornerShape(CineEditorial.CardRadius),
         modifier = Modifier.fillMaxWidth(),
     ) {
         Column(Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 VerificationBadge(card.verificationState)
                 Spacer(Modifier.width(8.dp))
-                Text(pretty(card.eventType), color = TextSecondary, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(pretty(card.eventType), color = TextSecondary, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Spacer(Modifier.weight(1f))
-                Text(timeAgo(card.detectedAt), color = TextSecondary, fontSize = 11.sp)
+                Text(timeAgo(card.detectedAt), color = TextSecondary, fontSize = 12.sp)
             }
 
             Spacer(Modifier.height(12.dp))
@@ -427,7 +427,7 @@ private fun SignalCard(card: EventCard, authenticated: Boolean, onFollow: () -> 
 
             if (!card.summary.isNullOrBlank()) {
                 Spacer(Modifier.height(8.dp))
-                Text(card.summary, color = TextSecondary, fontSize = 13.sp, lineHeight = 19.sp, maxLines = 3, overflow = TextOverflow.Ellipsis)
+                Text(card.summary, color = TextSecondary, fontSize = 14.sp, lineHeight = 19.sp, maxLines = 3, overflow = TextOverflow.Ellipsis)
             }
 
             card.radar?.let { radar ->
@@ -436,9 +436,9 @@ private fun SignalCard(card: EventCard, authenticated: Boolean, onFollow: () -> 
                     modifier = Modifier.fillMaxWidth().background(PanelRaised, RoundedCornerShape(12.dp)).padding(horizontal = 12.dp, vertical = 9.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text("RADAR ${radar.score}", color = Signal, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    Text("RADAR ${radar.score}", color = Signal, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                     Spacer(Modifier.width(8.dp))
-                    Text(pretty(radar.label), color = TextSecondary, fontSize = 11.sp)
+                    Text(pretty(radar.label), color = TextSecondary, fontSize = 12.sp)
                 }
             }
 
@@ -453,7 +453,7 @@ private fun SignalCard(card: EventCard, authenticated: Boolean, onFollow: () -> 
                         append(if (card.evidenceCount == 1) " evidence" else " evidence items")
                         if (card.conflictingEvidenceCount > 0) append("  •  ${card.conflictingEvidenceCount} conflict")
                     }
-                    Text(evidenceText, color = if (card.conflictingEvidenceCount > 0) Caution else TextSecondary, fontSize = 11.sp)
+                    Text(evidenceText, color = if (card.conflictingEvidenceCount > 0) Caution else TextSecondary, fontSize = 12.sp)
                 }
                 IconButton(onClick = onFollow) {
                     Icon(
@@ -510,7 +510,7 @@ private fun AlertsContent(state: CineRelayUiState, viewModel: CineRelayViewModel
 
 @Composable
 private fun PushCanaryCard(state: CineRelayUiState, notificationGranted: Boolean, onEnable: () -> Unit) {
-    Card(colors = CardDefaults.cardColors(containerColor = PanelRaised), shape = RoundedCornerShape(18.dp)) {
+    Card(colors = CardDefaults.cardColors(containerColor = PanelRaised), shape = RoundedCornerShape(CineEditorial.CardRadius)) {
         Column(Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
@@ -545,7 +545,7 @@ private fun PushCanaryCard(state: CineRelayUiState, notificationGranted: Boolean
             }
             if (!BuildConfig.FIREBASE_CONFIGURED) {
                 Spacer(Modifier.height(8.dp))
-                Text("Package locked for Firebase: com.cinerelay.app", color = InfoBlue, fontSize = 11.sp)
+                Text("Package locked for Firebase: com.cinerelay.app", color = InfoBlue, fontSize = 12.sp)
             }
         }
     }
@@ -553,21 +553,21 @@ private fun PushCanaryCard(state: CineRelayUiState, notificationGranted: Boolean
 
 @Composable
 private fun AlertCard(alert: AlertItem) {
-    Card(colors = CardDefaults.cardColors(containerColor = Panel), shape = RoundedCornerShape(16.dp)) {
+    Card(colors = CardDefaults.cardColors(containerColor = Panel), shape = RoundedCornerShape(CineEditorial.CardRadius)) {
         Column(Modifier.padding(15.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(alert.deliveryKind, color = Signal, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                Text(alert.deliveryKind, color = Signal, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.width(8.dp))
                 AlertStatus(alert.status)
                 Spacer(Modifier.weight(1f))
-                Text(timeAgo(alert.createdAt), color = TextSecondary, fontSize = 11.sp)
+                Text(timeAgo(alert.createdAt), color = TextSecondary, fontSize = 12.sp)
             }
             Spacer(Modifier.height(9.dp))
-            Text(alert.event?.entityName ?: "CineRelay", color = TextSecondary, fontSize = 11.sp)
-            Text(alert.event?.headline ?: "Alert event unavailable", fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
+            Text(alert.event?.entityName ?: "CineRelay", color = TextSecondary, fontSize = 12.sp)
+            Text(alert.event?.headline ?: "Alert event unavailable", fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
             alert.scheduledFor?.let {
                 Spacer(Modifier.height(7.dp))
-                Text("Scheduled ${timeAgo(it)}", color = TextSecondary, fontSize = 11.sp)
+                Text("Scheduled ${timeAgo(it)}", color = TextSecondary, fontSize = 12.sp)
             }
         }
     }
@@ -592,7 +592,7 @@ private fun VerificationBadge(value: String) {
     ) {
         Icon(icon, null, tint = color, modifier = Modifier.size(13.dp))
         Spacer(Modifier.width(5.dp))
-        Text(pretty(value), color = color, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+        Text(pretty(value), color = color, fontSize = 12.sp, fontWeight = FontWeight.Bold)
     }
 }
 
@@ -607,7 +607,7 @@ private fun AlertStatus(status: String) {
     Text(
         pretty(status),
         color = color,
-        fontSize = 10.sp,
+        fontSize = 12.sp,
         fontWeight = FontWeight.Bold,
         modifier = Modifier.background(color.copy(alpha = 0.12f), RoundedCornerShape(50)).padding(horizontal = 7.dp, vertical = 4.dp),
     )
@@ -621,9 +621,9 @@ private fun EmptyState(title: String, body: String) {
     ) {
         Icon(Icons.Default.Movie, contentDescription = null, tint = TextSecondary, modifier = Modifier.size(34.dp))
         Spacer(Modifier.height(12.dp))
-        Text(title, fontWeight = FontWeight.SemiBold, fontSize = 17.sp)
+        Text(title, fontWeight = FontWeight.SemiBold, fontSize = 18.sp)
         Spacer(Modifier.height(6.dp))
-        Text(body, color = TextSecondary, fontSize = 13.sp, lineHeight = 19.sp)
+        Text(body, color = TextSecondary, fontSize = 14.sp, lineHeight = 19.sp)
     }
 }
 
