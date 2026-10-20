@@ -14,8 +14,8 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  CINERELAY_VERSION_CODE: '210007'
-  CINERELAY_VERSION_NAME: '0.2.7'
+  CINERELAY_VERSION_CODE: '221001'
+  CINERELAY_VERSION_NAME: '0.2.9'
   CINERELAY_SUPABASE_URL: https://dnqaejljfzwhsainpdxb.supabase.co
   CINERELAY_SUPABASE_PUBLISHABLE_KEY: sb_publishable_hR65p2JkQ2x5fFLx_kkcNQ_1SxNN3QP
 
@@ -40,7 +40,7 @@ jobs:
         run: |
           set -euo pipefail
           yes | sdkmanager --licenses >/dev/null || true
-          sdkmanager 'platforms;android-36' 'platform-tools'
+          sdkmanager 'platforms;android-36' 'build-tools;36.0.0' 'platform-tools'
 
       - uses: gradle/actions/setup-gradle@v4
         with:
@@ -115,8 +115,8 @@ jobs:
             exit 1
           fi
 
-      - name: Build CineRelay v0.2.7 stable APK
-        run: gradle -p apps/android --no-daemon --stacktrace :app:assembleRelease
+      - name: Run unit tests and build CineRelay v0.2.9 R8-minified release APK
+        run: gradle -p apps/android --no-daemon --stacktrace :app:testDebugUnitTest :app:assembleRelease
 
       - name: Verify stable APK contract and signer
         shell: bash
@@ -126,6 +126,16 @@ jobs:
           OUT='stable-release'
           mkdir -p "$OUT"
           test -s "$APK"
+          test -s apps/android/app/build/outputs/mapping/release/mapping.txt
+
+          AAPT="$(find "$ANDROID_HOME/build-tools" -type f -name aapt | sort -V | tail -n 1)"
+          test -x "$AAPT"
+          "$AAPT" dump badging "$APK" > "$OUT/CineRelay-v0.2.9.manifest.txt"
+          grep -q "package: name='com.cinerelay.app' versionCode='221001' versionName='0.2.9'" "$OUT/CineRelay-v0.2.9.manifest.txt"
+          if grep -q 'application-debuggable' "$OUT/CineRelay-v0.2.9.manifest.txt"; then
+            echo 'Stable APK is debuggable.' >&2
+            exit 1
+          fi
 
           unzip -p "$APK" classes.dex > /tmp/cinerelay-release-classes.dex || true
           if grep -a -E 'SUPABASE_SERVICE_ROLE_KEY|CINERELAY_INTERNAL_ADMIN_SECRET|CINERELAY_FCM_SERVICE_ACCOUNT|BEGIN PRIVATE KEY' "$APK" /tmp/cinerelay-release-classes.dex; then
@@ -135,44 +145,44 @@ jobs:
 
           APKSIGNER="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -n 1)"
           test -x "$APKSIGNER"
-          "$APKSIGNER" verify --print-certs "$APK" | tee "$OUT/CineRelay-v0.2.7.signing-certificate.txt"
+          "$APKSIGNER" verify --print-certs "$APK" | tee "$OUT/CineRelay-v0.2.9.signing-certificate.txt"
           EXPECTED="$(tr -d '[:space:]' < apps/android/signing/cinerelay-update-cert.sha256 | tr '[:lower:]' '[:upper:]')"
-          ACTUAL="$(awk -F': ' '/certificate SHA-256 digest/{print toupper($NF); exit}' "$OUT/CineRelay-v0.2.7.signing-certificate.txt" | tr -d ':[:space:]')"
+          ACTUAL="$(awk -F': ' '/certificate SHA-256 digest/{print toupper($NF); exit}' "$OUT/CineRelay-v0.2.9.signing-certificate.txt" | tr -d ':[:space:]')"
           if [[ -z "$ACTUAL" || "$ACTUAL" != "$EXPECTED" ]]; then
             echo "CineRelay stable signer mismatch. Expected $EXPECTED, got ${ACTUAL:-missing}." >&2
             exit 1
           fi
 
-          cp "$APK" "$OUT/CineRelay-v0.2.7.apk"
-          sha256sum "$OUT/CineRelay-v0.2.7.apk" | tee "$OUT/CineRelay-v0.2.7.sha256"
-          printf '%s\n' "$CINERELAY_VERSION_CODE" > "$OUT/CineRelay-v0.2.7.version-code.txt"
-          printf '%s\n' "$CINERELAY_VERSION_NAME" > "$OUT/CineRelay-v0.2.7.version-name.txt"
-          printf '%s\n' 'true' > "$OUT/CineRelay-v0.2.7.firebase-configured.txt"
-          printf '%s\n' 'true' > "$OUT/CineRelay-v0.2.7.update-signing-configured.txt"
+          cp "$APK" "$OUT/CineRelay-v0.2.9.apk"
+          sha256sum "$OUT/CineRelay-v0.2.9.apk" | tee "$OUT/CineRelay-v0.2.9.sha256"
+          printf '%s\n' "$CINERELAY_VERSION_CODE" > "$OUT/CineRelay-v0.2.9.version-code.txt"
+          printf '%s\n' "$CINERELAY_VERSION_NAME" > "$OUT/CineRelay-v0.2.9.version-name.txt"
+          printf '%s\n' 'true' > "$OUT/CineRelay-v0.2.9.firebase-configured.txt"
+          printf '%s\n' 'true' > "$OUT/CineRelay-v0.2.9.update-signing-configured.txt"
 
       - name: Upload stable APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: cinerelay-android-v0.2.7-stable
+          name: cinerelay-android-v0.2.9-stable
           path: stable-release
           if-no-files-found: error
           retention-days: 90
 
-      - name: Publish GitHub v0.2.7 release
+      - name: Publish GitHub v0.2.9 release
         if: github.ref == 'refs/heads/main'
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          if gh release view v0.2.7 >/dev/null 2>&1; then
-            echo 'GitHub release v0.2.7 already exists; leaving the immutable release untouched.'
+          if gh release view v0.2.9 >/dev/null 2>&1; then
+            echo 'GitHub release v0.2.9 already exists; leaving the immutable release untouched.'
             exit 0
           fi
-          gh release create v0.2.7 \
-            stable-release/CineRelay-v0.2.7.apk \
-            stable-release/CineRelay-v0.2.7.sha256 \
-            stable-release/CineRelay-v0.2.7.signing-certificate.txt \
+          gh release create v0.2.9 \
+            stable-release/CineRelay-v0.2.9.apk \
+            stable-release/CineRelay-v0.2.9.sha256 \
+            stable-release/CineRelay-v0.2.9.signing-certificate.txt \
             --target "$GITHUB_SHA" \
-            --title 'CineRelay v0.2.7' \
-            --notes-file docs/releases/V0.2.7.md
+            --title 'CineRelay v0.2.9' \
+            --notes-file docs/releases/V0.2.9.md
