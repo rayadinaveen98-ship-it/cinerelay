@@ -176,6 +176,19 @@ function projectAnnouncementLanguage(item: NormalizedItem, context: PipelineCont
 }
 
 export function classifyEvent(item: NormalizedItem, context: PipelineContext): ClassifiedEvent | undefined {
+  // Title-first semantics for finished event recordings and interviews. Their
+  // descriptions frequently advertise an unrelated film trailer/glimpse/date;
+  // those words must not turn a full show or interview into a film asset.
+  // These guards do not change existing canonical events; corrections to
+  // historical entity types and event labels require an operator review.
+  const titleText = normalizeText(item.title);
+  if (/\\b(?:super show|pre release event|pre release function)\\b/.test(titleText)
+      && /\\b(?:full show|full episode|full event)\\b/.test(titleText)) {
+    return { eventType: 'PRE_RELEASE_EVENT_STARTED_OR_RELEASED', structuredData: {}, headline: 'Pre-release programme recording released' };
+  }
+  if (/^(?:in conversation with|conversation with)\\b/.test(titleText)) {
+    return { eventType: 'INTERVIEW_RELEASED', structuredData: {}, headline: 'Interview released' };
+  }
   const text = item.normalizedText; const date = extractEnglishDate(`${item.title} ${item.text}`); const theatricalLanguage = containsAny(text, ['cinema', 'cinemas', 'theatre', 'theater', 'theatrical', 'worldwide release', 'releases worldwide', 'release worldwide']);
   if (date && theatricalLanguage) { const current = context.precondition?.currentTheatricalDate; if (current && current !== date) return { eventType: 'THEATRICAL_DATE_CHANGED', structuredData: { oldDate: current, newDate: date }, headline: `Theatrical release date changed to ${date}` }; return { eventType: 'THEATRICAL_DATE_ANNOUNCED', structuredData: { date }, headline: `Theatrical release date announced for ${date}` }; }
   if (containsAny(text, ['first single', 'second single', 'third single', 'lyrical video', 'lyric video', 'official song', 'full song'])) return { eventType: 'SONG_RELEASED', structuredData: {}, headline: 'Song released' };
