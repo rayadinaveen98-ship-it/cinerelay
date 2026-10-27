@@ -1,0 +1,74 @@
+name: CineRelay P7 Exact Artifact Staging (No Deploy)
+
+on:
+  push:
+    branches:
+      - ops/p7-stage-pr94-fallback-artifact-20261027
+
+permissions:
+  contents: write
+  actions: read
+
+concurrency:
+  group: cinerelay-p7-artifact-staging
+  cancel-in-progress: false
+
+jobs:
+  stage-exact-artifact:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    if: github.repository == 'rayadinaveen98-ship-it/cinerelay'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - name: Download pinned completed CI archive
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh api "repos/${{ github.repository }}/actions/artifacts/12713784991/zip" > "$RUNNER_TEMP/cinerelay-ci-pr94.zip"
+          printf '%s  %s\n' \
+            'af1aa89d5d756e8fa96f359e818cb99f69f7fd1b14e0d23bab43ce11132bf5c4' \
+            "$RUNNER_TEMP/cinerelay-ci-pr94.zip" | sha256sum -c -
+          mkdir -p "$RUNNER_TEMP/verified"
+          unzip -q "$RUNNER_TEMP/cinerelay-ci-pr94.zip" \
+            'youtube-fallback-worker/index.js' 'youtube-fallback-worker/deno.json' \
+            -d "$RUNNER_TEMP/verified"
+          printf '%s  %s\n' \
+            '8b5d0eac26cb4259b0ea0a60c7b62b054e9d031001614d6f1a1e6408326a4c89' \
+            "$RUNNER_TEMP/verified/youtube-fallback-worker/index.js" | sha256sum -c -
+          printf '%s  %s\n' \
+            '49215872440aad98f4d4f2f38d9ecbb5b5919ee01fa577599f3a3bffd7c512b2' \
+            "$RUNNER_TEMP/verified/youtube-fallback-worker/deno.json" | sha256sum -c -
+          grep -q 'ingestion remains healthy while the accelerator is monitored' \
+            "$RUNNER_TEMP/verified/youtube-fallback-worker/index.js"
+          if grep -q 'awaiting a successful WebSub delivery to restore accelerator health' \
+            "$RUNNER_TEMP/verified/youtube-fallback-worker/index.js"; then
+            echo 'Old compiled behavior found; refusing stage' >&2
+            exit 1
+          fi
+          mkdir -p ops/release/youtube-fallback-worker-pr94-verified
+          cp "$RUNNER_TEMP/verified/youtube-fallback-worker/index.js" \
+            ops/release/youtube-fallback-worker-pr94-verified/index.js
+          cp "$RUNNER_TEMP/verified/youtube-fallback-worker/deno.json" \
+            ops/release/youtube-fallback-worker-pr94-verified/deno.json
+      - name: Commit strictly verified source files to isolated branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --exit-code -- . ':!ops/release/youtube-fallback-worker-pr94-verified' || {
+            echo 'Unexpected file modifications; refusing stage' >&2
+            exit 1
+          }
+          git add ops/release/youtube-fallback-worker-pr94-verified/index.js \
+                  ops/release/youtube-fallback-worker-pr94-verified/deno.json
+          if git diff --cached --quiet; then
+            echo 'Pinned artifact already staged, no change'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'ops(p7): stage byte-for-byte verified CI WebSub fallback artifact'
+          git push origin HEAD:refs/heads/ops/p7-stage-pr94-fallback-artifact-20261027
