@@ -94,3 +94,43 @@ SELECT count(*) AS items,
        round((percentile_cont(0.95) WITHIN GROUP (ORDER BY lag_minutes))::numeric, 1) AS p95_minutes,
        round(max(lag_minutes)::numeric, 1) AS max_minutes
 FROM sample;
+
+
+-- 8. Consumer-facing effective state versus raw WebSub accelerator warning.
+-- Protects against interpreting WebSub-only status as an ingestion outage.
+SELECT h.health_state AS stored_state,
+       effective.health ->> 'effectiveState' AS effective_state,
+       effective.health ->> 'webSubAcceleratorOnly' AS websub_accelerator_only,
+       count(*) AS identities
+FROM public.source_identities s
+JOIN public.source_health h ON h.source_identity_id = s.id
+CROSS JOIN LATERAL (
+  SELECT public.source_effective_health(s.id) AS health
+) effective
+WHERE s.platform = 'YOUTUBE' AND s.active = true
+GROUP BY h.health_state,
+         effective.health ->> 'effectiveState',
+         effective.health ->> 'webSubAcceleratorOnly'
+ORDER BY identities DESC;
+
+-- 9. Recent YouTube enrichment discovery path. Jobs do not equal unique
+-- uploads and a deduplicated WebSub event can be processed through one path.
+SELECT COALESCE(payload #>> '{notification,discoveredBy}', 'WEBSUB_OR_OTHER') AS discovery_path,
+       state,
+       count(*) AS jobs
+FROM public.jobs
+WHERE job_type = 'YOUTUBE_ENRICH_VIDEO'
+  AND created_at > now() - interval '48 hours'
+GROUP BY discovery_path, state
+ORDER BY jobs DESC;
+
+-- 10. Aggregate callback activity and the number of distinct sources.
+-- Ingress receipts are coalesced into five-minute buckets, NOT raw POST counts.
+SELECT provider, status,
+       count(*) AS receipt_rows,
+       count(DISTINCT source_identity_id) AS distinct_sources
+FROM public.connector_receipts
+WHERE provider IN ('YOUTUBE_WEBSUB','YOUTUBE_WEBSUB_INGRESS')
+  AND received_at > now() - interval '48 hours'
+GROUP BY provider, status
+ORDER BY receipt_rows DESC;
