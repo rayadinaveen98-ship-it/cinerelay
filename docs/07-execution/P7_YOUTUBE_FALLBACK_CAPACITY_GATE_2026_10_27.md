@@ -1,7 +1,7 @@
 # CineRelay P7 — YouTube fallback capacity gate and quota-safe dispatch candidate
 
 Date: 2026-10-27  
-State: **PROPOSED ENGINEERING CHANGE — NO PRODUCTION DEPLOYMENT / NO LATENCY SLA**  
+State: **SCHEDULER V17 DEPLOYED / EXACT ARTIFACT READ-BACK VERIFIED / POST-RELEASE CANARY AND FULL-DAY QUOTA STILL PENDING**  
 Scope: CineRelay only, Supabase project `dnqaejljfzwhsainpdxb`.  
 Related: PMV1 #92, WebSub reliability #93, compiled health guard #94.
 
@@ -36,13 +36,24 @@ Given 149 WebSub-missed identities requesting fast five-minute fallback and 36 o
 3. `tests/youtube-connector/run-fallback-capacity.mjs` covers current 20, suggested 28, rejected 32, and unsafe inputs; included in `npm run test:youtube`.
 4. No changes to database, existing YouTube identities, WebSub subscriptions, source priority flags, notifications, credentials, mobile APK or paid integrations.
 
-## Remaining go/no-go BEFORE deployment
+## 27 October controlled production promotion
 
-- [ ] All CI + Android safety checks green.
-- [ ] Live scheduler Edge worker exact pre-deploy backup captured with version/hash and documented rollback procedure.
+- **All nine PR #95 GitHub checks passed** on `51b8a5b44ac8612795473aa292a775c640a2a29e`.
+- Exact CI artifact `12716572463` with ZIP SHA-256 `9a30d2c1dc40e79b8918a95afd46446d1d85bdba22b3e7fb7fd1e5077b6e2178`.
+- CI minified scheduler code SHA-256 `54d71b8a927fe9b5afb833fddfcd75e5727c9e794e8ebd609fbdb33c3306009d`; source proven identical to old hosted v16 with exactly `youtube-fallback` batch 20→28 plus a final newline.
+- Preserved prior hosted v16 exact code and `deno.json` in `ops/p7-youtube-scheduler-v16-rollback-20261027`; new exact artifact in `ops/p7-scheduler-v17-ci-verified-candidate-20261027`.
+- **Only** `cinerelay-scheduler-dispatch` deployed, now **v17 ACTIVE**; new hosted bundle hash `3156cda0edad3d21687526dfa58631e1ba0e8013d0c7879ba91914e63d5984b1`. Code and import-map contents verified byte-for-byte after deployment.
+- Host gateway `verify_jwt=false` and existing internal authenticated dispatch preserved. Cron, YouTube worker, sources, quota cap, app and notifications not mutated.
+- **Operational rollout must still pass a natural 28-read tick, queue/HTTP health checks and one full quota-day monitoring**; do not claim new user-visible latency from this release record.
+
+## Remaining post-release acceptance (not all cleared)
+
+
+- [x] All CI + Android safety checks green.
+- [x] Live scheduler Edge worker exact pre-deploy backup captured with version/hash and documented rollback procedure.
 - [ ] Measure current scheduler invocation duration p50/p95 and any timeout/5xx behavior from recent successful ticks. 28 sequential HTTP reads may increase execution time.
 - [ ] Confirm read-unit daily budget has headroom for other `videos.list`, `channels.list`, migrations, onboarding, and provider bursts; consider maximum daily ceiling 9,500 inclusive of all classes.
-- [ ] Controlled dispatch-only deployment from pinned, CI-tested artifact, without merging unreviewed application changes or automatically changing Android.
+- [x] Controlled dispatch-only deployment from pinned, CI-tested artifact, without merging unreviewed application changes or automatically changing Android.
 - [ ] Verify next live natural tick handles at most 28, records valid quota usage, returns success, does not duplicate jobs or increase push notifications.
 - [ ] Observe one full quota day; compare polling p50/p95, overdue counts, failed requests, guard triggers, and end-to-end upload-to-feed latency. Roll back to 20 if quota or runtime regression appears.
 - [ ] Follow separate issue #93 for true WebSub missed deliveries and independent external publication-ID coverage.
