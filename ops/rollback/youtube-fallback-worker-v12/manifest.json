@@ -1,0 +1,13 @@
+{
+  "source": "read-only Supabase hosted get_edge_function",
+  "captured_on": "2026-10-27",
+  "project_id": "dnqaejljfzwhsainpdxb",
+  "slug": "youtube-fallback-worker",
+  "previous_version": 12,
+  "previous_ezbr_sha256": "9832f8c83a5f50eb5c025c671761b5a7e19b59d68a9417f559a53b86e689802c",
+  "verify_jwt": false,
+  "entrypoint_path": "index.js",
+  "import_map_path": "deno.json",
+  "rollback_branch": "ops/p7-youtube-fallback-v12-rollback-20261027",
+  "notes": "Compiled Edge snapshot, not a credential export. Restore via single Supabase Edge Function deployment, not DB migration. Preserve no hardcoded secrets."
+}
