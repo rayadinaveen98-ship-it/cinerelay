@@ -17,7 +17,7 @@
     "build": "npm run build:domain && npm run build:youtube && npm run build:feed && npm run build:web-page && npm run build:threads && npm run build:instagram && npm run build:x",
     "lint": "node scripts/repo-hygiene.mjs",
     "test:contracts": "npm run build && node scripts/validate-contracts.mjs",
-    "test:benchmark": "npm run build && node tests/benchmark/run-benchmark.mjs",
+    "test:benchmark": "npm run build && node tests/benchmark/run-benchmark.mjs && node tests/benchmark/run-event-precision.mjs",
     "test:newsroom": "npm run build:domain && node tests/newsroom/run-newsroom-filter.mjs",
     "test:newsroom-state": "node tests/newsroom/run-newsroom-state-contract.mjs",
     "test:ott": "npm run build:domain && node tests/ott-intelligence/run-ott-release-signal.mjs && node tests/ott-intelligence/run-ott-nonmovie-guard.mjs",
