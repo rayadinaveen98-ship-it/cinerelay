@@ -19,7 +19,7 @@ type DispatchTarget = {
 const TARGETS: Record<Action, DispatchTarget> = {
   'youtube-enrichment': { slug: 'youtube-enrichment-worker', body: { limit: 25 } },
   'process-raw-item': { slug: 'process-raw-item-worker', body: { limit: 25 } },
-  'youtube-fallback': { slug: 'youtube-fallback-worker', body: { limit: 20 } },
+  'youtube-fallback': { slug: 'youtube-fallback-worker', body: { limit: 28 } },
   'youtube-maintenance': { slug: 'youtube-maintenance-worker', body: { limit: 50 } },
   'feed-poll': { slug: 'feed-poll-worker', body: { limit: 20 } },
   'page-poll': { slug: 'page-poll-worker', body: { limit: 20 } },
