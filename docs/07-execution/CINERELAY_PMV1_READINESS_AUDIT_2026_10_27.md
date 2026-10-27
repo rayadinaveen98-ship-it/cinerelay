@@ -62,6 +62,14 @@ For the last 48 hours, 1,528 successful `YOUTUBE_ENRICH_VIDEO` jobs had `discove
 
 **Remaining release gate:** Independently compare official uploads to ingested video IDs, measure callback -> enrichment -> consumer visibility end-to-end, and investigate the difference between successful fallback and the WebSub accelerator. Never promote "real time" based only on a valid lease.
 
+### Completed enrichment persistence check (second 48-hour probe)
+
+A separate read-only left join of successful `YOUTUBE_ENRICH_VIDEO` jobs by `sourceIdentityId + notification.videoId` to `raw_items.source_identity_id + platform_item_id` showed **zero unmatched successful jobs** in the observed window: 1,532 successful `UPLOADS_PLAYLIST_PRIMARY` jobs matched a stored raw item and 72 successful `WEBSUB_OR_OTHER` jobs also matched. The sample window advanced slightly from the earlier 1,528-polling-job snapshot.
+
+For primary polling jobs, the median job-created -> raw-first-seen interval was approximately **0.8 minutes**. For WebSub/other jobs, `raw_items.first_seen_at` was usually **earlier** than the job (median difference **-411.3 minutes**), consistent with WebSub edits or repeated signals on a previously ingested video. Therefore **72 WebSub jobs cannot be advertised as 72 newly discovered uploads**; callback counts, jobs and unique video arrivals are different units.
+
+This is a **job-to-raw persistence check on the observed successful jobs**, not a completeness study relative to independently published YouTube uploads. Full PMV go/no-go still requires comparing an external set of authoritative published video IDs against the DB.
+
 ### Catalogue and trust
 - 11 ACTIVE movie/series entity names match a deliberately narrow suspicion regexp for caption/promotional text. This is a *triage count*, not a finding that all 11 are invalid.
 - Pending discovery proposals: 16 MOVIE, 14 SERIES (30 total). Promotion of unverified titles is a documented issue.
