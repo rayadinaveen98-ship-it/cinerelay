@@ -1,6 +1,6 @@
 {
   "as_of": "2026-10-27",
-  "status": "DEPLOYED_STATIC_CONTENT_VERIFIED_NATURAL_TICK_PENDING",
+  "status": "DEPLOYED_FIRST_NATURAL_TICK_VERIFIED_FULL_DAY_PENDING",
   "repo": "rayadinaveen98-ship-it/cinerelay",
   "ci_pr": 95,
   "ci_commit": "51b8a5b44ac8612795473aa292a775c640a2a29e",
@@ -29,8 +29,17 @@
     "hosted readback v17 ACTIVE and compiled file exact"
   ],
   "remaining_conditions": [
-    "observe at least one natural 28-request fallback dispatch without HTTP/runtime errors",
-    "monitor full quota day without reserve exhaustion",
-    "measure user-facing freshness and WebSub completeness"
-  ]
+    "one full quota-day usage versus reserve guard",
+    "observed source discovery latency and independent published-video coverage",
+    "controlled merge to main and ongoing source-tier prioritization after review"
+  ],
+  "first_natural_tick": {
+    "utc_start": "2026-10-27T07:25:00Z",
+    "local_time_IST": "2026-10-27 12:55",
+    "playlist_reads": 28,
+    "playlist_provider_errors": 0,
+    "successful_source_health_updates": 28,
+    "scheduler_http_status": 200,
+    "scheduler_timed_out": false
+  }
 }
