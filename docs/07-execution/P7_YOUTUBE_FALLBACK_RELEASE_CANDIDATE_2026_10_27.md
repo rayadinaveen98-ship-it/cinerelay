@@ -46,7 +46,7 @@ This **does not** prove WebSub provider delivery is working. It only fixes a mis
 
 The artifact's ZIP SHA-256 was independently verified against the downloaded ZIP bytes, and the contained worker and Deno configuration hashes were calculated independently. **Do not deploy from source with an unpinned, untested build and claim it is this release candidate.**
 
-## Current hosted baseline to preserve for rollback
+## Preserved v12 hosted baseline (historical rollback snapshot)
 
 At read-only inspection, Supabase project `dnqaejljfzwhsainpdxb` reported:
 
@@ -58,7 +58,7 @@ At read-only inspection, Supabase project `dnqaejljfzwhsainpdxb` reported:
 
 Before promotion, export and securely retain all deployed files and their configuration, or confirm an immutable rollback-capable artifact matching **the precise hosted v12 hash**. Do **not** assume an older GitHub main bundle equals deployed v12.
 
-## Required release procedure (not executed in this PR)
+## Release procedure (executed outside this draft PR; natural cycle verified)
 
 1. Freeze scope to this **single Edge function**. Preserve the exact live `get_edge_function` files/config, verify no worker version drift since inspection, and record source-health baseline.
 2. Download **artifact ID 12713784991** through authorized GitHub credentials and assert the ZIP SHA-256 and extracted `index.js` / `deno.json` SHA-256 above. Refuse deployment if any mismatch or expiry.
@@ -74,11 +74,31 @@ Before promotion, export and securely retain all deployed files and their config
 - [x] CI builds and behavioral bundle check pass on a pinned commit.
 - [x] Exact CI artifact downloaded and SHA256 ZIP / worker / import-map files verified independently.
 - [x] Observed hosted-versus-Git difference documented, including an operational fallback path.
-- [ ] Hosted v12 rollback snapshot explicitly retained for controlled release.
-- [ ] Exact pinned worker deployed to hosting (no production action yet).
-- [ ] Post-deployment version/hash parity checked.
-- [ ] Natural fallback cycle evidence proves health semantics without hiding a WebSub warning.
-- [ ] Manual device/relevance and independent published-upload coverage gates still remain for PMV1.
+- [x] Hosted v12 rollback snapshot explicitly retained in `ops/p7-youtube-fallback-v12-rollback-20261027`.
+- [x] Exact pinned worker deployed as Supabase `youtube-fallback-worker` v13 on 2026-10-27.
+- [x] Post-deployment version/hash parity checked byte-for-byte; hosted hash `1dc066dbe9a0f483ab23c3629c0969315ab3c126fa4227f7a7a5f817e79c79f1`.
+- [x] 08:45 UTC natural cycle confirmed 28 checks/28 HTTP 200, 0 provider errors, and 23 post-v13 polled sources `HEALTHY` with `WEBSUB_MISSED_DELIVERY` warning retained. No real fallback-window gap occurred; its severity remains covered by tests.
+- [ ] Independently validate published-video completeness, end-to-end mobile delivery, and one full provider quota day before public PMV beta.
+
+## Natural post-v13 poll: production acceptance — 2026-10-27
+
+At **08:45–08:46 UTC**, the unchanged scheduler v17 invoked the **new v13 fallback worker** for a complete natural 28-source poll.
+
+| Indicator | Verified result |
+| --- | ---: |
+| YouTube playlistItems.list | 28 calls |
+| Provider HTTP errors | **0** |
+| Sources reporting post-v13 successful 200 checks | **28** |
+| Of those, sources HEALTHY with specific WebSub missed-delivery warning retained | **23** |
+| Sources still DEGRADED solely due to WebSub warning among these 28 | **0** |
+| Canonical events immediately afterward | **233**, unchanged from pre-cycle |
+| Alert deliveries | **0**, unchanged |
+| Source-activity deliveries immediately afterward | **1,794**, unchanged |
+| YouTube read quota at 08:46 UTC | **569** units |
+
+These aggregate snapshots support a successful one-cycle operational rollout and no observed fanout during that cycle, **not** proof of long-term correctness or complete external upload discovery. No `FALLBACK_WINDOW_GAP` occurred in this particular cycle, so real-gap degradation is covered only by the bundle regression contract, not by this live observation.
+
+Keep [issue #93](https://github.com/rayadinaveen98-ship-it/cinerelay/issues/93) open for WebSub callback delivery coverage and independent missed-publication audits. Continue quota monitoring and physical Android follow-to-notification testing. Do not represent this status-semantic correction as near-real-time ingestion.
 
 ## Important constraints
 
