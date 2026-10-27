@@ -182,11 +182,11 @@ export function classifyEvent(item: NormalizedItem, context: PipelineContext): C
   // These guards do not change existing canonical events; corrections to
   // historical entity types and event labels require an operator review.
   const titleText = normalizeText(item.title);
-  if (/\\b(?:super show|pre release event|pre release function)\\b/.test(titleText)
-      && /\\b(?:full show|full episode|full event)\\b/.test(titleText)) {
+  if (/\b(?:super show|pre release event|pre release function)\b/.test(titleText)
+      && /\b(?:full show|full episode|full event)\b/.test(titleText)) {
     return { eventType: 'PRE_RELEASE_EVENT_STARTED_OR_RELEASED', structuredData: {}, headline: 'Pre-release programme recording released' };
   }
-  if (/^(?:in conversation with|conversation with)\\b/.test(titleText)) {
+  if (/^(?:in conversation with|conversation with)\b/.test(titleText)) {
     return { eventType: 'INTERVIEW_RELEASED', structuredData: {}, headline: 'Interview released' };
   }
   const text = item.normalizedText; const date = extractEnglishDate(`${item.title} ${item.text}`); const theatricalLanguage = containsAny(text, ['cinema', 'cinemas', 'theatre', 'theater', 'theatrical', 'worldwide release', 'releases worldwide', 'release worldwide']);
