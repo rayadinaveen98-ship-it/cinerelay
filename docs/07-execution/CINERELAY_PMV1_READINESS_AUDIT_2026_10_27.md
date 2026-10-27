@@ -29,6 +29,25 @@ Repeat the instrumented snapshot with `scripts/diagnostics/pmv1_read_only_baseli
 
 **Preliminary hypothesis, NOT confirmed:** some sources are missing WebSub delivery while fallback still retrieves new uploads. Additional possibilities include outdated sticky error flags, short-lived publication/edit patterns, clock skew, or unsubscribe/reverification edge cases. Need independent per-event timeline samples before deciding on remediation.
 
+### First seven-day publication-to-raw-receipt latency probe
+
+Verified read-only aggregation for **active YouTube sources only**, selecting records with both `published_at` and `first_seen_at` within the previous seven days:
+
+| Measure | Observed |
+| --- | ---: |
+| Qualifying raw items | **5,589** |
+| p50 published -> first seen | **25.7 minutes** |
+| p95 published -> first seen | **53.6 minutes** |
+| Items later than 6 hours | **88** |
+| Negative duration samples | **1** |
+| Maximum positive delay | **1,853.5 minutes** |
+
+This is a **partial, selected-sample discovery-delay proxy**, not evidence that *all* YouTube uploads arrived; missing uploads never appear in the sample. It does not measure canonical-event production, consumer feed availability, or user notification delivery. The timestamp origin is publisher metadata and can be revised, delayed or differ from a user's perceived release time.
+
+The current health-state split has severe sample imbalance: DEGRADED 5,549 items (p50 25.7m, p95 51.0m), HEALTHY 40 items (p50 45.0m, p95 340.6m). **Do not conclude degraded channels are faster or healthy channels are worse:** source activity differences and fallback mechanics are confounders.
+
+**Next measurements required:** stratify by channels that actually published during the window; manually compare recent independent official YouTube uploads to ingested IDs (find missing denominator); track webhook arrival, fallback discovery, enrichment and first feed-visible events for identical uploads. Until then, no near-real-time SLA or advertising claim.
+
 ### Catalogue and trust
 - 11 ACTIVE movie/series entity names match a deliberately narrow suspicion regexp for caption/promotional text. This is a *triage count*, not a finding that all 11 are invalid.
 - Pending discovery proposals: 16 MOVIE, 14 SERIES (30 total). Promotion of unverified titles is a documented issue.
