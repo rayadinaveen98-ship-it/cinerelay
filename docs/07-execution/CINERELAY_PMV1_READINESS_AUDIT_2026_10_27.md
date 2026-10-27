@@ -48,6 +48,20 @@ The current health-state split has severe sample imbalance: DEGRADED 5,549 items
 
 **Next measurements required:** stratify by channels that actually published during the window; manually compare recent independent official YouTube uploads to ingested IDs (find missing denominator); track webhook arrival, fallback discovery, enrichment and first feed-visible events for identical uploads. Until then, no near-real-time SLA or advertising claim.
 
+### Hosted runtime drift and fallback/WebSub provenance (27 Oct follow-up)
+
+The `source_effective_health` RPC currently reports all **185** active YouTube identities effectively `HEALTHY` with recent fallback, while raw `source_health` has **149** `DEGRADED/WEBSUB_MISSED_DELIVERY` warning flags (148 earlier in the day). Both readings are relevant and may change with time. All 185 active sources have exactly one current verified WebSub lease.
+
+The hosted `youtube-fallback-worker` v12 bundles an older `decideFallbackHealth` implementation that returns `degraded:true` on a successful recovery when WebSub delivery was missed. Repo main already has newer semantics and 21 planning tests: `degraded:false` for successful authoritative polling, with `WEBSUB_MISSED_DELIVERY` warning preserved and bounded-window gaps still degraded. This **hosted-vs-Git drift** was confirmed from hosted minified source. Simply changing stored labels is not evidence of complete event coverage.
+
+For the last 48 hours, 1,528 successful `YOUTUBE_ENRICH_VIDEO` jobs had `discoveredBy=UPLOADS_PLAYLIST_PRIMARY` and 72 successful jobs had no such tag, consistent with WebSub/other. There were 72 processed WebSub connector receipt rows from 6 distinct sources and 34 ingress receipt rows from those 6 sources (ingress coalesces into five-minute buckets; these are not raw HTTP POST counts). Jobs and receipts are not necessarily unique uploads.
+
+10 active YouTube sources are configured HIGH priority, 175 NORMAL/default. In a separate 48-hour sample, HIGH contributed only 29 observed raw items (median publish-to-first-seen 30.1 minutes) vs 1,491 NORMAL items (25.4 minutes). Do not infer that HIGH is slower: distribution, input timestamp semantics and per-source activity are confounders.
+
+**Mitigation staged, not deployed:** [draft PR #94](https://github.com/rayadinaveen98-ship-it/cinerelay/pull/94) adds a minified deployment-artifact guard to reject the older health semantics in newly built bundles. Hosted deployment and hash parity require separate controlled acceptance. No source status reset or mass WebSub renewals.
+
+**Remaining release gate:** Independently compare official uploads to ingested video IDs, measure callback -> enrichment -> consumer visibility end-to-end, and investigate the difference between successful fallback and the WebSub accelerator. Never promote "real time" based only on a valid lease.
+
 ### Catalogue and trust
 - 11 ACTIVE movie/series entity names match a deliberately narrow suspicion regexp for caption/promotional text. This is a *triage count*, not a finding that all 11 are invalid.
 - Pending discovery proposals: 16 MOVIE, 14 SERIES (30 total). Promotion of unverified titles is a documented issue.
