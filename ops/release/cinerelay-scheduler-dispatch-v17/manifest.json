@@ -1,6 +1,6 @@
 {
   "as_of": "2026-10-27",
-  "status": "STAGED_NOT_DEPLOYED",
+  "status": "DEPLOYED_STATIC_CONTENT_VERIFIED_NATURAL_TICK_PENDING",
   "repo": "rayadinaveen98-ship-it/cinerelay",
   "ci_pr": 95,
   "ci_commit": "51b8a5b44ac8612795473aa292a775c640a2a29e",
@@ -16,5 +16,21 @@
   "rollback_branch": "ops/p7-youtube-scheduler-v16-rollback-20261027",
   "prior_hosted_ezbr_sha256": "39db8d2fd1f2b2e031a580242bb8571f61700d5b4ed591c1d52a6297425416cd",
   "jwt_verification": false,
-  "scope": "cinerelay-scheduler-dispatch single function; YouTube fallback body limit 20 to 28 only"
+  "scope": "cinerelay-scheduler-dispatch single function; YouTube fallback body limit 20 to 28 only",
+  "deployed_on": "2026-10-27",
+  "hosted_version": 17,
+  "hosted_ezbr_sha256": "3156cda0edad3d21687526dfa58631e1ba0e8013d0c7879ba91914e63d5984b1",
+  "verified_conditions": [
+    "CI all 9 successful",
+    "previous hosted v16 exact rollback branch retained",
+    "candidate ZIP digest verified",
+    "candidate JS and deno Git blob sha matched downloaded archive",
+    "previous hosted vs candidate differs only YouTube fallback body limit 20 to 28 plus newline",
+    "hosted readback v17 ACTIVE and compiled file exact"
+  ],
+  "remaining_conditions": [
+    "observe at least one natural 28-request fallback dispatch without HTTP/runtime errors",
+    "monitor full quota day without reserve exhaustion",
+    "measure user-facing freshness and WebSub completeness"
+  ]
 }
