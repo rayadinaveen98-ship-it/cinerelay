@@ -13,6 +13,20 @@ Deno.test('known production promotional titles are triaged without any edit',()=
     ['From 60 to 20, love always! ❤️ Hotstar Specials #LoveAlways streaming','SERIES'],
     ['Ee Jagathiki moolam Dhanam ayithe... aah Dhananiki moolam oka VARAM 🔮 This','SERIES'],
     ['Love & Romance | Honeymoon Express Telugu Movie','MOVIE'],
+    ['Karmakhya Telugu Movie','MOVIE'],
+    ['Month Of Madhu Telugu Movie','MOVIE'],
+    ['60-ல் இருந்து 20 வரை ❤️ #HotstarSpecials #LoveAlways streaming','SERIES'],
+    ['Amma Dheenamma... Maa BB Fan Pages kuda intha Accurate ga cheppavu ga! 🤯 #Varam streaming','SERIES'],
+    ['Love & Cute Romance | Stand Up Rahul Movie Scenes','MOVIE'],
+    ['Dongata Telugu Movie','MOVIE'],
+    ['Kotha Bangaru Lokam Movie Scenes','MOVIE'],
+    ['Midnight Murders Movie Scenes | Kunchacko Boban | Midhun Manuel Thomas','MOVIE'],
+    ['Romance | Emoji Movie Scenes | Mahat | Devika | Manasa','MOVIE'],
+    ['Sulthan Telugu Movie Scenes | Rashmika Mandanna | Karthi','MOVIE'],
+    ['Superstar’s Super Show!','MOVIE'],
+    ['The Bloody Valentine (Hindi) | Lokesh Kanagaraj | Wamiqa Gabbi | Sony LIV','MOVIE'],
+    ['Watch Anagha Ajith in Kappi Squad','MOVIE'],
+    ['Yevadu Telugu Movie','MOVIE'],
   ];
   for(const [name,type] of examples) {
     const warnings=activeCatalogueTitleWarnings(name,type);
