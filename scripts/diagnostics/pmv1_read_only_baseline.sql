@@ -134,3 +134,33 @@ WHERE provider IN ('YOUTUBE_WEBSUB','YOUTUBE_WEBSUB_INGRESS')
   AND received_at > now() - interval '48 hours'
 GROUP BY provider, status
 ORDER BY receipt_rows DESC;
+
+
+-- 11. Completed video enrichment jobs joined to raw items by source + provider ID.
+-- A matching raw record proves job-to-raw persistence for THIS observed sample;
+-- it does not prove all externally published videos were discovered.
+-- WebSub may publish edits to already stored videos: negative job-to-first-seen
+-- intervals mean earlier ingestion, not impossible processing.
+WITH completed AS (
+  SELECT payload ->> 'sourceIdentityId' AS source_identity_id,
+         payload #>> '{notification,videoId}' AS video_id,
+         COALESCE(payload #>> '{notification,discoveredBy}', 'WEBSUB_OR_OTHER') AS discovery_path,
+         created_at
+  FROM public.jobs
+  WHERE job_type = 'YOUTUBE_ENRICH_VIDEO'
+    AND state = 'SUCCEEDED'
+    AND created_at > now() - interval '48 hours'
+)
+SELECT c.discovery_path,
+       count(*) AS successful_jobs,
+       count(*) FILTER (WHERE r.id IS NULL) AS without_matched_raw,
+       count(*) FILTER (WHERE r.id IS NOT NULL) AS with_matched_raw,
+       count(*) FILTER (WHERE r.first_seen_at < c.created_at) AS raw_already_preceded_job,
+       round((percentile_cont(0.5) WITHIN GROUP (
+         ORDER BY extract(epoch FROM (r.first_seen_at - c.created_at)) / 60.0
+       ))::numeric, 1) AS median_job_to_first_seen_minutes
+FROM completed c
+LEFT JOIN public.raw_items r ON r.platform_item_id = c.video_id
+  AND r.source_identity_id::text = c.source_identity_id
+GROUP BY c.discovery_path
+ORDER BY successful_jobs DESC;
