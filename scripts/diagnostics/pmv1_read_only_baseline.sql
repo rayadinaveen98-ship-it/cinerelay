@@ -73,3 +73,24 @@ SELECT count(*) AS registered_devices,
 FROM public.push_device_registrations;
 
 SELECT count(*) AS source_activity_outbox_rows FROM public.source_activity_deliveries;
+
+-- 7. Partial latency proxy: YouTube published_at -> raw first_seen_at (NOT consumer feed readiness).
+-- Includes only items published and first observed in the previous seven days,
+-- only currently active identities, and does not prove all uploads were ingested.
+-- Rare negative lags can occur from upstream timestamp/clock inconsistencies.
+WITH sample AS (
+  SELECT EXTRACT(EPOCH FROM (r.first_seen_at - r.published_at)) / 60.0 AS lag_minutes
+  FROM public.raw_items r
+  JOIN public.source_identities s ON s.id = r.source_identity_id
+  WHERE s.platform = 'YOUTUBE' AND s.active = true
+    AND r.published_at >= now() - interval '7 days'
+    AND r.first_seen_at >= now() - interval '7 days'
+    AND r.published_at IS NOT NULL AND r.first_seen_at IS NOT NULL
+)
+SELECT count(*) AS items,
+       count(*) FILTER (WHERE lag_minutes < 0) AS negative_lag,
+       count(*) FILTER (WHERE lag_minutes > 360) AS over_six_hours,
+       round((percentile_cont(0.5) WITHIN GROUP (ORDER BY lag_minutes))::numeric, 1) AS p50_minutes,
+       round((percentile_cont(0.95) WITHIN GROUP (ORDER BY lag_minutes))::numeric, 1) AS p95_minutes,
+       round(max(lag_minutes)::numeric, 1) AS max_minutes
+FROM sample;
