@@ -194,6 +194,10 @@ jobs:
               --outfile="edge-deploy/${fn}/index.js"
             cp "supabase/functions/${fn}/deno.json" "edge-deploy/${fn}/deno.json"
           done
+      - name: Verify deployment-native YouTube fallback contract
+        run: node scripts/check-youtube-fallback-bundle.mjs edge-deploy/youtube-fallback-worker/index.js
+      - name: Validate offline fallback release-preparation helper
+        run: python3 -m py_compile scripts/prepare_youtube_fallback_release.py
       - name: Upload verified Edge source bundle
         uses: actions/upload-artifact@v4
         with:
