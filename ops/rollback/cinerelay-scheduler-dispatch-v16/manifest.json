@@ -1,0 +1,11 @@
+{
+  "captured_on": "2026-10-27",
+  "project_id": "dnqaejljfzwhsainpdxb",
+  "slug": "cinerelay-scheduler-dispatch",
+  "hosted_version": 16,
+  "ezbr_sha256": "39db8d2fd1f2b2e031a580242bb8571f61700d5b4ed591c1d52a6297425416cd",
+  "verify_jwt": false,
+  "entrypoint_path": "index.js",
+  "import_map_path": "deno.json",
+  "reason": "P7 YouTube fallback batch 20 to 28 deployment rollback; never change cron or notification settings"
+}
