@@ -1,0 +1,20 @@
+{
+  "as_of": "2026-10-27",
+  "status": "STAGED_NOT_DEPLOYED",
+  "repo": "rayadinaveen98-ship-it/cinerelay",
+  "ci_pr": 95,
+  "ci_commit": "51b8a5b44ac8612795473aa292a775c640a2a29e",
+  "ci_run": 40465779457,
+  "artifact_id": 12716572463,
+  "artifact_sha256": "9a30d2c1dc40e79b8918a95afd46446d1d85bdba22b3e7fb7fd1e5077b6e2178",
+  "scheduler_index_sha256": "54d71b8a927fe9b5afb833fddfcd75e5727c9e794e8ebd609fbdb33c3306009d",
+  "scheduler_deno_sha256": "49215872440aad98f4d4f2f38d9ecbb5b5919ee01fa577599f3a3bffd7c512b2",
+  "expected_blob_shas": {
+    "index": "6cf41e87da947361ef524e7d2578e1ddb650eca3",
+    "deno": "41e9d0cd4043a28fdb82d343f6379c0b586ca1db"
+  },
+  "rollback_branch": "ops/p7-youtube-scheduler-v16-rollback-20261027",
+  "prior_hosted_ezbr_sha256": "39db8d2fd1f2b2e031a580242bb8571f61700d5b4ed591c1d52a6297425416cd",
+  "jwt_verification": false,
+  "scope": "cinerelay-scheduler-dispatch single function; YouTube fallback body limit 20 to 28 only"
+}
