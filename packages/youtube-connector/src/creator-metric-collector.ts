@@ -2,11 +2,24 @@ import {
   buildCreatorVideoStatsUrl,
   parseCreatorVideoStats,
   planCreatorMetrics,
-  type CreatorMetricVideo,
-  type PublicVideoCounter,
 } from './creator-intelligence.js';
 
-export type CreatorCounterSample = PublicVideoCounter & { expiresAt: string };
+// Self-contained declaration types: Deno's edge bundler resolves emitted .d.ts
+// files via .js imports and cannot safely infer TS-only exports from JS runtime.
+export type CreatorC4VideoCandidate = {
+  videoId: string;
+  channelId: string;
+  publishedAt: string;
+  lastObservedAt?: string | null;
+};
+export type CreatorCounterSample = {
+  videoId: string;
+  observedAt: string;
+  viewCount: string | null;
+  likeCount: string | null;
+  commentCount: string | null;
+  expiresAt: string;
+};
 export type C4StatsResponse = { status: number; body?: unknown };
 export type CreatorC4Dependencies = {
   reserveQuota: (videoCount: number) => Promise<number | null>;
@@ -32,7 +45,7 @@ export type CreatorC4Outcome = {
  */
 export async function collectOneCreatorMetricsBatch(
   now: string,
-  candidates: readonly CreatorMetricVideo[],
+  candidates: readonly CreatorC4VideoCandidate[],
   dependencies: CreatorC4Dependencies,
 ): Promise<CreatorC4Outcome> {
   const plan = planCreatorMetrics({
