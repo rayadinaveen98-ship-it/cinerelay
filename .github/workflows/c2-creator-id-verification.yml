@@ -1,0 +1,62 @@
+name: CineRelay C2 Verify 20 Creator IDs — Read-only
+
+on:
+  push:
+    branches:
+      - feature/creator-intelligence-c2-verify-20261028
+    paths:
+      - '.github/workflows/c2-creator-id-verification.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: cinerelay-creator-c2-official-identity-verification
+  cancel-in-progress: false
+
+jobs:
+  verify-source-ids:
+    if: github.repository == 'rayadinaveen98-ship-it/cinerelay' && github.ref == 'refs/heads/feature/creator-intelligence-c2-verify-20261028'
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify no candidate has been enabled
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module -e "
+            import fs from 'node:fs';
+            const a=JSON.parse(fs.readFileSync('research/creator-intelligence/c2-verification-input-20.json','utf8'));
+            const b=JSON.parse(fs.readFileSync('research/creator-intelligence/c2-existing-youtube-ids-2026-10-28.json','utf8'));
+            if (a.candidates.length !== 20 || b.channelIds.length < 170 ||
+                a.candidates.some(x=>x.verified!==false||x.trackingEnabled!==false||x.officialChannelId!==null)) process.exit(1);
+            console.log('Verified 20 research-only leads and baseline ID snapshot without API calls');
+          "
+      - name: Run metered official public channel identity checks
+        env:
+          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+          CREATOR_C2_RESULT_FILE: research/creator-intelligence/c2-official-id-results.json
+        shell: bash
+        run: |
+          set -euo pipefail
+          # If repo lacks this secret, write BLOCKED report and spend zero quota.
+          node scripts/creator-intelligence/verify-c2-channels.mjs
+      - name: Record research-only identity result, never production
+        if: success()
+        shell: bash
+        run: |
+          set -euo pipefail
+          git add research/creator-intelligence/c2-official-id-results.json
+          if git diff --cached --quiet; then
+            echo 'No changes to verification report'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'research(c2): record read-only YouTube official-ID verification report'
+          git push origin HEAD:refs/heads/feature/creator-intelligence-c2-verify-20261028
