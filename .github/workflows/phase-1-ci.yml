@@ -101,6 +101,8 @@ jobs:
         run: deno test supabase/tests/unit/active-catalogue-audit.test.ts
       - name: Test C5 honest charts and exact public counter math
         run: deno test supabase/tests/unit/creator-intelligence-c5-view.test.ts
+      - name: Test C6 policy gate and equivalent-age creator observation comparisons
+        run: deno test supabase/tests/unit/creator-intelligence-c6-comparison.test.ts
       - name: Test correction impact and OTT collision safeguards
         run: deno test supabase/tests/unit/catalogue-correction-impact.test.ts
       - name: Type-check youtube-fallback-worker

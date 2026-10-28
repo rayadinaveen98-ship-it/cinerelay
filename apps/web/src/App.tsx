@@ -5,6 +5,7 @@ import { useAuth } from './auth/AuthProvider';
 import { fetchConsoleFeed, fetchConsoleOverview, fetchEventDetail } from './lib/console-api';
 import { OperationsPage } from './pages/OperationsPage';
 import { CreatorIntelligencePage } from './pages/CreatorIntelligencePage';
+import { CreatorComparisonPage } from './pages/CreatorComparisonPage';
 
 function LoadingScreen() {
   return <main className="grid min-h-screen place-items-center bg-zinc-950 text-zinc-300">Loading CineRelay…</main>;
@@ -70,6 +71,7 @@ function Shell() {
           <Link to="/feed" className="block rounded-xl px-4 py-3 text-sm text-zinc-300 hover:bg-zinc-900 [&.active]:bg-zinc-900 [&.active]:text-white">Live feed</Link>
           <Link to="/sources" className="block rounded-xl px-4 py-3 text-sm text-zinc-300 hover:bg-zinc-900 [&.active]:bg-zinc-900 [&.active]:text-white">Sources & ops</Link>
           <Link to="/creators" className="block rounded-xl px-4 py-3 text-sm text-amber-300 hover:bg-zinc-900 [&.active]:bg-zinc-900 [&.active]:text-white">Creator Intelligence</Link>
+          <Link to="/creators/compare" className="block rounded-xl py-2 pl-7 pr-4 text-xs text-zinc-400 hover:bg-zinc-900 [&.active]:bg-zinc-900 [&.active]:text-white">Compare (approval-gated)</Link>
           <Link to="/health" className="block rounded-xl px-4 py-3 text-sm text-zinc-300 hover:bg-zinc-900 [&.active]:bg-zinc-900 [&.active]:text-white">System health</Link>
         </nav>
         <Outlet />
@@ -159,7 +161,8 @@ const eventDetailRoute = createRoute({ getParentRoute: () => rootRoute, path: '/
 const sourcesRoute = createRoute({ getParentRoute: () => rootRoute, path: '/sources', component: OperationsPage });
 const healthRoute = createRoute({ getParentRoute: () => rootRoute, path: '/health', component: HealthPage });
 const creatorsRoute = createRoute({ getParentRoute: () => rootRoute, path: '/creators', component: CreatorIntelligencePage });
-const routeTree = rootRoute.addChildren([overviewRoute, feedRoute, eventDetailRoute, sourcesRoute, healthRoute, creatorsRoute]);
+const compareRoute = createRoute({ getParentRoute: () => rootRoute, path: '/creators/compare', component: CreatorComparisonPage });
+const routeTree = rootRoute.addChildren([overviewRoute, feedRoute, eventDetailRoute, sourcesRoute, healthRoute, creatorsRoute, compareRoute]);
 const router = createRouter({ routeTree });
 
 declare module '@tanstack/react-router' { interface Register { router: typeof router } }

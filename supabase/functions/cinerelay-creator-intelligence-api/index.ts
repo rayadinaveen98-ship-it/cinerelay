@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { creatorComparisonApproved } from './comparison-policy.ts';
 
 // Read-only operator analytics. Not an extension of cinema event feed or
 // a consumer API. No mutations, no public metrics refresh, no quota cost.
@@ -13,6 +14,11 @@ const cors={
   'cache-control':'no-store',
 };
 const CHANNEL=/^UC[A-Za-z0-9_-]{22}$/;
+const VIDEO=/^[A-Za-z0-9_-]{11}$/;
+const crossChannelApproved=creatorComparisonApproved(
+  Deno.env.get('CINERELAY_CREATOR_COMPARISONS_APPROVED'),
+  Deno.env.get('CINERELAY_YOUTUBE_ANALYTICS_PERMISSION_REFERENCE'),
+);
 const json=(status:number,body:Record<string,unknown>)=>
   new Response(JSON.stringify(body),{status,headers:{...cors,'content-type':'application/json'}});
 type DbError={code?:string;message?:string}|null;
@@ -99,6 +105,82 @@ async function detail(channelId:string):Promise<Response>{
     samplesTruncated:truncated,
   });
 }
+/**
+ * C6 comparison returns ONLY two specific videos and their public cumulative
+ * counters. No rankings, scores, inferred growth, or broad scraping.
+ * Fail-closed permission check BEFORE any cross-channel DB reads.
+ */
+async function comparePair(body:Record<string,unknown>):Promise<Response>{
+  if(!crossChannelApproved)return json(403,{error:'CROSS_CHANNEL_ANALYTICS_APPROVAL_REQUIRED'});
+  const aChannel=body.aChannelId,bChannel=body.bChannelId,
+    aVideo=body.aVideoId,bVideo=body.bVideoId;
+  if(typeof aChannel!=='string'||!CHANNEL.test(aChannel)||
+     typeof bChannel!=='string'||!CHANNEL.test(bChannel)||
+     typeof aVideo!=='string'||!VIDEO.test(aVideo)||
+     typeof bVideo!=='string'||!VIDEO.test(bVideo)||
+     aChannel===bChannel || aVideo===bVideo){
+    return json(400,{error:'INVALID_COMPARISON_PAIR'});
+  }
+  const ids=[aChannel,bChannel],videos=[aVideo,bVideo];
+  const [channelsResult,videosResult]=await Promise.all([
+    admin.from('creator_intelligence_channels')
+      .select('channel_id,canonical_title,monitoring_enabled,review_state,approved_by,approved_at,metadata_refreshed_at')
+      .in('channel_id',ids).limit(2),
+    admin.from('creator_intelligence_videos')
+      .select('video_id,channel_id,published_at,content_format,metadata_refreshed_at')
+      .in('video_id',videos).limit(2),
+  ]);
+  if(channelsResult.error || videosResult.error)
+    return unavailable(channelsResult.error||videosResult.error);
+  const channels=channelsResult.data??[],records=videosResult.data??[];
+  if(channels.length!==2||records.length!==2)
+    return json(404,{error:'COMPARISON_RECORDS_NOT_AVAILABLE'});
+  const approvedIds=[...new Set(channels.map(c=>c.approved_by).filter((id):id is string=>typeof id==='string'))];
+  if(approvedIds.length===0)return json(409,{error:'COMPARISON_OPERATOR_APPROVAL_REVOKED'});
+  const approvers=await admin.from('operator_users').select('user_id,active')
+    .in('user_id',approvedIds).limit(2);
+  if(approvers.error)return unavailable(approvers.error);
+  const activeApprovers=new Set((approvers.data??[]).filter(x=>x.active===true).map(x=>x.user_id));
+  const fresh=Date.now()-30*86400000;
+  if(channels.some(c=>!c.monitoring_enabled||c.review_state!=='APPROVED'||
+    !c.approved_at||!c.approved_by||!activeApprovers.has(c.approved_by)||
+    !Number.isFinite(Date.parse(c.metadata_refreshed_at))||Date.parse(c.metadata_refreshed_at)<fresh) ||
+    records.some(v=>!Number.isFinite(Date.parse(v.metadata_refreshed_at))||
+      Date.parse(v.metadata_refreshed_at)<fresh || !Number.isFinite(Date.parse(v.published_at))||
+      Date.parse(v.published_at)<fresh)){
+    return json(409,{error:'COMPARISON_REVIEW_OR_METADATA_EXPIRED'});
+  }
+  const ca=channels.find(c=>c.channel_id===aChannel),cb=channels.find(c=>c.channel_id===bChannel);
+  const va=records.find(v=>v.video_id===aVideo&&v.channel_id===aChannel),
+    vb=records.find(v=>v.video_id===bVideo&&v.channel_id===bChannel);
+  if(!ca||!cb||!va||!vb || va.content_format==='UNKNOWN'||vb.content_format==='UNKNOWN'||
+    va.content_format!==vb.content_format){
+    return json(409,{error:'COMPARISON_FORMAT_OR_IDENTITY_MISMATCH'});
+  }
+  const samples=await admin.from('creator_intelligence_counter_text')
+    .select('video_id,observed_at,view_count,like_count,comment_count')
+    .in('video_id',videos)
+    .gte('observed_at',new Date(fresh).toISOString())
+    .order('observed_at',{ascending:true}).limit(1001);
+  if(samples.error)return unavailable(samples.error);
+  if((samples.data??[]).length>1000)
+    return json(409,{error:'COMPARISON_OBSERVATIONS_TRUNCATED'});
+  const s=samples.data??[];
+  const payload=(video:typeof va,channel:typeof ca)=>({
+    channelId:channel.channel_id,channelTitle:channel.canonical_title,
+    videoId:video.video_id,publishedAt:video.published_at,format:video.content_format,
+    samples:s.filter(x=>x.video_id===video.video_id).map(x=>({
+      observedAt:x.observed_at,viewCount:x.view_count,
+      likeCount:x.like_count,commentCount:x.comment_count,
+    })),
+  });
+  return json(200,{
+    generatedAt:new Date().toISOString(),
+    policy:'YOUTUBE_ANALYTICS_APPROVED_OPERATOR_ONLY',
+    a:payload(va,ca),b:payload(vb,cb),
+  });
+}
+
 Deno.serve(async(request:Request):Promise<Response>=>{
   if(request.method==='OPTIONS')return new Response(null,{status:204,headers:cors});
   if(request.method!=='POST')return json(405,{error:'METHOD_NOT_ALLOWED'});
@@ -110,6 +192,10 @@ Deno.serve(async(request:Request):Promise<Response>=>{
     const body=payload as Record<string,unknown>;
     if(body.action==='overview')return await overview();
     if(body.action==='channel'&&typeof body.channelId==='string')return await detail(body.channelId);
+    if(body.action==='comparisonStatus')return json(200,{
+      enabled:crossChannelApproved,policy:'YouTube cross-channel analytics must be explicitly approved',
+    });
+    if(body.action==='comparison')return await comparePair(body);
     return json(400,{error:'UNKNOWN_ACTION'});
   }catch{return json(503,{error:'CREATOR_DASHBOARD_UNAVAILABLE'});}
 });

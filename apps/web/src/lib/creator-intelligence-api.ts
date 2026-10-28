@@ -48,3 +48,33 @@ export function fetchCreatorDetail(channelId:string):Promise<CreatorDetail>{
  if(!/^UC[A-Za-z0-9_-]{22}$/.test(channelId))return Promise.reject(new Error('Invalid creator channel ID'));
  return invokeCreator({action:'channel',channelId},Detail);
 }
+
+const ComparisonStatus=z.object({enabled:z.boolean(),policy:z.string()});
+const ComparableVideo=z.object({
+ channelId:z.string().regex(/^UC[A-Za-z0-9_-]{22}$/),channelTitle:z.string(),
+ videoId:z.string().regex(/^[A-Za-z0-9_-]{11}$/),publishedAt:z.string(),
+ format:z.enum(['LONG','SHORT','LIVE','UNKNOWN']),
+ samples:z.array(z.object({
+  observedAt:z.string(),viewCount:z.string().regex(/^\\d+$/).nullable(),
+  likeCount:z.string().regex(/^\\d+$/).nullable(),commentCount:z.string().regex(/^\\d+$/).nullable(),
+ })),
+});
+const ComparisonResponse=z.object({
+ generatedAt:z.string(),policy:z.literal('YOUTUBE_ANALYTICS_APPROVED_OPERATOR_ONLY'),
+ a:ComparableVideo,b:ComparableVideo,
+});
+export type CreatorComparisonResponse=z.infer<typeof ComparisonResponse>;
+export function fetchCreatorComparisonStatus():Promise<z.infer<typeof ComparisonStatus>>{
+ return invokeCreator({action:'comparisonStatus'},ComparisonStatus);
+}
+export function fetchCreatorComparison(input:{
+ aChannelId:string;bChannelId:string;aVideoId:string;bVideoId:string;
+}):Promise<CreatorComparisonResponse>{
+ if(!/^UC[A-Za-z0-9_-]{22}$/.test(input.aChannelId)||
+ !/^UC[A-Za-z0-9_-]{22}$/.test(input.bChannelId)||
+ !/^[A-Za-z0-9_-]{11}$/.test(input.aVideoId)||
+ !/^[A-Za-z0-9_-]{11}$/.test(input.bVideoId)||
+ input.aChannelId===input.bChannelId || input.aVideoId===input.bVideoId)
+  return Promise.reject(new Error('Invalid two-creator video pair'));
+ return invokeCreator({action:'comparison',...input},ComparisonResponse);
+}
