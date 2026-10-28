@@ -1,4 +1,4 @@
-import {creatorChartPoints,formatPublicCounter,observedGrowth} from '../../../apps/web/src/lib/creator-metrics.ts';
+import {creatorChartPoints,formatPublicCounter,observedGrowth,observedPublicationHours} from '../../../apps/web/src/lib/creator-metrics.ts';
 function equal(a:unknown,b:unknown,label:string){if(a!==b)throw new Error(label+': '+String(a)+' !== '+String(b));}
 const point=(viewCount:string|null,observedAt:string,likeCount:string|null=null,commentCount:string|null=null)=>
   ({viewCount,observedAt,likeCount,commentCount});
@@ -48,4 +48,23 @@ Deno.test('C5 chart remains finite for 64-bit counters and a flat line',()=>{
     point('18446744073709551615','2026-10-28T11:00:00Z'),
   ]);
   if(!line || line.includes('NaN') || line.includes('Infinity'))throw new Error('bad coordinates');
+});
+
+Deno.test('C5 public posting-hour counts reflect explicitly selected timezone',()=>{
+  const videos=[
+    {publishedAt:'2026-10-28T18:00:00Z'},
+    {publishedAt:'2026-10-28T23:30:00Z'},
+    {publishedAt:'not-a-date'},
+  ];
+  const india=observedPublicationHours(videos,'Asia/Kolkata');
+  const utc=observedPublicationHours(videos,'UTC');
+  equal(india.length,24,'24 bins');
+  equal(india[23],1,'18 UTC -> 23 IST');
+  equal(india[5],1,'23:30 UTC -> 05:00 IST next day');
+  equal(utc[18],1,'UTC offset none');
+  equal(utc[23],1,'23:30 UTC -> 23 UTC');
+  equal(india.reduce((a,b)=>a+b,0),2,'invalid publishedAt ignored');
+});
+Deno.test('C5 empty publication sample cannot pretend to establish a channel trend',()=>{
+  equal(observedPublicationHours([],'UTC').reduce((a,b)=>a+b,0),0,'empty data');
 });
