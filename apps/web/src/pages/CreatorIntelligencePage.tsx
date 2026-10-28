@@ -68,7 +68,7 @@ function CreatorDetailCard({channelId,zone}:{channelId:string;zone:string}){
      <p className="text-xs font-medium uppercase tracking-[0.22em] text-amber-400">Recent publication times</p>
      <h3 className="mt-2 text-lg font-semibold">When these videos became public</h3>
      <p className="mt-2 text-xs leading-5 text-zinc-500">Distribution of the latest {videos.length} recorded videos in {zone==='Asia/Kolkata'?'IST':'UTC'}. This is a limited observed sample, not a forecast or the creator's complete history.</p>
-     <div className="mt-5 grid grid-cols-12 gap-1.5 sm:grid-cols-24" role="img" aria-label="Recorded public video publishing counts for each hour of the day">
+     <div className="mt-5 grid grid-cols-12 gap-1.5 sm:grid-cols-[repeat(24,minmax(0,1fr))]" role="img" aria-label="Recorded public video publishing counts for each hour of the day">
        {observedHours.map((n,h)=><div key={h} className="min-w-0 text-center" title={`${String(h).padStart(2,'0')}:00 — ${n} video(s)`}>
          <div className="flex h-20 items-end justify-center rounded-sm bg-zinc-950/60 px-0.5 pb-0.5">
            <div className={`w-full rounded-t-sm ${n>0?'bg-amber-400':'bg-zinc-800'}`}
