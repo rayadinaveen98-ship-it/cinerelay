@@ -124,7 +124,7 @@ async function comparePair(body:Record<string,unknown>):Promise<Response>{
   const ids=[aChannel,bChannel],videos=[aVideo,bVideo];
   const [channelsResult,videosResult]=await Promise.all([
     admin.from('creator_intelligence_channels')
-      .select('channel_id,canonical_title,monitoring_enabled,review_state,metadata_refreshed_at')
+      .select('channel_id,canonical_title,monitoring_enabled,review_state,approved_by,approved_at,metadata_refreshed_at')
       .in('channel_id',ids).limit(2),
     admin.from('creator_intelligence_videos')
       .select('video_id,channel_id,published_at,content_format,metadata_refreshed_at')
@@ -135,10 +135,19 @@ async function comparePair(body:Record<string,unknown>):Promise<Response>{
   const channels=channelsResult.data??[],records=videosResult.data??[];
   if(channels.length!==2||records.length!==2)
     return json(404,{error:'COMPARISON_RECORDS_NOT_AVAILABLE'});
+  const approvedIds=[...new Set(channels.map(c=>c.approved_by).filter((id):id is string=>typeof id==='string'))];
+  if(approvedIds.length===0)return json(409,{error:'COMPARISON_OPERATOR_APPROVAL_REVOKED'});
+  const approvers=await admin.from('operator_users').select('user_id,active')
+    .in('user_id',approvedIds).limit(2);
+  if(approvers.error)return unavailable(approvers.error);
+  const activeApprovers=new Set((approvers.data??[]).filter(x=>x.active===true).map(x=>x.user_id));
   const fresh=Date.now()-30*86400000;
   if(channels.some(c=>!c.monitoring_enabled||c.review_state!=='APPROVED'||
-    Date.parse(c.metadata_refreshed_at)<fresh) ||
-    records.some(v=>Date.parse(v.metadata_refreshed_at)<fresh || Date.parse(v.published_at)<fresh)){
+    !c.approved_at||!c.approved_by||!activeApprovers.has(c.approved_by)||
+    !Number.isFinite(Date.parse(c.metadata_refreshed_at))||Date.parse(c.metadata_refreshed_at)<fresh) ||
+    records.some(v=>!Number.isFinite(Date.parse(v.metadata_refreshed_at))||
+      Date.parse(v.metadata_refreshed_at)<fresh || !Number.isFinite(Date.parse(v.published_at))||
+      Date.parse(v.published_at)<fresh)){
     return json(409,{error:'COMPARISON_REVIEW_OR_METADATA_EXPIRED'});
   }
   const ca=channels.find(c=>c.channel_id===aChannel),cb=channels.find(c=>c.channel_id===bChannel);
