@@ -66,8 +66,8 @@ update public.operator_users set active=false where user_id='c4400000-0000-4000-
 select is((select count(*) from public.creator_intelligence_metric_candidates(500)),0::bigint,
   'revoked operator blocks creator metric candidates immediately');
 select throws_ok(
- $insert into public.creator_intelligence_metric_samples(video_id,observed_at,view_count,expires_at)
- values('aaaaaaaaaaa',now()-interval '2 minutes',1250,now()+interval '29 days')$,
+ $revoked$insert into public.creator_intelligence_metric_samples(video_id,observed_at,view_count,expires_at)
+ values('aaaaaaaaaaa',now()-interval '2 minutes',1250,now()+interval '29 days')$revoked$,
  'P0001','creator_metric_channel_not_operator_approved',
  'revoked operator also blocks in-flight metric writes, not only candidate listing');
 update public.operator_users set active=true where user_id='c4400000-0000-4000-8000-000000000001';
@@ -79,8 +79,8 @@ metadata_refreshed_at=now()-interval '31 days' where channel_id='UCaaaaaaaaaaaaa
 select is((select count(*) from public.creator_intelligence_metric_candidates(500)),0::bigint,
   'stale 30-day channel public metadata excludes video');
 select throws_ok(
- $insert into public.creator_intelligence_metric_samples(video_id,observed_at,view_count,expires_at)
- values('aaaaaaaaaaa',now()-interval '2 minutes',1300,now()+interval '29 days')$,
+ $stale$insert into public.creator_intelligence_metric_samples(video_id,observed_at,view_count,expires_at)
+ values('aaaaaaaaaaa',now()-interval '2 minutes',1300,now()+interval '29 days')$stale$,
  'P0001','creator_metric_channel_not_operator_approved',
  'stale public metadata also blocks in-flight writes');
 
