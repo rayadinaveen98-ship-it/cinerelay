@@ -1,0 +1,34 @@
+{
+  "kind": "CINERELAY_PRELIMINARY_PAGE_EVIDENCE",
+  "asOf": "2026-10-28",
+  "expiresAfter": "2026-11-27",
+  "apiVerified": false,
+  "reviewApproved": false,
+  "trackingEnabled": false,
+  "matches": [
+    {
+      "name": "Chandoo Tech in Telugu",
+      "listedHandle": "@data_with_chandoo",
+      "officialChannelId": "UCuaf89M0Lt5pmXzaUssXHvw",
+      "firstPartyChannelPage": "https://www.youtube.com/channel/UCuaf89M0Lt5pmXzaUssXHvw",
+      "stage": "YOUTUBE_PAGE_ID_FOUND_API_PENDING",
+      "approved": false
+    },
+    {
+      "name": "Ruchi Paakashaale",
+      "listedHandle": "@CookwithShubhaSharon",
+      "officialChannelId": "UCcEXr6ZzppFU1jEbX42QP1A",
+      "firstPartyChannelPage": "https://www.youtube.com/channel/UCcEXr6ZzppFU1jEbX42QP1A",
+      "stage": "YOUTUBE_PAGE_ID_FOUND_API_PENDING",
+      "approved": false
+    },
+    {
+      "name": "CA Rachana Ranade Marathi",
+      "listedHandle": "@carachanaranademarathi",
+      "officialChannelId": "UChnK-EoSW6er1qtWkwnJDRw",
+      "firstPartyChannelPage": "https://www.youtube.com/channel/UChnK-EoSW6er1qtWkwnJDRw",
+      "stage": "YOUTUBE_PAGE_ID_FOUND_API_PENDING",
+      "approved": false
+    }
+  ]
+}
