@@ -99,12 +99,16 @@ jobs:
         run: deno test supabase/tests/unit/catalogue-owner-groups.test.ts
       - name: Test active catalogue impact audit
         run: deno test supabase/tests/unit/active-catalogue-audit.test.ts
+      - name: Test C5 honest charts and exact public counter math
+        run: deno test supabase/tests/unit/creator-intelligence-c5-view.test.ts
       - name: Test correction impact and OTT collision safeguards
         run: deno test supabase/tests/unit/catalogue-correction-impact.test.ts
       - name: Type-check youtube-fallback-worker
         run: deno check --config supabase/functions/youtube-fallback-worker/deno.json supabase/functions/youtube-fallback-worker/index.ts
       - name: Type-check creator-metric-collector
         run: deno check --config supabase/functions/creator-metric-collector/deno.json supabase/functions/creator-metric-collector/index.ts
+      - name: Type-check creator-intelligence read-only operator API
+        run: deno check --config supabase/functions/cinerelay-creator-intelligence-api/deno.json supabase/functions/cinerelay-creator-intelligence-api/index.ts
       - name: Type-check youtube-source-admin
         run: deno check --config supabase/functions/youtube-source-admin/deno.json supabase/functions/youtube-source-admin/index.ts
       - name: Type-check youtube-maintenance-worker
@@ -154,6 +158,7 @@ jobs:
         run: |
           set -euo pipefail
           functions=(
+            cinerelay-creator-intelligence-api
             creator-metric-collector
             youtube-websub
             youtube-source-admin
