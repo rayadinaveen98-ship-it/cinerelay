@@ -34,7 +34,7 @@ function positive(name: string, value: number): void {
   if (value === 0) throw new RangeError(name + ' must be positive');
 }
 function timestamp(name: string, value: string): number {
-  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}T/.test(value)) throw new RangeError(name + ' must be an ISO datetime');
+  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/.test(value)) throw new RangeError(name + ' must be an ISO datetime');
   const time = Date.parse(value);
   if (!Number.isFinite(time)) throw new RangeError(name + ' must be a valid datetime');
   return time;
