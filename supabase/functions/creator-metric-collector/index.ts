@@ -1,8 +1,9 @@
 import { createClient } from '@supabase/supabase-js';
 // @deno-types="../../../packages/youtube-connector/dist/creator-metric-collector.d.ts"
 import { collectOneCreatorMetricsBatch } from '../../../packages/youtube-connector/dist/creator-metric-collector.js';
-// @deno-types="../../../packages/youtube-connector/dist/creator-intelligence.d.ts"
-import type { CreatorMetricVideo } from '../../../packages/youtube-connector/dist/creator-intelligence.js';
+type CreatorMetricVideo = {
+  videoId:string; channelId:string; publishedAt:string; lastObservedAt?:string|null;
+};
 
 // This function is intentionally NOT scheduled and NOT deployed in C4.
 // Requires an explicit verified provider quota and operator-reviewed channels.
