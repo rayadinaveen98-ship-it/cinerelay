@@ -44,3 +44,24 @@ export function creatorChartPoints(samples:readonly PublicPoint[],width=540,heig
    return `${x},${y}`;
  }).join(' ');
 }
+
+/** Publication hours from actual video publishedAt timestamps.
+ * Source records are a bounded recent sample, NOT a prediction or full history.
+ */
+export function observedPublicationHours(
+  videos:readonly {publishedAt:string}[],zone:'Asia/Kolkata'|'UTC'
+):number[]{
+  const bins=Array.from({length:24},()=>0);
+  const formatter=new Intl.DateTimeFormat('en-GB',{
+    timeZone:zone,hour:'2-digit',hourCycle:'h23',
+  });
+  for(const video of videos){
+    const time=Date.parse(video.publishedAt);
+    if(!Number.isFinite(time))continue;
+    const hourText=formatter.formatToParts(new Date(time)).find(p=>p.type==='hour')?.value;
+    if(hourText===undefined)continue;
+    const hour=Number(hourText);
+    if(Number.isInteger(hour)&&hour>=0&&hour<24)bins[hour]++;
+  }
+  return bins;
+}
