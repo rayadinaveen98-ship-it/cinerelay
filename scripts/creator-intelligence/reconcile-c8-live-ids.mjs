@@ -68,7 +68,7 @@ export function reconcileC8LiveIds({pool,existing,verification,live,firstParty,
     drift?'BLOCKED_PRODUCTION_ID_DRIFT':
     currentDuplicates.length?'BLOCKED_LIVE_ID_COLLISION':
     c7.status==='AWAITING_OPERATOR_REVIEW'?'AWAITING_HUMAN_IDENTITY_REVIEW':
-    'BLOCKED_'+c7.status;
+    c7.status.startsWith('BLOCKED_')?c7.status:'BLOCKED_'+c7.status;
   return {
     kind:'CINERELAY_CREATOR_C8_LIVE_DEDUPE',auditedAt:at,
     status,sourceReportStatus:c7.status,
