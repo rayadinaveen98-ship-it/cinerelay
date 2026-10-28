@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
-  fetchCreatorOverview,fetchCreatorDetail,type CreatorObservation,
+  fetchCreatorOverview,fetchCreatorDetail,
 } from '../lib/creator-intelligence-api';
 import {creatorChartPoints,formatPublicCounter,observedGrowth} from '../lib/creator-metrics';
 
@@ -73,7 +73,7 @@ function CreatorDetailCard({channelId,zone}:{channelId:string;zone:string}){
       <label className="text-xs text-zinc-400">Choose video
        <select className="mt-1 block max-w-full rounded-lg border border-zinc-700 bg-zinc-950 p-2 text-zinc-100"
         value={selectedVideo??''} onChange={e=>setPickedVideo(e.target.value)}>
-         {videos.map(v=><option value={v.videoId} key={v.videoId}>{v.videoId} · {v.content_format??v.format}</option>)}
+         {videos.map(v=><option value={v.videoId} key={v.videoId}>{v.videoId} · {v.format}</option>)}
        </select>
       </label>
      </div>
