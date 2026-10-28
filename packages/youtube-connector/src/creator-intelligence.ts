@@ -46,7 +46,7 @@ function record(x: unknown): Record<string, unknown> | null {
 export function normalizeCreatorHandle(raw: string): string {
   if (typeof raw !== 'string') throw new Error('handle must be text');
   const h = raw.trim().startsWith('@') ? raw.trim() : '@' + raw.trim();
-  if (!/^@[\p{L}\p{N}._-]{3,30}$/u.test(h)) throw new Error('ambiguous handle; human identity review required');
+  if (!/^@[\p{L}\p{M}\p{N}._-]{3,30}$/u.test(h)) throw new Error('ambiguous handle; human identity review required');
   return h;
 }
 
