@@ -219,7 +219,7 @@ export function planCreatorMetrics(input: CreatorMetricPlanInput): {
   }
   for(const q of channelQueues.values())q.sort((a,b)=>b.overdue-a.overdue||a.id.localeCompare(b.id));
   const channelIds=[...channelQueues.keys()].sort((a,b)=>{
-    const ap=channelQueues.get(a)![0].overdue,bp=channelQueues.get(b)![0].overdue;
+    const ap=channelQueues.get(a)?.[0]?.overdue ?? -Infinity, bp=channelQueues.get(b)?.[0]?.overdue ?? -Infinity;
     return bp-ap||a.localeCompare(b);
   });
   const dueVideos=[...channelQueues.values()].reduce((n,q)=>n+q.length,0);
