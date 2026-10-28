@@ -154,6 +154,7 @@ jobs:
         run: |
           set -euo pipefail
           functions=(
+            creator-metric-collector
             youtube-websub
             youtube-source-admin
             youtube-subscription-admin
