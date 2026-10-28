@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import {readFile} from 'node:fs/promises';
 import {validateC2Inputs,evaluateC2Result,runC2Verification} from '../../scripts/creator-intelligence/verify-c2-channels.mjs';
 const A='UCaaaaaaaaaaaaaaaaaaaaaa',B='UCbbbbbbbbbbbbbbbbbbbbbb';
 const channel=id=>({items:[{id,snippet:{title:'Test creator'},contentDetails:{relatedPlaylists:{uploads:'UU'+id.slice(2)}}}]});
@@ -62,5 +63,24 @@ await test('request limit and bad inputs rejected, not silently expanded',async(
   assert.throws(()=>validateC2Inputs({candidates:[pool.candidates[0],pool.candidates[0]]},existing),/Duplicate handle/);
   await assert.rejects(()=>runC2Verification({pool,existing,apiKey:'SECRET',requestLimit:21}),/Invalid request limit/);
   await assert.rejects(()=>runC2Verification({pool,existing,apiKey:'SECRET',at:'2026-10-28T12:00:00+05:30'}),/UTC timestamp/);
+});
+await test('first-party YouTube channel page evidence is explicitly NOT API-approved',async()=>{
+  const raw=await readFile('research/creator-intelligence/c2-first-party-page-identity-matches-2026-10-28.json','utf8');
+  const existingRaw=await readFile('research/creator-intelligence/c2-existing-youtube-ids-2026-10-28.json','utf8');
+  const proof=JSON.parse(raw),ids=new Set(JSON.parse(existingRaw).channelIds),found=new Set();
+  assert.equal(proof.apiVerified,false);
+  assert.equal(proof.reviewApproved,false);
+  assert.equal(proof.trackingEnabled,false);
+  assert.equal(proof.matches.length,3);
+  for(const x of proof.matches){
+    assert.match(x.officialChannelId,/^UC[A-Za-z0-9_-]{22}$/);
+    assert.equal(x.firstPartyChannelPage,'https://www.youtube.com/channel/'+x.officialChannelId);
+    assert.equal(x.stage,'YOUTUBE_PAGE_ID_FOUND_API_PENDING');
+    assert.equal(x.approved,false);
+    assert.equal(x.alreadyInExistingSnapshot,false);
+    assert.equal(ids.has(x.officialChannelId),false);
+    assert.equal(found.has(x.officialChannelId),false);
+    found.add(x.officialChannelId);
+  }
 });
 console.log('PASS Creator C2: '+n+' official verification and safety tests');
