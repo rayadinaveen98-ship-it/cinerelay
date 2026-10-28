@@ -65,7 +65,8 @@ export function comparePublicVideoObservations(
   a:ComparableVideo,b:ComparableVideo,now:string
 ):C6Comparison{
   const nowMs=time(now);
-  const zero={comparable:false,format:null,windows:[],completeWindows:0} as const;
+  const zero:Pick<C6Comparison,'comparable'|'format'|'windows'|'completeWindows'>=
+    {comparable:false,format:null,windows:[],completeWindows:0};
   if(!Number.isFinite(nowMs)||!validVideo(a)||!validVideo(b))
     return {...zero,reason:'INVALID_INPUT'};
   if(a.videoId===b.videoId)return {...zero,reason:'SAME_VIDEO'};
