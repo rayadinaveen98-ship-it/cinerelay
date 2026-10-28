@@ -110,6 +110,12 @@ test('duplicate video ids never lead to duplicate metric requests',()=>{
   assert.equal(plan.dueVideos,1);
   assert.deepEqual(plan.batches,[[V1]]);
 });
+test('timestamp inputs must include an explicit timezone to avoid IST/UTC drift',()=>{
+  const videos=[{videoId:V1,channelId:CHANNEL_A,publishedAt:'2026-10-28T10:00:00Z'}];
+  assert.throws(()=>planCreatorMetrics({...base,now:'2026-10-28T12:00:00',videos}),/ISO datetime/);
+  assert.throws(()=>planCreatorMetrics({...base,videos:[{...videos[0],publishedAt:'2026-10-28T10:00:00'}]}),/ISO datetime/);
+  assert.equal(planCreatorMetrics({...base,now:'2026-10-28T17:30:00+05:30',videos}).dueVideos,1);
+});
 test('rate limits and invalid ids are rejected rather than silently rounded',()=>{
   const videos=[{videoId:V1,channelId:CHANNEL_A,publishedAt:'2026-10-28T11:00:00Z'}];
   assert.throws(()=>planCreatorMetrics({...base,videos,maxVideosPerRequest:51}),/Unverified batch size/);
