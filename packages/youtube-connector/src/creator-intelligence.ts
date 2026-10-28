@@ -99,6 +99,22 @@ export function assessCreatorChannelLookup(
   };
 }
 
+/** Public-only stats request, returns no secret and has no network side effects. */
+export function buildCreatorVideoStatsUrl(videoIds: readonly string[]): string {
+  if (!videoIds.length || videoIds.length > CREATOR_YOUTUBE_QUOTA_2026.conservativeBatchVideoLimit) {
+    throw new RangeError('Only 1–50 public video IDs permitted per safe batch');
+  }
+  const ids = new Set<string>();
+  for(const id of videoIds){
+    if(!VIDEO_ID.test(id) || ids.has(id))throw new Error('Invalid or duplicate YouTube video ID');
+    ids.add(id);
+  }
+  const url = new URL('https://www.googleapis.com/youtube/v3/videos:batchGetStats');
+  url.searchParams.set('part','statistics');
+  url.searchParams.set('id',[...ids].join(','));
+  return url.toString();
+}
+
 export type PublicVideoCounter = {
   videoId: string;
   observedAt: string;
@@ -120,9 +136,11 @@ export function parseCreatorVideoStats(payload: unknown, observedAt: string): {
   timestamp('observedAt', observedAt);
   const root = record(payload), items = root?.items, summary = record(root?.summary);
   if (!Array.isArray(items) || !summary) throw new Error('Malformed videos.batchGetStats payload');
-  if (!Array.isArray(summary.failedVideoIds)) throw new Error('Missing failed-video summary');
+  // The API may omit an optional failedVideoIds array when every video works.
+  const failed = summary.failedVideoIds ?? [];
+  if (!Array.isArray(failed)) throw new Error('Malformed failed-video summary');
   const failedVideoIds: string[] = [];
-  for (const x of summary.failedVideoIds) {
+  for (const x of failed) {
     if (typeof x !== 'string' || !VIDEO_ID.test(x)) throw new Error('Invalid failed video ID');
     failedVideoIds.push(x);
   }
