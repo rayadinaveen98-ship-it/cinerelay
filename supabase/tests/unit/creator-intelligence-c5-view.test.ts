@@ -3,7 +3,7 @@ function equal(a:unknown,b:unknown,label:string){if(a!==b)throw new Error(label+
 const point=(viewCount:string|null,observedAt:string,likeCount:string|null=null,commentCount:string|null=null)=>
   ({viewCount,observedAt,likeCount,commentCount});
 Deno.test('C5 exact public bigint formatting never rounds 64-bit observations',()=>{
-  equal(formatPublicCounter('18446744073709551615'),'18,44,67,44,07,37,09,55,16,15','large number');
+  equal(formatPublicCounter('18446744073709551615'),'1,84,46,74,40,73,70,95,51,615','large number');
   equal(formatPublicCounter(null),'Unavailable','null visibility');
   equal(formatPublicCounter('0'),'0','reported zero');
 });
