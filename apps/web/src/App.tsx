@@ -4,6 +4,7 @@ import { Link, Outlet, createRootRoute, createRoute, createRouter, RouterProvide
 import { useAuth } from './auth/AuthProvider';
 import { fetchConsoleFeed, fetchConsoleOverview, fetchEventDetail } from './lib/console-api';
 import { OperationsPage } from './pages/OperationsPage';
+import { CreatorIntelligencePage } from './pages/CreatorIntelligencePage';
 
 function LoadingScreen() {
   return <main className="grid min-h-screen place-items-center bg-zinc-950 text-zinc-300">Loading CineRelay…</main>;
@@ -68,6 +69,7 @@ function Shell() {
           <Link to="/" className="block rounded-xl px-4 py-3 text-sm text-zinc-300 hover:bg-zinc-900 [&.active]:bg-zinc-900 [&.active]:text-white">Overview</Link>
           <Link to="/feed" className="block rounded-xl px-4 py-3 text-sm text-zinc-300 hover:bg-zinc-900 [&.active]:bg-zinc-900 [&.active]:text-white">Live feed</Link>
           <Link to="/sources" className="block rounded-xl px-4 py-3 text-sm text-zinc-300 hover:bg-zinc-900 [&.active]:bg-zinc-900 [&.active]:text-white">Sources & ops</Link>
+          <Link to="/creators" className="block rounded-xl px-4 py-3 text-sm text-amber-300 hover:bg-zinc-900 [&.active]:bg-zinc-900 [&.active]:text-white">Creator Intelligence</Link>
           <Link to="/health" className="block rounded-xl px-4 py-3 text-sm text-zinc-300 hover:bg-zinc-900 [&.active]:bg-zinc-900 [&.active]:text-white">System health</Link>
         </nav>
         <Outlet />
@@ -156,7 +158,8 @@ const feedRoute = createRoute({ getParentRoute: () => rootRoute, path: '/feed', 
 const eventDetailRoute = createRoute({ getParentRoute: () => rootRoute, path: '/events/$eventId', component: EventDetailPage });
 const sourcesRoute = createRoute({ getParentRoute: () => rootRoute, path: '/sources', component: OperationsPage });
 const healthRoute = createRoute({ getParentRoute: () => rootRoute, path: '/health', component: HealthPage });
-const routeTree = rootRoute.addChildren([overviewRoute, feedRoute, eventDetailRoute, sourcesRoute, healthRoute]);
+const creatorsRoute = createRoute({ getParentRoute: () => rootRoute, path: '/creators', component: CreatorIntelligencePage });
+const routeTree = rootRoute.addChildren([overviewRoute, feedRoute, eventDetailRoute, sourcesRoute, healthRoute, creatorsRoute]);
 const router = createRouter({ routeTree });
 
 declare module '@tanstack/react-router' { interface Register { router: typeof router } }
