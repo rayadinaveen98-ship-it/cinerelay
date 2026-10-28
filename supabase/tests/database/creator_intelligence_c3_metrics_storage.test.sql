@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(26);
+select plan(27);
 
 insert into auth.users(id,aud,role,email,encrypted_password,created_at,updated_at)
 values ('c3300000-0000-4000-8000-000000000001','authenticated','authenticated','c3-operator@example.com','',now(),now());
@@ -71,5 +71,6 @@ select lives_ok(
  'service-only purge works under a simulated future date');
 select is((select count(*) from public.creator_intelligence_metric_samples),0::bigint,'expired samples deleted');
 select is((select count(*) from public.creator_intelligence_videos),0::bigint,'old video metadata deleted');
+select is((select count(*) from public.creator_intelligence_channels),0::bigint,'stale public channel identity metadata deleted');
 select * from finish();
 rollback;
