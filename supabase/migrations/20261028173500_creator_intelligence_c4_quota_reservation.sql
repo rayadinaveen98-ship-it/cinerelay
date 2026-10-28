@@ -72,6 +72,45 @@ as $body$
   limit least(greatest(coalesce(p_limit,500),1),2000)
 $body$;
 
+-- Strengthen C3's insert guard so an approval revoked DURING an in-flight
+-- provider request cannot still write samples after a quota reservation.
+create or replace function public.creator_intelligence_metric_insert_guard()
+returns trigger language plpgsql security invoker
+set search_path = pg_catalog, public
+as $guard$
+declare
+  v_approved boolean;
+  v_published timestamptz;
+begin
+  select c.monitoring_enabled
+       and c.review_state = 'APPROVED'
+       and c.approved_by is not null and c.approved_at is not null
+       and o.active = true
+       and c.metadata_refreshed_at >= clock_timestamp() - interval '30 days'
+       and v.metadata_refreshed_at >= clock_timestamp() - interval '30 days',
+    v.published_at
+  into v_approved, v_published
+  from public.creator_intelligence_videos v
+  join public.creator_intelligence_channels c on c.channel_id = v.channel_id
+  join public.operator_users o on o.user_id = c.approved_by
+  where v.video_id = new.video_id
+  for share of v,c,o;
+  if coalesce(v_approved,false) is not true then
+    raise exception 'creator_metric_channel_not_operator_approved';
+  end if;
+  if new.observed_at > clock_timestamp() + interval '5 minutes'
+    or new.observed_at < clock_timestamp() - interval '30 days'
+    or new.observed_at < v_published then
+    raise exception 'creator_metric_observed_at_out_of_range';
+  end if;
+  if new.expires_at > new.observed_at + interval '30 days'
+    or new.expires_at <= new.observed_at then
+    raise exception 'creator_metric_retention_out_of_range';
+  end if;
+  return new;
+end;
+$guard$;
+
 revoke all on function public.creator_intelligence_reserve_stats_quota(integer,integer,integer)
   from public,anon,authenticated;
 revoke all on function public.creator_intelligence_metric_candidates(integer)
