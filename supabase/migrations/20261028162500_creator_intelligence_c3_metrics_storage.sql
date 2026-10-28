@@ -120,6 +120,14 @@ begin
   where published_at < p_as_of - interval '30 days'
      or metadata_refreshed_at < p_as_of - interval '30 days';
   get diagnostics v_tmp = row_count;
+  v_removed := v_removed + v_tmp;
+
+  -- Public channel names and handles are also Non-Authorized API Data.
+  -- Delete stale channel metadata if no successful refresh occurred in 30d.
+  -- ON DELETE CASCADE removes its remaining videos/observations as well.
+  delete from public.creator_intelligence_channels
+  where metadata_refreshed_at < p_as_of - interval '30 days';
+  get diagnostics v_tmp = row_count;
 
   return v_removed + v_tmp;
 end;
