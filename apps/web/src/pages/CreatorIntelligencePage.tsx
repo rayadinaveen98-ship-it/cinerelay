@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import {
   fetchCreatorOverview,fetchCreatorDetail,
 } from '../lib/creator-intelligence-api';
-import {creatorChartPoints,formatPublicCounter,observedGrowth} from '../lib/creator-metrics';
+import {creatorChartPoints,formatPublicCounter,observedGrowth,observedPublicationHours} from '../lib/creator-metrics';
 
 type Filter='all'|'monitoring'|'review';
 const getTime=(value:string,zone:string)=>
@@ -39,6 +39,8 @@ function CreatorDetailCard({channelId,zone}:{channelId:string;zone:string}){
  if(query.isPending)return <section role="status" className="rounded-3xl border border-zinc-800 bg-zinc-900/50 p-8 text-sm text-zinc-400">Reading public observations…</section>;
  if(query.isError)return <EmptyPanel title="Creator detail unavailable">{query.error.message}</EmptyPanel>;
  const {channel,videos,samples}=query.data;
+ const observedHours=observedPublicationHours(videos,zone as 'Asia/Kolkata'|'UTC');
+ const peakHourCount=Math.max(1,...observedHours);
  const selectedVideo=videos.some(v=>v.videoId===pickedVideo)?pickedVideo:videos[0]?.videoId??null;
  const observations=samples.filter(x=>x.videoId===selectedVideo)
    .sort((a,b)=>Date.parse(a.observedAt)-Date.parse(b.observedAt));
@@ -62,6 +64,20 @@ function CreatorDetailCard({channelId,zone}:{channelId:string;zone:string}){
       <a href={`https://www.youtube.com/channel/${channel.channelId}`} target="_blank" rel="noopener noreferrer" className="ml-auto text-amber-400 underline underline-offset-4">Official channel</a>
     </div>
    </section>
+   {videos.length>0&&<section className="rounded-3xl border border-zinc-800 bg-zinc-900/60 p-5 sm:p-7">
+     <p className="text-xs font-medium uppercase tracking-[0.22em] text-amber-400">Recent publication times</p>
+     <h3 className="mt-2 text-lg font-semibold">When these videos became public</h3>
+     <p className="mt-2 text-xs leading-5 text-zinc-500">Distribution of the latest {videos.length} recorded videos in {zone==='Asia/Kolkata'?'IST':'UTC'}. This is a limited observed sample, not a forecast or the creator's complete history.</p>
+     <div className="mt-5 grid grid-cols-12 gap-1.5 sm:grid-cols-24" role="img" aria-label="Recorded public video publishing counts for each hour of the day">
+       {observedHours.map((n,h)=><div key={h} className="min-w-0 text-center" title={`${String(h).padStart(2,'0')}:00 — ${n} video(s)`}>
+         <div className="flex h-20 items-end justify-center rounded-sm bg-zinc-950/60 px-0.5 pb-0.5">
+           <div className={`w-full rounded-t-sm ${n>0?'bg-amber-400':'bg-zinc-800'}`}
+             style={{height:`${n>0?Math.max(9,100*n/peakHourCount):4}%`}}/>
+         </div>
+         <span className="mt-1 block text-[9px] text-zinc-500">{String(h).padStart(2,'0')}</span>
+       </div>)}
+     </div>
+   </section>}
    {videos.length===0?<EmptyPanel title="No discovered videos yet">
       This verified creator has no video records in Creator Intelligence. Publication history is not inferred from other channels.
     </EmptyPanel>:<>
