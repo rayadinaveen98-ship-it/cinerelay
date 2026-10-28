@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import {
   CREATOR_YOUTUBE_QUOTA_2026,
   buildCreatorChannelLookupUrl,
+  buildCreatorVideoStatsUrl,
   normalizeCreatorHandle,
   assessCreatorChannelLookup,
   parseCreatorVideoStats,
@@ -46,6 +47,16 @@ test('private subscriber counts stay unavailable instead of zero',()=>{
   assert.equal(x.state,'VERIFIED_NEW');
   assert.equal(x.subscriberHidden,true);
   assert.equal(x.subscriberCountApprox,null);
+});
+test('public metrics URL uses the dedicated 2026 API without credentials',()=>{
+  const url=new URL(buildCreatorVideoStatsUrl([V1,V2]));
+  assert.equal(url.pathname,'/youtube/v3/videos:batchGetStats');
+  assert.equal(url.searchParams.get('part'),'statistics');
+  assert.equal(url.searchParams.get('id'),V1+','+V2);
+  assert.equal(url.searchParams.has('key'),false);
+  assert.throws(()=>buildCreatorVideoStatsUrl([V1,V1]),/duplicate/);
+  assert.throws(()=>buildCreatorVideoStatsUrl([]),/Only 1/);
+  assert.throws(()=>buildCreatorVideoStatsUrl(Array.from({length:51},(_,i)=>String(i).padStart(11,'0'))),/Only 1/);
 });
 test('public counters preserve absent likes/comments and large strings',()=>{
   const stats=parseCreatorVideoStats({items:[
