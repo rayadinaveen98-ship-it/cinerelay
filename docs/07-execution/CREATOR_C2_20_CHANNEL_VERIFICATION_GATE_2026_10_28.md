@@ -10,6 +10,18 @@ Grow CineRelay beyond cinema channels while comparing creators across subscriber
 - Existing production handle comparison found **0 exact overlaps among the 44 listed handles**, but that is **not a stable-ID duplicate proof**.
 - Dedicated CI run [40667829716](https://github.com/rayadinaveen98-ship-it/cinerelay/actions/runs/40667829716) **completed without errors** but reported `BLOCKED_MISSING_GITHUB_API_KEY`. **0 official API calls, 0 official IDs verified** because `YOUTUBE_API_KEY` was not exposed to this GitHub Actions workflow. The outcome is a **blocked validation**, not a successful verification.
 
+## First-party YouTube channel page evidence (not official API calls)
+
+Following the GitHub key blocker, three canonical `/channel/UC...` URLs were found on **YouTube-owned public channel pages** that also displayed the matching `@handle`. They are recorded with `apiVerified=false`, `reviewApproved=false`, `trackingEnabled=false` in `c2-first-party-page-identity-matches-2026-10-28.json`:
+
+| Candidate | Found on first-party YouTube channel page | Snapshot duplicate? |
+| --- | --- | --- |
+| Chandoo – Tech in Telugu | https://www.youtube.com/channel/UCuaf89M0Lt5pmXzaUssXHvw | no |
+| Ruchi Paakashaale | https://www.youtube.com/channel/UCcEXr6ZzppFU1jEbX42QP1A | no |
+| CA Rachana Ranade (Marathi) | https://www.youtube.com/channel/UChnK-EoSW6er1qtWkwnJDRw | no |
+
+This is real first-party identity progress but is **not equivalent** to a successful authorized `channels.list` call, a current channel-activity check, or operator approval. The dated 185-ID dedupe snapshot cannot prove permanent uniqueness; repeat the live production stable-ID check before future activation.
+
 ## What is already implemented
 
 - `scripts/creator-intelligence/verify-c2-channels.mjs` uses Google's public `channels.list` `forHandle` with `part=snippet,contentDetails` and a restricted response field mask.
