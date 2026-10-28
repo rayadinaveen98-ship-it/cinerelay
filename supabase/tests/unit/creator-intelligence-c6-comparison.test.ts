@@ -31,7 +31,8 @@ Deno.test('C6 matches two factual 24h readings with separate exact observed ages
  ok(out.comparable&&out.format==='LONG'&&out.completeWindows===1,'one fully observed window');
  const match=out.windows.find(w=>w.key==='24h');
  ok(match?.status==='OBSERVED','24h coverage');
- ok(match?.a?.viewCount==='999'&&match.b?.viewCount==='88','raw public counters only');
+ ok(match?.a?.viewCount==='999'&&match?.b?.viewCount==='88','raw public counters only');
+ if(!match?.a||!match.b)throw new Error('Expected two distinct real observations');
  ok(match.a.ageHours!==match.b.ageHours,'no time interpolation');
  ok(out.windows.filter(w=>w.status==='MISSING_BOTH').length===4,'no fabricated backfill');
 });
