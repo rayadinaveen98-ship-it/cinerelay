@@ -58,11 +58,13 @@ Deno.serve((request:Request)=>runC20IdentityRequest(request,config,{
   return receipt.data;
  },
  provider:officialForHandle,
- save:async(record:Record<string,unknown>)=>{
-  if(!admin)throw Error('C20_PRIVATE_DB_UNAVAILABLE');
-  const result=await admin.from('creator_intelligence_identity_evidence')
-   .upsert(record,{onConflict:'channel_id'}).select('channel_id').single();
-  return !result.error&&result.data?.channel_id===record.channel_id;
+ commit:async(handle:string,token:string,receiptId:number,record:Record<string,unknown>)=>{
+  if(!admin)throw Error('C23_PRIVATE_DB_UNAVAILABLE');
+  const result=await admin.rpc('creator_c23_commit_verified_identity',{
+   p_handle:handle,p_claim_token:token,
+   p_quota_receipt_id:receiptId,p_record:record,
+  });
+  return !result.error&&result.data===true;
  },
  finalize:async(handle:string,token:string,receiptId:number,
   success:boolean,status:number)=>{

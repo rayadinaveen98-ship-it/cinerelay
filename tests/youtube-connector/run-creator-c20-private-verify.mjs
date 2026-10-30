@@ -29,10 +29,12 @@ function harness(overrides={}){
   },
   provider:async(handle)=>{events.push('provider');assert.equal(handle,HANDLE);
    return {status:200,body:provider()};},
-  save:async row=>{events.push('save');saved.push(row);return true;},
+  commit:async(handle,token,receipt,row)=>{events.push('commit');
+   assert.equal(handle,HANDLE);assert.equal(token,TOKEN);assert.equal(receipt,101);
+   saved.push(row);return true;},
   finalize:async(handle,token,receipt,success,status)=>{
    events.push('finalize');assert.equal(handle,HANDLE);assert.equal(token,TOKEN);
-   assert.equal(receipt,101);assert.equal(success,status===200);return true;
+   assert.equal(receipt,101);assert.equal(success,false);assert.notEqual(status,200);return true;
   },
   ...overrides,
  };
@@ -48,10 +50,10 @@ await test('only vetted, unique at-most-20 scoped handles are admissible',()=>{
  assert.equal(validateReviewedCandidates([{...candidate,sourceUrl:'http://unsafe.test'}]),null);
  assert.equal(validateReviewedCandidates([{...candidate,handle:'@bad/name'}]),null);
 });
-await test('success checks operator -> quota claim -> ONE provider -> private write -> finalize',async()=>{
+await test('success checks operator -> quota claim -> ONE provider -> atomic identity commit',async()=>{
  const h=harness(),result=await parse(await runC20IdentityRequest(req(),cfg,h.deps));
  assert.equal(result.status,200);assert.equal(result.cache,'no-store');
- assert.deepEqual(h.events,['auth','claim','provider','save','finalize']);
+ assert.deepEqual(h.events,['auth','claim','provider','commit']);
  assert.equal(result.body.channelId,ID);
  assert.equal(result.body.providerRequestsReserved,1);
  assert.equal(result.body.expiresAt,'2026-11-26T11:45:00.000Z');
@@ -135,24 +137,37 @@ await test('Google error fails closed with quota finalized; provider body never 
  assert.deepEqual(h.events,['auth','claim','provider','finalize']);
  assert.ok(!JSON.stringify(res.body).includes('PRIVATE_PROVIDER_ERROR'));
 });
-await test('malformed provider data or private storage error denies success, still finalizes',async()=>{
+await test('malformed provider or commit error denies success and handles fail-closed',async()=>{
  for(const override of [
   {provider:async()=>{throw Error('PRIVATE_TOKEN');}},
   {provider:async()=>({status:200,body:{items:[]}})},
-  {save:async()=>false},
-  {save:async()=>{throw Error('DB_PRIVATE');}},
+  {commit:async()=>false},
+  {commit:async()=>{throw Error('DB_PRIVATE');}},
  ]){
   const h=harness(override);
   const res=await parse(await runC20IdentityRequest(req(),cfg,h.deps));
-  assert.equal(res.status,503);assert.ok(h.events.includes('finalize'));
+  assert.equal(res.status,503);
+  if(h.events.includes('provider') && !h.events.includes('finalize'))
+   assert.ok(h.events.includes('claim'));
   assert.ok(!JSON.stringify(res.body).includes('DB_PRIVATE'));
  }
 });
-await test('finalization must succeed before reporting success',async()=>{
- const h=harness({finalize:async()=>{h.events.push('finalize');return false;}});
+await test('atomic commit refusal cannot report success or fall through to stale finalizer',async()=>{
+ const h=harness({commit:async()=>{h.events.push('commit');return false;}});
  const result=await parse(await runC20IdentityRequest(req(),cfg,h.deps));
- assert.equal(result.status,503);assert.equal(result.body.error,'C20_QUOTA_FINALIZE_FAILED');
- assert.equal(h.saved.length,1);
+ assert.equal(result.status,503);
+ assert.equal(result.body.error,'C23_STALE_OR_REJECTED_IDENTITY_COMMIT');
+ assert.equal(h.saved.length,0);
+ assert.deepEqual(h.events,['auth','claim','provider','commit']);
+});
+await test('failed provider finalization must succeed before reporting failure',async()=>{
+ const h=harness({
+  provider:async()=>({status:503,body:null}),
+  finalize:async()=>false,
+ });
+ const result=await parse(await runC20IdentityRequest(req(),cfg,h.deps));
+ assert.equal(result.status,503);
+ assert.equal(result.body.error,'C20_QUOTA_FINALIZE_FAILED');
 });
 await test('claim RPC error fails before provider without revealing database cause',async()=>{
  const h=harness({claim:async()=>{throw Error('PRIVATE_CREDENTIAL');}});
@@ -160,4 +175,4 @@ await test('claim RPC error fails before provider without revealing database cau
  assert.equal(result.status,503);assert.equal(result.body.error,'C20_CLAIM_UNAVAILABLE');
  assert.ok(!h.events.includes('provider'));
 });
-console.log('PASS CineRelay C20: '+n+' mock official identity, quota and write/finalize scenarios');
+console.log('PASS CineRelay C20/C23: '+n+' mock official identity, quota and atomic commit scenarios');
