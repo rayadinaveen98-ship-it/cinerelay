@@ -53,11 +53,14 @@ function harness(overrides={}){
    assert.equal(params.maxResults,'3');
    return {status:200,body:fakeUploads()};
   },
-  save:async(row)=>{events.push('save');saved.push(row);return true;},
+  commit:async(id,token,receipt,row)=>{
+   events.push('commit');assert.equal(id,CHANNEL);assert.equal(token,TOKEN);
+   assert.equal(receipt,42);saved.push(row);return true;
+  },
   finalize:async(id,token,receipt,success,status)=>{
    events.push('finalize');
    assert.equal(id,CHANNEL);assert.equal(token,TOKEN);assert.equal(receipt,42);
-   assert.equal(success,status===200);return true;
+   assert.equal(success,false);assert.notEqual(status,200);return true;
   },
   ...overrides,
  };
@@ -70,14 +73,14 @@ async function parse(output){
 }
 let count=0;
 async function test(name,fn){await fn();count++;console.log('PASS C16: '+name);}
-await test('success follows real HTTP gate/auth -> atomic claim -> 2 provider reads -> private save -> finalization',async()=>{
+await test('success performs real HTTP gate, two provider reads, then one atomic C27 commit',async()=>{
  const h=harness();
  const {status,body}=await parse(await runC16ManualActivityRequest(request(),config,h.deps));
  assert.equal(status,200);assert.equal(body.ok,true);
  assert.equal(body.state,'PRIVATE_TTL_STORED');assert.equal(body.providerRequestsReserved,2);
  assert.equal(body.monitoringEnabled,false);assert.equal(body.comparisonsEnabled,false);
  assert.equal(body.expiresAt,'2026-11-27T11:00:00.000Z');
- assert.deepEqual(h.events,['auth','claim','api:channels','api:playlistItems','save','finalize']);
+ assert.deepEqual(h.events,['auth','claim','api:channels','api:playlistItems','commit']);
  assert.equal(h.saved.length,1);
  assert.equal(h.saved[0].subscriber_count,'129000');
  assert.equal(h.saved[0].recent_public_uploads.length,2);
@@ -139,7 +142,8 @@ await test('duplicate simultaneous requests cannot both spend quota with mocked 
  const states=(await Promise.all([parse(one),parse(two)])).map(x=>x.status).sort();
  assert.deepEqual(states,[200,409]);
  assert.equal(h.events.filter(x=>x==='api:channels').length,1);
- assert.equal(h.events.filter(x=>x==='finalize').length,1);
+ assert.equal(h.events.filter(x=>x==='commit').length,1);
+ assert.equal(h.events.filter(x=>x==='finalize').length,0);
 });
 await test('hidden subscriber counts are redacted in private row',async()=>{
  const h=harness({provider:async(method)=>{
@@ -154,7 +158,7 @@ await test('hidden subscriber counts are redacted in private row',async()=>{
  const {status}=await parse(await runC16ManualActivityRequest(request(),config,h.deps));
  assert.equal(status,200);assert.equal(h.saved[0].subscriber_count,null);
 });
-await test('provider first-request failure does not call playlist/save, but finalizes failure',async()=>{
+await test('provider first-request failure does not call playlist/commit, but finalizes failure',async()=>{
  const h=harness({provider:async(method)=>{
   h.events.push('api:'+method);return {status:403,body:{apiError:'SECRET_PROVIDER_ERROR'}};
  }});
@@ -163,7 +167,7 @@ await test('provider first-request failure does not call playlist/save, but fina
  assert.deepEqual(h.events,['auth','claim','api:channels','finalize']);
  assert.ok(!JSON.stringify(body).includes('SECRET_PROVIDER_ERROR'));
 });
-await test('playlist provider failure skips save, finalizes and never returns provider payload',async()=>{
+await test('playlist provider failure skips commit, finalizes and never returns provider payload',async()=>{
  const h=harness({provider:async(method)=>{
   h.events.push('api:'+method);
   return method==='channels'?{status:200,body:fakeChannel()}:
@@ -174,7 +178,7 @@ await test('playlist provider failure skips save, finalizes and never returns pr
  assert.deepEqual(h.events,['auth','claim','api:channels','api:playlistItems','finalize']);
  assert.ok(!JSON.stringify(body).includes('PRIVATE_PROVIDER_TOKEN_SHOULD_NOT_LEAK'));
 });
-await test('channel spoofing or invalid playlist items fail closed before private save',async()=>{
+await test('channel spoofing or invalid playlist items fail closed before commit',async()=>{
  for(const caseName of ['channel','playlist']){
   const h=harness({provider:async(method)=>{
    h.events.push('api:'+method);
@@ -189,29 +193,33 @@ await test('channel spoofing or invalid playlist items fail closed before privat
   }});
   const {status,body}=await parse(await runC16ManualActivityRequest(request(),config,h.deps));
   assert.equal(status,503);assert.equal(body.error,'PUBLIC_AUDIT_FAILED');
-  assert.ok(!h.events.includes('save'));
+  assert.ok(!h.events.includes('commit'));
   assert.ok(h.events.includes('finalize'));
  }
 });
-await test('private database write rejection or thrown error never reports success',async()=>{
- for(const save of [async()=>false,async()=>{throw Error('private key cannot be leaked')}]){
-  const h=harness({save:async row=>{h.events.push('save');return save(row);}});
+await test('private transaction rejection or thrown error never reports success',async()=>{
+ for(const commit of [async()=>false,async()=>{throw Error('private key cannot be leaked')}]){
+  const h=harness({commit:async()=>{h.events.push('commit');return commit();}});
   const {status,body}=await parse(await runC16ManualActivityRequest(request(),config,h.deps));
   assert.equal(status,503);
-  assert.ok(body.error==='PRIVATE_STORE_FAILED'||body.error==='PUBLIC_AUDIT_FAILED');
-  assert.ok(h.events.includes('finalize'));
+  assert.ok(body.error==='C27_STALE_OR_REJECTED_ACTIVITY_COMMIT'||body.error==='C27_ATOMIC_ACTIVITY_COMMIT_FAILED');
+  assert.ok(h.events.includes('commit'));
   assert.ok(!JSON.stringify(body).includes('private key'));
  }
 });
-await test('quota/claim finalization rejection overrides apparent write success',async()=>{
+await test('failure-only quota finalization rejects errors and never persists public data',async()=>{
  for(const finalize of [async()=>false,async()=>{throw Error('PRIVATE_TOKEN')}]) {
-  const h=harness({finalize:async()=>{h.events.push('finalize');return finalize();}});
+  const h=harness({
+   provider:async()=>{h.events.push('api:channels');return {status:403,body:null};},
+   finalize:async()=>{h.events.push('finalize');return finalize();}
+  });
   const {status,body}=await parse(await runC16ManualActivityRequest(request(),config,h.deps));
   assert.equal(status,503);assert.equal(body.error,'C14_CLAIM_FINALIZATION_FAILED');
-  assert.equal(h.saved.length,1);
+  assert.equal(h.saved.length,0);
   assert.ok(!JSON.stringify(body).includes('PRIVATE_TOKEN'));
  }
 });
+
 await test('unexpected claim RPC failure remains no-provider and no-public-error-detail',async()=>{
  const h=harness({claim:async()=>{throw Error('DB_SECRET');}});
  const {status,body}=await parse(await runC16ManualActivityRequest(request(),config,h.deps));

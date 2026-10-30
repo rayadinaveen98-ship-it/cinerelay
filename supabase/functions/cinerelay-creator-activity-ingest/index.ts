@@ -53,11 +53,13 @@ Deno.serve((request:Request)=>runC16ManualActivityRequest(request,config,{
   return receipt.data;
  },
  provider,
- save:async(row:Record<string,unknown>)=>{
-  if(!admin)throw Error('C16_DB_UNAVAILABLE');
-  const result=await admin.from('creator_intelligence_activity_observations')
-   .upsert(row,{onConflict:'channel_id'}).select('channel_id').single();
-  return !result.error&&result.data?.channel_id===row.channel_id;
+ commit:async(channelId:string,claimToken:string,receiptId:number,row:Record<string,unknown>)=>{
+  if(!admin)throw Error('C27_DB_UNAVAILABLE');
+  const result=await admin.rpc('creator_c27_commit_public_activity',{
+   p_channel_id:channelId,p_claim_token:claimToken,
+   p_quota_receipt_id:receiptId,p_record:row,
+  });
+  return !result.error&&result.data===true;
  },
  finalize:async(channelId:string,claimToken:string,receiptId:number,
    succeeded:boolean,status:number)=>{

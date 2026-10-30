@@ -83,19 +83,12 @@ const deps={
    {contentDetails:{videoId:'bbbbbbbbbbb',videoPublishedAt:'2026-10-28T09:00:00Z'}},
   ]}};
  },
- save:async row=>{
-  assert.ok(targets.includes(row.channel_id));
-  const columns=['channel_id','observed_at','expires_at','subscriber_count',
-   'subscribers_hidden','public_video_count','recent_public_uploads'];
-  const values=[lit(row.channel_id),lit(row.observed_at),lit(row.expires_at),
-   row.subscriber_count===null?'null':lit(row.subscriber_count),
-   row.subscribers_hidden?'true':'false',lit(row.public_video_count),
-   lit(JSON.stringify(row.recent_public_uploads))+'::jsonb'];
-  const updates=columns.filter(x=>x!=='channel_id').map(x=>x+'=excluded.'+x).join(',');
-  const query='insert into public.creator_intelligence_activity_observations ('+
-   columns.join(',')+') values ('+values.join(',')+') on conflict (channel_id) do update set '+
-   updates+' returning channel_id;';
-  return db(query)===row.channel_id;
+ commit:async(id,token,receipt,row)=>{
+  assert.equal(id,row.channel_id);
+  assert.ok(targets.includes(id));
+  return db('select public.creator_c27_commit_public_activity('+
+   [lit(id),lit(token)+'::uuid',receipt,
+    lit(JSON.stringify(row))+'::jsonb'].join(',')+');')==='t';
  },
  finalize:async(id,token,receipt,succeeded,status)=>{
   finalized++;
@@ -122,7 +115,7 @@ try{
  assert.equal(good.status,200);assert.equal(result.state,'PRIVATE_TTL_STORED');
  assert.equal(result.monitoringEnabled,false);assert.equal(result.comparisonsEnabled,false);
  assert.equal(result.providerRequestsReserved,2);
- assert.equal(calls,2);assert.equal(finalized,1);
+ assert.equal(calls,2);assert.equal(finalized,0);
  assert.deepEqual(receipts(),[before[0]+1,before[1]+2]);
  assert.deepEqual(stored(a),{id:a,sub:'12300',vid:'24',up:2,days:28});
  assert.equal(sql('select state from public.creator_intelligence_activity_claims '+
@@ -147,8 +140,8 @@ try{
  assert.equal(sql('select state from public.creator_intelligence_activity_claims '+
   'where channel_id='+lit(c)+';'),'FAILED');
  assert.deepEqual(receipts(),[before[0]+3,before[1]+6]);
- assert.equal(finalized,3);assert.equal(sources(),beforeSources);
- console.log('PASS C17: HTTP handler with real local C14 claims/quota, real C12 private '+
+ assert.equal(finalized,1);assert.equal(sources(),beforeSources);
+ console.log('PASS C17: HTTP handler with real local C14 claims/quota, atomic C27+C12 private '+
   'TTL writes, redacted hidden subs, replay lock, failed provider finalization, no source changes');
 }finally{
  clean();
