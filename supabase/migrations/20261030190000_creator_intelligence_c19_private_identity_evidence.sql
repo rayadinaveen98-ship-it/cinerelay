@@ -4,7 +4,7 @@ begin;
 create table public.creator_intelligence_identity_evidence (
  channel_id text primary key check (channel_id ~ '^UC[A-Za-z0-9_-]{22}$'),
  listed_name text not null check (char_length(btrim(listed_name)) between 1 and 200),
- listed_handle text not null check (listed_handle ~ '^@[A-Za-z0-9._-]{3,30}$'),
+ listed_handle text not null check (listed_handle ~ '^@[^[:space:]/]{3,30}$'),
  official_channel_title text not null check (char_length(btrim(official_channel_title)) between 1 and 200),
  uploads_playlist_id text not null check (
   uploads_playlist_id ~ '^UU[A-Za-z0-9_-]{22}$'
