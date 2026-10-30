@@ -61,6 +61,7 @@ fun SettingsV055(
     onBack: () -> Unit,
     onEditFavorites: () -> Unit,
     onOpenSources: () -> Unit,
+    onOpenCreatorIntelligence: () -> Unit,
     onToggleNotificationMaster: (Boolean) -> Unit,
     onSignOut: () -> Unit,
     modifier: Modifier = Modifier,
@@ -169,6 +170,17 @@ fun SettingsV055(
                                 title = "Manage channels",
                                 subtitle = "",
                                 onClick = onOpenSources,
+                            )
+                        }
+                    }
+
+                    item {
+                        SettingsSectionV055(title = "Creator Lab · Beta") {
+                            SettingsActionRowV055(
+                                icon = { Icon(Icons.Default.VideoLibrary, contentDescription = null, tint = SettingsGold55) },
+                                title = "Creator Intelligence",
+                                subtitle = "Explore 94 research leads · verification pending",
+                                onClick = onOpenCreatorIntelligence,
                             )
                         }
                     }
