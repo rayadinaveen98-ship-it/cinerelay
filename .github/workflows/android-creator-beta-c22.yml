@@ -1,11 +1,11 @@
-name: CineRelay C21 Creator Intelligence Beta APK
+name: CineRelay C22 Verified & Research Android Beta APK
 
 on:
   pull_request:
     paths:
       - 'apps/android/**'
-      - 'tests/youtube-connector/run-creator-c21-android-beta.mjs'
-      - '.github/workflows/android-creator-beta-c21.yml'
+      - 'tests/youtube-connector/run-creator-c22-verified-android.mjs'
+      - '.github/workflows/android-creator-beta-c22.yml'
   workflow_dispatch:
 
 permissions:
@@ -13,17 +13,17 @@ permissions:
   actions: read
 
 concurrency:
-  group: cinerelay-c21-creator-beta-${{ github.ref }}
+  group: cinerelay-c22-verified-beta-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
   minified-signed-release:
-    name: Signed Android Creator beta, unit tests and update certificate
+    name: C22 signed Android beta, verified-panel tests and update certificate
     runs-on: ubuntu-latest
     timeout-minutes: 35
     env:
-      CINERELAY_VERSION_CODE: '221002'
-      CINERELAY_VERSION_NAME: '0.2.10-creator-beta.1'
+      CINERELAY_VERSION_CODE: '221003'
+      CINERELAY_VERSION_NAME: '0.2.10-creator-beta.2'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v5
@@ -110,7 +110,7 @@ jobs:
           test -x "$AAPT"
           test -x "$SIGNER"
           "$AAPT" dump badging "$APK" > /tmp/cinerelay-release-badging.txt
-          grep -q "package: name='com.cinerelay.app' versionCode='221002' versionName='0.2.10-creator-beta.1'" /tmp/cinerelay-release-badging.txt
+          grep -q "package: name='com.cinerelay.app' versionCode='221003' versionName='0.2.10-creator-beta.2'" /tmp/cinerelay-release-badging.txt
           if grep -q 'application-debuggable' /tmp/cinerelay-release-badging.txt; then
             echo "::error::Release APK is debuggable"
             exit 1
@@ -129,15 +129,15 @@ jobs:
           fi
           test "$(stat -c %s "$APK")" -gt 1000000
           mkdir -p creator-beta-out
-          cp "$APK" creator-beta-out/CineRelay-C21-Creator-Beta-v0.2.10.apk
+          cp "$APK" creator-beta-out/CineRelay-C22-Verified-Research-Beta.apk
           sha256sum creator-beta-out/*.apk > creator-beta-out/sha256.txt
-          printf 'versionCode=221002\nversionName=0.2.10-creator-beta.1\npackage=com.cinerelay.app\nbuildType=release\nminify=true\nshrinkResources=true\nFirebase=true\nsignerSHA256=%s\n' "$ACTUAL" > creator-beta-out/release-verification.txt
+          printf 'versionCode=221003\nversionName=0.2.10-creator-beta.2\npackage=com.cinerelay.app\nbuildType=release\nminify=true\nshrinkResources=true\nFirebase=true\nsignerSHA256=%s\n' "$ACTUAL" > creator-beta-out/release-verification.txt
           cp /tmp/cinerelay-release-badging.txt creator-beta-out/manifest-badging.txt
           echo 'True Android release APK passed version, minification and permanent signer checks.'
       - name: Upload QA-only signed stable candidate
         uses: actions/upload-artifact@v4
         with:
-          name: cinerelay-c21-creator-intelligence-beta-apk
+          name: cinerelay-c22-verified-research-beta-apk
           path: creator-beta-out/
           if-no-files-found: error
           retention-days: 7

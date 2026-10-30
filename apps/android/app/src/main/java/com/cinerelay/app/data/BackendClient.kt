@@ -23,6 +23,19 @@ class BackendClient(
     private val publishableKey = BuildConfig.SUPABASE_PUBLISHABLE_KEY
 
     fun currentSession(): Session? = sessionStore.read()
+    /**
+     * C22: read-only and active-operator-only. Uses the existing refreshed user
+     * JWT and publishable key, NEVER a service-role or YouTube API key.
+     * HTTP 403 is an expected result for ordinary accounts.
+     */
+    fun verifiedCreatorIdentities(): List<CreatorVerifiedIdentityV22> {
+        val payload = invokeAuthenticated(
+            "cinerelay-creator-intelligence-api",
+            JSONObject().put("action", "pilotIdentities"),
+        )
+        return CreatorIdentityParserV22.parse(payload)
+    }
+
 
     fun signOut() = sessionStore.clear()
 
