@@ -1,0 +1,450 @@
+{
+  "kind": "CINERELAY_C11_PUBLIC_ACTIVITY_SNAPSHOT",
+  "source": "OFFICIAL_YOUTUBE_DATA_API_V3",
+  "sourceRun": "https://github.com/rayadinaveen98-ship-it/cinerelay/actions/runs/41036715214",
+  "observedAt": "2026-10-30T09:53:37.748Z",
+  "expiresAt": "2026-11-29T09:53:37.748Z",
+  "description": "Dated public facts only, not live analytics, comparative channel rankings, publisher suitability, or permission to activate monitoring.",
+  "channels": [
+    {
+      "channelId": "UCfyIRz1yWlT2T08c4SnZi3w",
+      "listedHandle": "@Soulscriptedlives",
+      "videoCountPublic": "81",
+      "subscriberHidden": false,
+      "subscriberCountApprox": "7040",
+      "latestPublicVideos": [
+        {
+          "videoId": "I-ofp4trkyk",
+          "publishedAt": "2026-10-10T15:00:27.000Z"
+        },
+        {
+          "videoId": "jUzwNj2E5T0",
+          "publishedAt": "2026-10-09T16:10:58.000Z"
+        },
+        {
+          "videoId": "JDcI7FCCyYY",
+          "publishedAt": "2026-10-03T17:28:10.000Z"
+        }
+      ],
+      "status": "PUBLIC_UPLOADS_OBSERVED"
+    },
+    {
+      "channelId": "UCzP3Z6GEWeCo3GR5tTnXhTQ",
+      "listedHandle": "@SKCBTeluguFacts",
+      "videoCountPublic": "55",
+      "subscriberHidden": false,
+      "subscriberCountApprox": "9910",
+      "latestPublicVideos": [
+        {
+          "videoId": "sy3w4e3Nm24",
+          "publishedAt": "2023-08-26T14:54:12.000Z"
+        },
+        {
+          "videoId": "ZNRC31lu1gc",
+          "publishedAt": "2023-08-21T13:03:51.000Z"
+        },
+        {
+          "videoId": "ludJ6NepjYU",
+          "publishedAt": "2023-08-15T15:51:38.000Z"
+        }
+      ],
+      "status": "PUBLIC_UPLOADS_OBSERVED"
+    },
+    {
+      "channelId": "UCsNR1UJ5uv7YhMDc9cAsbHw",
+      "listedHandle": "@HoodyHyd",
+      "videoCountPublic": "80",
+      "subscriberHidden": false,
+      "subscriberCountApprox": "8610",
+      "latestPublicVideos": [
+        {
+          "videoId": "4bMa5jrypso",
+          "publishedAt": "2026-07-26T12:40:08.000Z"
+        },
+        {
+          "videoId": "UkbtMdchuRE",
+          "publishedAt": "2026-07-22T15:14:32.000Z"
+        },
+        {
+          "videoId": "8LtgPjtX9F0",
+          "publishedAt": "2026-07-21T15:42:43.000Z"
+        }
+      ],
+      "status": "PUBLIC_UPLOADS_OBSERVED"
+    },
+    {
+      "channelId": "UC78DsRXC3fs-jnYitUshgTQ",
+      "listedHandle": "@Lights_Camera_Sammy",
+      "videoCountPublic": "101",
+      "subscriberHidden": false,
+      "subscriberCountApprox": "9750",
+      "latestPublicVideos": [
+        {
+          "videoId": "l_lmbTzgusw",
+          "publishedAt": "2026-10-30T03:30:29.000Z"
+        },
+        {
+          "videoId": "-f5JemNhzoE",
+          "publishedAt": "2026-10-29T12:30:19.000Z"
+        },
+        {
+          "videoId": "VMrE0Ds_R3w",
+          "publishedAt": "2026-10-29T03:30:13.000Z"
+        }
+      ],
+      "status": "PUBLIC_UPLOADS_OBSERVED"
+    },
+    {
+      "channelId": "UCtURPKteJaM4LiR8n5B4Dhw",
+      "listedHandle": "@unfilteredbychakry",
+      "videoCountPublic": "171",
+      "subscriberHidden": false,
+      "subscriberCountApprox": "15900",
+      "latestPublicVideos": [
+        {
+          "videoId": "1npxddXF0lE",
+          "publishedAt": "2026-10-29T15:14:42.000Z"
+        },
+        {
+          "videoId": "-dO4bby3X3g",
+          "publishedAt": "2026-10-29T06:14:23.000Z"
+        },
+        {
+          "videoId": "tE4HF8tZr9k",
+          "publishedAt": "2026-10-28T13:23:04.000Z"
+        }
+      ],
+      "status": "PUBLIC_UPLOADS_OBSERVED"
+    },
+    {
+      "channelId": "UCiBywWGdixQKgysKgL5CU_w",
+      "listedHandle": "@futuretechagri",
+      "videoCountPublic": "65",
+      "subscriberHidden": false,
+      "subscriberCountApprox": "30800",
+      "latestPublicVideos": [
+        {
+          "videoId": "lNU0jK-zakY",
+          "publishedAt": "2026-08-10T14:25:00.000Z"
+        },
+        {
+          "videoId": "0MyTVDk-gXA",
+          "publishedAt": "2025-11-02T02:23:33.000Z"
+        },
+        {
+          "videoId": "aUuuQTYXOrQ",
+          "publishedAt": "2025-10-21T18:05:07.000Z"
+        }
+      ],
+      "status": "PUBLIC_UPLOADS_OBSERVED"
+    },
+    {
+      "channelId": "UCqEhIPCHXKqjUG6yAwDtLgQ",
+      "listedHandle": "@moneynlifevanga",
+      "videoCountPublic": "210",
+      "subscriberHidden": false,
+      "subscriberCountApprox": "60500",
+      "latestPublicVideos": [
+        {
+          "videoId": "7kr56JZqUtY",
+          "publishedAt": "2026-10-29T13:42:45.000Z"
+        },
+        {
+          "videoId": "IIoy7ksbV6Y",
+          "publishedAt": "2026-10-29T13:41:53.000Z"
+        },
+        {
+          "videoId": "0UKXcjsEqMo",
+          "publishedAt": "2026-10-29T13:40:15.000Z"
+        }
+      ],
+      "status": "PUBLIC_UPLOADS_OBSERVED"
+    },
+    {
+      "channelId": "UC8hpQAua5UJ4viCGybj5nUg",
+      "listedHandle": "@nxtentitelugupodcast",
+      "videoCountPublic": "493",
+      "subscriberHidden": false,
+      "subscriberCountApprox": "33200",
+      "latestPublicVideos": [
+        {
+          "videoId": "U6q2WzBqIxM",
+          "publishedAt": "2026-10-30T03:14:41.000Z"
+        },
+        {
+          "videoId": "8XFUBu3R4rc",
+          "publishedAt": "2026-10-29T13:26:10.000Z"
+        },
+        {
+          "videoId": "hQnzB1j8roo",
+          "publishedAt": "2026-10-29T02:31:49.000Z"
+        }
+      ],
+      "status": "PUBLIC_UPLOADS_OBSERVED"
+    },
+    {
+      "channelId": "UC2cnHl4Pgr6cgPH5hCYkoQg",
+      "listedHandle": "@MirJaweedali",
+      "videoCountPublic": "559",
+      "subscriberHidden": false,
+      "subscriberCountApprox": "39600",
+      "latestPublicVideos": [
+        {
+          "videoId": "cevuI9-jEDY",
+          "publishedAt": "2026-10-25T08:38:25.000Z"
+        },
+        {
+          "videoId": "3Zb3gklHpmM",
+          "publishedAt": "2026-10-23T02:45:14.000Z"
+        },
+        {
+          "videoId": "lOvkLcGLz8g",
+          "publishedAt": "2026-10-22T10:13:33.000Z"
+        }
+      ],
+      "status": "PUBLIC_UPLOADS_OBSERVED"
+    },
+    {
+      "channelId": "UCtpS6y08hzRoqh5fHfnyw2w",
+      "listedHandle": "@TeluguCarGuide",
+      "videoCountPublic": "303",
+      "subscriberHidden": false,
+      "subscriberCountApprox": "43600",
+      "latestPublicVideos": [
+        {
+          "videoId": "llsO61_Ykuc",
+          "publishedAt": "2025-03-16T14:30:30.000Z"
+        },
+        {
+          "videoId": "3FeVSqKE3To",
+          "publishedAt": "2025-03-14T14:30:04.000Z"
+        },
+        {
+          "videoId": "xE5YtR-6aSQ",
+          "publishedAt": "2025-03-12T14:30:33.000Z"
+        }
+      ],
+      "status": "PUBLIC_UPLOADS_OBSERVED"
+    },
+    {
+      "channelId": "UCuaf89M0Lt5pmXzaUssXHvw",
+      "listedHandle": "@data_with_chandoo",
+      "videoCountPublic": "37",
+      "subscriberHidden": false,
+      "subscriberCountApprox": "194000",
+      "latestPublicVideos": [
+        {
+          "videoId": "jl3-fMsn7s0",
+          "publishedAt": "2026-10-23T06:00:18.000Z"
+        },
+        {
+          "videoId": "TNbvGPwPyQ8",
+          "publishedAt": "2026-08-20T04:00:10.000Z"
+        },
+        {
+          "videoId": "cUL100EYJjY",
+          "publishedAt": "2026-06-25T07:00:36.000Z"
+        }
+      ],
+      "status": "PUBLIC_UPLOADS_OBSERVED"
+    },
+    {
+      "channelId": "UCOebgX9YWl-GOOVY8styIUg",
+      "listedHandle": "@Srilekha-Vantillu",
+      "videoCountPublic": "548",
+      "subscriberHidden": false,
+      "subscriberCountApprox": "610000",
+      "latestPublicVideos": [
+        {
+          "videoId": "cNjwstNGoPQ",
+          "publishedAt": "2026-10-30T05:55:35.000Z"
+        },
+        {
+          "videoId": "Rmvu5o0hlco",
+          "publishedAt": "2026-10-29T05:29:30.000Z"
+        },
+        {
+          "videoId": "Rkr3XrBFXYk",
+          "publishedAt": "2026-10-28T05:12:35.000Z"
+        }
+      ],
+      "status": "PUBLIC_UPLOADS_OBSERVED"
+    },
+    {
+      "channelId": "UCwX0wN29AZcKjU_-P-5Av1g",
+      "listedHandle": "@VenkyPlanet",
+      "videoCountPublic": "1084",
+      "subscriberHidden": false,
+      "subscriberCountApprox": "429000",
+      "latestPublicVideos": [
+        {
+          "videoId": "i91JJvCOC2I",
+          "publishedAt": "2026-09-15T14:00:13.000Z"
+        },
+        {
+          "videoId": "Q6nz8c4oA_Q",
+          "publishedAt": "2026-09-05T07:15:08.000Z"
+        },
+        {
+          "videoId": "Qfmjv3vnJ6U",
+          "publishedAt": "2026-08-24T03:30:39.000Z"
+        }
+      ],
+      "status": "PUBLIC_UPLOADS_OBSERVED"
+    },
+    {
+      "channelId": "UCcEXr6ZzppFU1jEbX42QP1A",
+      "listedHandle": "@CookwithShubhaSharon",
+      "videoCountPublic": "958",
+      "subscriberHidden": false,
+      "subscriberCountApprox": "693000",
+      "latestPublicVideos": [
+        {
+          "videoId": "dJkQz5CsILg",
+          "publishedAt": "2026-10-13T07:33:47.000Z"
+        },
+        {
+          "videoId": "Ir1lbfyfP9Q",
+          "publishedAt": "2026-10-05T07:39:46.000Z"
+        },
+        {
+          "videoId": "028O3logsaI",
+          "publishedAt": "2026-09-29T07:31:13.000Z"
+        }
+      ],
+      "status": "PUBLIC_UPLOADS_OBSERVED"
+    },
+    {
+      "channelId": "UCUqMOsn-EqogEFM8BU_A2Fg",
+      "listedHandle": "@cakesbakespaakashaale3858",
+      "videoCountPublic": "194",
+      "subscriberHidden": false,
+      "subscriberCountApprox": "438000",
+      "latestPublicVideos": [
+        {
+          "videoId": "wukqdOgNo2s",
+          "publishedAt": "2026-08-01T07:59:53.000Z"
+        },
+        {
+          "videoId": "DCwAHfzBLPU",
+          "publishedAt": "2026-07-09T08:03:09.000Z"
+        },
+        {
+          "videoId": "m-0O6Q0UHrI",
+          "publishedAt": "2025-08-12T04:30:26.000Z"
+        }
+      ],
+      "status": "PUBLIC_UPLOADS_OBSERVED"
+    },
+    {
+      "channelId": "UCb-xXZ7ltTvrh9C6DgB9H-Q",
+      "listedHandle": "@Prasadtechintelugu",
+      "videoCountPublic": "5504",
+      "subscriberHidden": false,
+      "subscriberCountApprox": "5220000",
+      "latestPublicVideos": [
+        {
+          "videoId": "jouCdLSTOS0",
+          "publishedAt": "2026-10-29T14:15:01.000Z"
+        },
+        {
+          "videoId": "jEMhYa_00no",
+          "publishedAt": "2026-10-28T15:00:10.000Z"
+        },
+        {
+          "videoId": "pdiNkS-RLLc",
+          "publishedAt": "2026-10-28T10:22:24.000Z"
+        }
+      ],
+      "status": "PUBLIC_UPLOADS_OBSERVED"
+    },
+    {
+      "channelId": "UClfyePC1zpa5InkPDTkyY1w",
+      "listedHandle": "@MyVillageLifeIndia",
+      "videoCountPublic": "50",
+      "subscriberHidden": false,
+      "subscriberCountApprox": "1000000",
+      "latestPublicVideos": [
+        {
+          "videoId": "FA2DN_lWq-0",
+          "publishedAt": "2026-08-15T02:36:30.000Z"
+        },
+        {
+          "videoId": "a2dqRoAuhZ0",
+          "publishedAt": "2026-07-06T06:47:17.000Z"
+        },
+        {
+          "videoId": "JMhcKMCBYeY",
+          "publishedAt": "2026-06-17T11:47:06.000Z"
+        }
+      ],
+      "status": "PUBLIC_UPLOADS_OBSERVED"
+    },
+    {
+      "channelId": "UChnK-EoSW6er1qtWkwnJDRw",
+      "listedHandle": "@carachanaranademarathi",
+      "videoCountPublic": "507",
+      "subscriberHidden": false,
+      "subscriberCountApprox": "1270000",
+      "latestPublicVideos": [
+        {
+          "videoId": "B_577ZGt-9I",
+          "publishedAt": "2026-10-28T15:49:31.000Z"
+        },
+        {
+          "videoId": "REG2PC7F0Fw",
+          "publishedAt": "2026-10-28T09:55:50.000Z"
+        },
+        {
+          "videoId": "F27p5L8rt2Y",
+          "publishedAt": "2026-10-27T11:51:45.000Z"
+        }
+      ],
+      "status": "PUBLIC_UPLOADS_OBSERVED"
+    },
+    {
+      "channelId": "UCvMnTzkPFCLMZpEyI64VuyA",
+      "listedHandle": "@dnyandeeppune",
+      "videoCountPublic": "9734",
+      "subscriberHidden": false,
+      "subscriberCountApprox": "1370000",
+      "latestPublicVideos": [
+        {
+          "videoId": "SELjBF2Sopo",
+          "publishedAt": "2026-10-30T09:35:20.000Z"
+        },
+        {
+          "videoId": "I3cpfXjI44w",
+          "publishedAt": "2026-10-30T08:58:06.000Z"
+        },
+        {
+          "videoId": "eNH17dm52OU",
+          "publishedAt": "2026-10-30T08:38:35.000Z"
+        }
+      ],
+      "status": "PUBLIC_UPLOADS_OBSERVED"
+    },
+    {
+      "channelId": "UCmbua9iiakRr6nuCXxxsKSQ",
+      "listedHandle": "@madhurasrecipemarathi",
+      "videoCountPublic": "2450",
+      "subscriberHidden": false,
+      "subscriberCountApprox": "8400000",
+      "latestPublicVideos": [
+        {
+          "videoId": "zDQS1yLMTqM",
+          "publishedAt": "2026-10-30T07:30:23.000Z"
+        },
+        {
+          "videoId": "t2NlAKPDTEI",
+          "publishedAt": "2026-10-29T07:30:24.000Z"
+        },
+        {
+          "videoId": "8oJ22iVj5SE",
+          "publishedAt": "2026-10-28T07:30:23.000Z"
+        }
+      ],
+      "status": "PUBLIC_UPLOADS_OBSERVED"
+    }
+  ]
+}
