@@ -158,3 +158,8 @@ verify_jwt = false
 # No scheduler and no client-facing API key.
 [functions.cinerelay-creator-activity-ingest]
 verify_jwt = true
+
+# C20 manual official identity verifier. Gateway JWT ON; Edge verifies active
+# operator, reviewed server-side candidate allowlist and precharged quota.
+[functions.cinerelay-creator-identity-verify]
+verify_jwt = true
