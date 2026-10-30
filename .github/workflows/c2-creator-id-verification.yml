@@ -1,4 +1,6 @@
 name: CineRelay C2 Verify 20 Creator IDs — Read-only
+# 2026-10-30: branch-pinned, one-shot read-only verification after operator-added secret.
+# Maximum 20 public channels.list calls; no new channels, metrics, or Supabase writes.
 
 on:
   push:
