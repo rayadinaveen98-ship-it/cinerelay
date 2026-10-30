@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(20);
+select plan(21);
 select ok(to_regprocedure('public.creator_c27_commit_public_activity(text,uuid,bigint,jsonb)') is not null,
  'atomic public observation function exists');
 select ok(not has_function_privilege('anon',
