@@ -44,7 +44,7 @@ select throws_ok(
  ('UCcccccccccccccccccccccc','Synthetic C','@syntheticc','Synthetic C',
   'UUcccccccccccccccccccccc','te','Education','MICRO_10K_100K',
   'https://example.org/c',now(),now()+interval '27 days',true)$$,
- '23514',null,'identity evidence can never authorize monitoring');
+ 'P0001','creator_c19_review_only','identity evidence can never authorize monitoring');
 select lives_ok(
  'delete from public.creator_intelligence_identity_evidence where expires_at <= now()+interval ''28 days''',
  'retention job can remove expired identity evidence');
