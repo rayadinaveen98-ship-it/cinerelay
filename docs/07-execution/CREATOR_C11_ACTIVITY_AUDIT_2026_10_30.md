@@ -7,6 +7,16 @@
 - Google official quota documentation lists channels.list and playlistItems.list at 1 unit each. A 401, 403, or 429 halts further collection, safely. No production use of the dedicated GitHub verification key.
 - The workflow is **pinned to the C11 isolated development branch** and runs one time only when its workflow YAML is first pushed. It has no cron and no production deployment.
 
+## Verified execution result (2026-10-30)
+
+- [C11 one-shot GitHub run #41036715214](https://github.com/rayadinaveen98-ship-it/cinerelay/actions/runs/41036715214) **completed successfully** with 21/21 maximum requests and no retries.
+- All 20 official channel IDs returned current public channel fields and uploads-playlist evidence; 20/20 returned three public video items each (60 total IDs with public publication timestamps).
+- All 20 exposed official *public, rounded* subscriber counts. No hidden subscriber count was reported in this 20-channel snapshot.
+- Snapshot recorded at **2026-10-30T09:53:37.748Z**, with expiration **2026-11-29T09:53:37.748Z** (30-day maximum; inspect API data freshness earlier when necessary).
+- Relative to the *observation instant* (not as of any later date): 13 channels' latest listed uploads were within 30 days; 3 were between 31 and 90 days; 4 were older than 90 days.
+- Two examples needing additional editorial review: SKCB Telugu Facts (latest public upload 2023-08-26) and Telugu Car Guide (2025-03-16 at this snapshot). Older last visible upload is not proof a channel has closed or that no unlisted content exists.
+- Results were committed only to the isolated C11 branch. The protected pilot review page now displays this dated, capped evidence and clearly marks stale data; monitoring remains disabled.
+
 ## Output
 - `scripts/creator-intelligence/audit-c11-activity.mjs` validates exactly 20 never-enabled C10 identities, queries the official public API, verifies current uploads playlist linkage, and records at most three recent publicly listed videos per channel.
 - Public subscriber counts are explicitly an *approximate current API field*, not verified research bands; hidden subscriber count stays null, not zero.
