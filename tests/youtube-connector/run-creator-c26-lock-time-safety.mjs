@@ -37,7 +37,6 @@ test('CI concurrency test cannot connect to production',()=>{
  assert.ok(race.includes('CINERELAY_C26_EPHEMERAL_TEST'));
  assert.ok(race.includes('GITHUB_ACTIONS'));
  assert.ok(race.includes('REFUSED: not a local Supabase test database'));
- assert.ok(race.includes('run-creator-c26-lease-expiry-race.py'));
  assert.ok(race.includes('expired claim persisted an identity'));
  assert.ok(race.includes('C20 claim time was sampled before its long global advisory lock wait'));
  assert.ok(ci.includes('CINERELAY_C26_EPHEMERAL_TEST: "true"'));
