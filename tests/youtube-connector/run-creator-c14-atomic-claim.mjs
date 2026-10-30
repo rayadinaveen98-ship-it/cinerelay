@@ -48,7 +48,8 @@ test('claims and API observations both expire before 30-day limit',()=>{
  assert.ok(sql.includes("'cinerelay-c14-activity-claim-ttl'"));
  assert.ok(sql.includes("expires_at <= now()"));
  assert.ok(c12.includes("interval '29 days'"));
- assert.ok(edge.includes(".upsert(row,{onConflict:'channel_id'})"));
+ assert.ok(edge.includes("creator_c27_commit_public_activity"));
+ assert.ok(!edge.includes(".upsert(row,{onConflict:'channel_id'})"));
  assert.ok(c13.includes("America/Los_Angeles"));
 });
 test('service only access, no Git writes, no keys in response',()=>{
