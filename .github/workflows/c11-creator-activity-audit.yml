@@ -1,0 +1,53 @@
+name: CineRelay C11 Public Activity Audit - One Shot Read Only
+
+on:
+  push:
+    branches:
+      - feature/creator-intelligence-c11-activity-audit-20261030
+    paths:
+      - '.github/workflows/c11-creator-activity-audit.yml'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: cinerelay-creator-c11-activity-one-shot
+  cancel-in-progress: false
+
+jobs:
+  one-shot-public-activity:
+    if: github.repository == 'rayadinaveen98-ship-it/cinerelay' && github.ref == 'refs/heads/feature/creator-intelligence-c11-activity-audit-20261030'
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate offline C11 safety contracts before any provider request
+        shell: bash
+        run: |
+          set -euo pipefail
+          node tests/youtube-connector/run-creator-c11-activity.mjs
+      - name: Run maximum 21 official public read requests
+        shell: bash
+        env:
+          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+          CREATOR_C11_RESULT_FILE: research/creator-intelligence/c11-public-activity-results.json
+        run: |
+          set -euo pipefail
+          node scripts/creator-intelligence/audit-c11-activity.mjs
+      - name: Commit dated research results to isolated branch only
+        if: success()
+        shell: bash
+        run: |
+          set -euo pipefail
+          git add research/creator-intelligence/c11-public-activity-results.json
+          if git diff --cached --quiet; then
+            echo 'No new report'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'research(c11): record dated one-shot official public channel activity'
+          git push origin HEAD:refs/heads/feature/creator-intelligence-c11-activity-audit-20261030
