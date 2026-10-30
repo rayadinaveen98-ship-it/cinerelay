@@ -67,8 +67,10 @@ function cleanup(){
   'where q.id=r.quota_receipt_id and q.method='+lit(method)+';');
 }
 assert.equal(sql('select current_database()'),'postgres');
-assert.equal(sql('select inet_server_addr() is null or inet_server_addr()::text in '+
- "('127.0.0.1','::1');"),'t');
+// Supabase's disposable Docker container can report its internal bridge IP
+// even when invoked exclusively through localhost:54322 or docker exec.
+// The strict process, host, port, database and role guards above prevent
+// accidentally targeting hosted databases; do not assume inet_server_addr is loopback.
 for(const table of ['creator_intelligence_handle_claims','creator_intelligence_identity_evidence']){
  const predicate=table.endsWith('claims')?'handle_key in ('+handlesSql+')':'channel_id in ('+idsSql+')';
  assert.equal(sql('select count(*) from public.'+table+' where '+predicate+';'),'0',
