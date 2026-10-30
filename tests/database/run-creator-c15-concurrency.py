@@ -84,21 +84,19 @@ try:
     # production claim RPC uses. Both competing psql processes then queue.
     locker_sql = ("begin; "
                   f"select pg_advisory_xact_lock(hashtext('{LOCK}')); "
-                  "select 'LOCK_HELD'; select pg_sleep(2.5); commit;")
+                  "select pg_sleep(3); commit;")
     locker = subprocess.Popen(base + ["-c", locker_sql], stdout=subprocess.PIPE,
                               stderr=subprocess.PIPE, text=True, bufsize=1, env=env)
-    if locker.stdout is None:
-        raise AssertionError("Cannot inspect local lock session")
-    started = time.monotonic()
-    marker = ""
-    while time.monotonic() - started < 5:
-        line = locker.stdout.readline()
-        if not line:
+    # Observe the granted lock through an independent DB session rather than
+    # waiting on psql stdout, which may be fully buffered in CI pipes.
+    deadline = time.monotonic() + 4
+    held = False
+    while time.monotonic() < deadline:
+        if query(f"select pg_try_advisory_xact_lock(hashtext('{LOCK}'));") == "f":
+            held = True
             break
-        if line.strip() == "LOCK_HELD":
-            marker = "LOCK_HELD"
-            break
-    assert marker == "LOCK_HELD", "Lock session did not establish the barrier"
+        time.sleep(0.10)
+    assert held, "Cannot prove locker acquired the advisory lock"
 
     first = subprocess.Popen(base + ["-c", claim_sql(CHANNEL_A)], text=True,
                              stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=env)
