@@ -27,7 +27,7 @@ const MAX_CONFIG_LIMIT=10000;
  *   activeOperator:(request:Request)=>Promise<boolean>,
  *   claim:(channelId:string,dailyLimit:number,reserve:number)=>Promise<any>,
  *   provider:(method:string,params:Record<string,string>)=>Promise<{status:number,body:unknown}>,
- *   save:(record:Record<string,unknown>)=>Promise<boolean>,
+ *   commit:(channelId:string,claimToken:string,receiptId:number,record:Record<string,unknown>)=>Promise<boolean>,
  *   finalize:(channelId:string,claimToken:string,receiptId:number,success:boolean,status:number)=>Promise<boolean>
  * }} deps
  */
@@ -78,8 +78,9 @@ export async function runC16ManualActivityRequest(request,config,deps){
   typeof claimToken!=='string'||!UUID.test(claimToken))
   return failure(503,'C14_INVALID_CLAIM_RECEIPT');
 
- // Once quota has been reserved, we ALWAYS attempt token-bound finalization.
- // Only a true finalize result may return success to the caller.
+ // Once the two-unit quota has been reserved, provider failures are finalized
+ // with the existing failure-only RPC. Successful writes MUST use C27 atomic
+ // claim-token / row-lease / observation / receipt transaction.
  let status=503,stage='PUBLIC_AUDIT_FAILED',record=null;
  try{
   const channelResponse=await deps.provider('channels',{
@@ -102,10 +103,23 @@ export async function runC16ManualActivityRequest(request,config,deps){
     const observedAt=deps.now();
     const videos=parseC13Uploads(playlistResponse.body,observedAt);
     record=createC13Record(channelId,channel,videos,observedAt);
-    if(await deps.save(record)===true){
-     status=200;stage='PRIVATE_TTL_STORED';
-    }else{
-     status=503;stage='PRIVATE_STORE_FAILED';
+    let committed=false;
+    try{
+     committed=(await deps.commit(channelId,claimToken,receiptId,record))===true;
+    }catch{
+     stage='C27_ATOMIC_ACTIVITY_COMMIT_FAILED';
+     status=503;
+    }
+    if(committed){
+     return response(200,{
+      ok:true,state:'PRIVATE_TTL_STORED',channelId,
+      observedAt:record.observed_at,expiresAt:record.expires_at,
+      providerRequestsReserved:2,monitoringEnabled:false,comparisonsEnabled:false,
+     });
+    }
+    if(stage!=='C27_ATOMIC_ACTIVITY_COMMIT_FAILED'){
+     // Stale token, lease or quota receipt: never finalize another claim.
+     return failure(503,'C27_STALE_OR_REJECTED_ACTIVITY_COMMIT');
     }
    }
   }
@@ -115,15 +129,8 @@ export async function runC16ManualActivityRequest(request,config,deps){
 
  let finalized=false;
  try{
-  finalized=(await deps.finalize(channelId,claimToken,receiptId,
-   stage==='PRIVATE_TTL_STORED',status))===true;
+  finalized=(await deps.finalize(channelId,claimToken,receiptId,false,status))===true;
  }catch{finalized=false;}
  if(!finalized)return failure(503,'C14_CLAIM_FINALIZATION_FAILED');
- if(stage!=='PRIVATE_TTL_STORED')return failure(503,stage);
-
- return response(200,{
-  ok:true,state:'PRIVATE_TTL_STORED',channelId,
-  observedAt:record.observed_at,expiresAt:record.expires_at,
-  providerRequestsReserved:2,monitoringEnabled:false,comparisonsEnabled:false,
- });
+ return failure(503,stage);
 }
