@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {reconcileC8LiveIds} from '../../scripts/creator-intelligence/reconcile-c8-live-ids.mjs';
+import {runC2Verification} from '../../scripts/creator-intelligence/verify-c2-channels.mjs';
 
 const A='UCaaaaaaaaaaaaaaaaaaaaaa',B='UCbbbbbbbbbbbbbbbbbbbbbb';
 const C='UCcccccccccccccccccccccc',D='UCdddddddddddddddddddddd';
@@ -77,12 +78,16 @@ await test('quota/auth interruption never grants a queue, even with some verifie
 });
 await test('current real checked-in report remains blocked with 185 current production identities',async()=>{
   const read=async path=>JSON.parse(await readFile('research/creator-intelligence/'+path,'utf8'));
-  const [p,e,v,f,s]=await Promise.all([
+  const [p,e,f,s]=await Promise.all([
     read('c2-verification-input-20.json'),
     read('c2-existing-youtube-ids-2026-10-28.json'),
-    read('c2-official-id-results.json'),
     read('c2-first-party-page-identity-matches-2026-10-28.json'),
     read('c8-live-youtube-source-ids-2026-10-28.json')]);
+  // Legacy missing-key path is generated offline. Never read real C2 API records.
+  const v=await runC2Verification({
+   pool:p,existing:e,apiKey:'',at:'2026-10-28T15:35:00Z',
+   fetcher:()=>{throw Error('No provider calls in C19 safety tests');},
+  });
   const result=reconcileC8LiveIds({pool:p,existing:e,verification:v,firstParty:f,live:s,
     at:'2026-10-28T15:55:00Z'});
   assert.equal(result.pilot.researchCandidates,20);

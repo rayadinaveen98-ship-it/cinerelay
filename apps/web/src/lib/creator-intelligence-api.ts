@@ -103,3 +103,28 @@ export type CreatorPilotActivity=z.infer<typeof PilotActivity>;
 export function fetchCreatorPilotActivity():Promise<CreatorPilotActivity>{
  return invokeCreator({action:'pilotActivity'},PilotActivity);
 }
+
+const VerifiedIdentity=z.object({
+ channelId:z.string().regex(/^UC[A-Za-z0-9_-]{22}$/),
+ listedName:z.string().min(1),listedHandle:z.string().startsWith('@'),
+ officialChannelTitle:z.string().min(1),
+ uploadsPlaylistId:z.string().regex(/^UU[A-Za-z0-9_-]{22}$/),
+ locale:z.string().min(2),categoryProvisional:z.string().min(2),
+ sizeTierProvisional:z.enum(['NANO_LT10K','MICRO_10K_100K','MID_100K_1M',
+  'LARGE_1M_10M','MEGA_10M_PLUS','UNVERIFIED']),
+ sourceUrl:z.string().url(),observedAt:z.string().datetime({offset:true}),
+ expiresAt:z.string().datetime({offset:true}),
+ reviewState:z.literal('REVIEW_PENDING'),operatorApproved:z.literal(false),
+ monitoringEnabled:z.literal(false),metricsEnabled:z.literal(false),
+}).refine(c=>c.uploadsPlaylistId==='UU'+c.channelId.slice(2),
+ {message:'Uploads playlist is inconsistent with official UC ID'});
+const VerifiedIdentities=z.object({
+ generatedAt:z.string().datetime({offset:true}),
+ status:z.enum(['FRESH_IDENTITIES_REVIEW_PENDING','NO_FRESH_IDENTITY_EVIDENCE']),
+ channels:z.array(VerifiedIdentity).max(20),
+ monitoringAuthorized:z.literal(false),comparisonsAuthorized:z.literal(false),
+});
+export type CreatorVerifiedIdentities=z.infer<typeof VerifiedIdentities>;
+export function fetchCreatorPilotIdentities():Promise<CreatorVerifiedIdentities>{
+ return invokeCreator({action:'pilotIdentities'},VerifiedIdentities);
+}

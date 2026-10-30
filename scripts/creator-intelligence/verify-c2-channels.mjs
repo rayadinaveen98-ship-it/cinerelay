@@ -6,7 +6,6 @@
  * Recheck these results before approval: channel handles, ownership and content
  * can change. GitHub output contains public IDs, NOT keys or subscriber counts.
  */
-import {readFile, writeFile} from 'node:fs/promises';
 import {pathToFileURL} from 'node:url';
 
 const CHANNEL_ID=/^UC[A-Za-z0-9_-]{22}$/;
@@ -97,16 +96,10 @@ export async function runC2Verification({pool,existing,apiKey,fetcher=fetch,at=n
   return out;
 }
 
+// C19: historical Git-oriented CLI disabled until a separately reviewed,
+// server-only expiring writer is available. Exported verification logic remains
+// importable for offline mock tests, but invoking this script makes NO API calls.
 if(process.argv[1] && import.meta.url===pathToFileURL(process.argv[1]).href){
-  const inputPath=process.env.CREATOR_C2_POOL_FILE||'research/creator-intelligence/c2-verification-input-20.json';
-  const existingPath=process.env.CREATOR_C2_EXISTING_FILE||'research/creator-intelligence/c2-existing-youtube-ids-2026-10-28.json';
-  const outputPath=process.env.CREATOR_C2_RESULT_FILE||'research/creator-intelligence/c2-official-id-results.json';
-  const [pool,existing]=await Promise.all([readFile(inputPath,'utf8').then(JSON.parse),readFile(existingPath,'utf8').then(JSON.parse)]);
-  const result=await runC2Verification({pool,existing,apiKey:process.env.YOUTUBE_API_KEY||''});
-  await writeFile(outputPath,JSON.stringify(result,null,2)+'\n','utf8');
-  const tally={};for(const row of result.rows)tally[row.status]=(tally[row.status]||0)+1;
-  console.log(JSON.stringify({status:result.status,attempted:result.attempted,
-    maxRequests:result.maxRequests,usedRequests:result.usedRequests,resultCounts:tally,
-    outputFile:outputPath},null,2));
-  if(result.status==='HALTED_AUTH_OR_QUOTA')process.exitCode=1;
+  console.error('C19_C2_CLI_DISABLED_USE_PRIVATE_EXPIRING_IDENTITY_INGEST');
+  process.exitCode=1;
 }

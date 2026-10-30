@@ -1,7 +1,14 @@
 import assert from 'node:assert/strict';
-import {readFile} from 'node:fs/promises';
 import {runC11ActivityAudit,validateC11Input} from '../../scripts/creator-intelligence/audit-c11-activity.mjs';
-const pilot=JSON.parse(await readFile('apps/web/src/data/creator-official-pilot-2026-10-30.json','utf8'));
+// Synthetic test fixtures only: no real official YouTube API IDs in Git.
+const pilot={kind:'CINERELAY_C10_OFFICIAL_API_IDENTITY_REVIEW',
+ verifiedAt:'2026-10-30T09:27:42.049Z',
+ channels:Array.from({length:20},(_,i)=>{
+  const id='UC'+String.fromCharCode(97+i).repeat(22);
+  return {channelId:id,uploadsPlaylistId:'UU'+id.slice(2),
+   listedHandle:'@synthetic'+(i+1),identityState:'OFFICIAL_API_ID_VERIFIED_REVIEW_PENDING',
+   operatorApproved:false,monitoringEnabled:false,metricsEnabled:false};
+ })};
 const at='2026-10-30T10:00:00Z';
 const videoId='aaaaaaaaaaa';
 let tests=0;
