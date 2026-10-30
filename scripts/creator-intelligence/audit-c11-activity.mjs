@@ -63,7 +63,6 @@ export async function runC11ActivityAudit({pilot,apiKey,fetcher=fetch,at=new Dat
     part:'contentDetails,statistics',
     id:channels.map(x=>x.channelId).join(','),
     fields:'items(id,contentDetails(relatedPlaylists(uploads)),statistics(subscriberCount,hiddenSubscriberCount,videoCount))',
-    maxResults:'50'
   },apiKey),{headers:{accept:'application/json'},signal:AbortSignal.timeout(12000)});
   if(!response.ok){report.status=[401,403,429].includes(response.status)?'BLOCKED_PROVIDER_AUTH_OR_QUOTA':'BLOCKED_CHANNEL_HTTP_ERROR';return report;}
   const items=safeResponse(await response.json());
@@ -126,8 +125,10 @@ export async function runC11ActivityAudit({pilot,apiKey,fetcher=fetch,at=new Dat
   }catch{result.status='PLAYLIST_RESPONSE_ERROR';}
   report.channelResults.push(result);
  }
+ const clean=report.channelResults.length===MAX_CHANNELS&&report.channelResults.every(x=>
+   x.status==='PUBLIC_UPLOADS_OBSERVED'||x.status==='NO_PUBLIC_UPLOADS_IN_PLAYLIST');
  report.status=halted?'HALTED_PROVIDER_AUTH_OR_QUOTA':
- report.usedRequests<MAX_REQUESTS?'PARTIAL_EVIDENCE':'COMPLETED';
+ clean&&report.usedRequests===MAX_REQUESTS?'COMPLETED':'PARTIAL_EVIDENCE';
  return report;
 }
 if(process.argv[1]&&import.meta.url===pathToFileURL(process.argv[1]).href){
