@@ -151,3 +151,10 @@ verify_jwt = false
 # canonical event facts and uses the independent internal worker secret.
 [functions.evidence-summary-worker]
 verify_jwt = false
+
+# C13 operator-confirmed, one-shot source audit. Gateway JWT remains ON.
+# Application independently verifies Auth user, active operator, explicit
+# intent, short-lived stable channel ID allowlist and atomic quota reservation.
+# No scheduler and no client-facing API key.
+[functions.cinerelay-creator-activity-ingest]
+verify_jwt = true
