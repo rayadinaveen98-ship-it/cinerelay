@@ -247,6 +247,15 @@ jobs:
           PGHOST: "127.0.0.1"
           PGPORT: "54322"
         run: python3 tests/database/run-creator-c15-concurrency.py
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: C17 real Postgres-backed HTTP audit with simulated public provider
+        env:
+          CINERELAY_C17_EPHEMERAL_TEST: "true"
+          PGHOST: "127.0.0.1"
+          PGPORT: "54322"
+        run: node tests/database/run-creator-c17-private-flow.mjs
       - name: Lint database functions
         run: supabase db lint --level error
       - name: Stop local Supabase
