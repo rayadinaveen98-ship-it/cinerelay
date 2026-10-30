@@ -22,8 +22,9 @@ await test('exactly 94 diverse provisional research entries with no API-verified
 await test('beta does not embed server credentials or creator-metrics fetch calls',async()=>{
  const ui=await r('apps/android/app/src/main/java/com/cinerelay/app/ui/CreatorIntelligenceBetaV21.kt');
  const model=await r('apps/android/app/src/main/java/com/cinerelay/app/ui/CreatorResearchModelV21.kt');
- assert.ok(ui.includes('Awaiting fresh verification'));
- assert.ok(ui.includes('MONITORING OFF'));
+ assert.ok(ui.includes('CreatorVerifiedPanelV22('));
+ const verified=await r('apps/android/app/src/main/java/com/cinerelay/app/ui/CreatorVerifiedPanelV22.kt');
+ assert.ok(verified.includes('MONITORING OFF'));
  assert.ok(ui.includes('CreatorResearchV21.filter'));
  assert.ok(!ui.includes('YOUTUBE_API_KEY'));
  assert.ok(!ui.includes('SUPABASE_SERVICE_ROLE_KEY'));
