@@ -266,6 +266,14 @@ jobs:
           PGDATABASE: "postgres"
           PGUSER: "postgres"
         run: node tests/database/run-creator-c24-identity-db-flow.mjs
+      - name: C26 real two-session lease-expiry and quota-clock race
+        env:
+          CINERELAY_C26_EPHEMERAL_TEST: "true"
+          PGHOST: "127.0.0.1"
+          PGPORT: "54322"
+          PGDATABASE: "postgres"
+          PGUSER: "postgres"
+        run: python3 tests/database/run-creator-c26-lease-expiry-race.py
       - name: Lint database functions
         run: supabase db lint --level error
       - name: Stop local Supabase
