@@ -32,8 +32,7 @@ select throws_ok(
   values ('UCcccccccccccccccccccccc',now(),now()+interval '10 days',100,true)$$,
  '23514',null,'hidden subscriber counts must not be persisted');
 select lives_ok(
- $delete from public.creator_intelligence_activity_observations
- where expires_at <= now()+interval '29 days'$,
+ 'delete from public.creator_intelligence_activity_observations where expires_at <= now()+interval ''29 days''',
  'retention DELETE removes expired public evidence');
 select is((select count(*) from public.creator_intelligence_activity_observations),0::bigint,'expired private public evidence is absent');
 
