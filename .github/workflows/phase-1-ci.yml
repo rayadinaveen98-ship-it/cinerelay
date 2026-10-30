@@ -111,6 +111,8 @@ jobs:
         run: deno check --config supabase/functions/creator-metric-collector/deno.json supabase/functions/creator-metric-collector/index.ts
       - name: Type-check creator-intelligence read-only operator API
         run: deno check --config supabase/functions/cinerelay-creator-intelligence-api/deno.json supabase/functions/cinerelay-creator-intelligence-api/index.ts
+      - name: Type-check C13 disabled-by-default one-shot activity ingest
+        run: deno check --config supabase/functions/cinerelay-creator-activity-ingest/deno.json supabase/functions/cinerelay-creator-activity-ingest/index.ts
       - name: Type-check youtube-source-admin
         run: deno check --config supabase/functions/youtube-source-admin/deno.json supabase/functions/youtube-source-admin/index.ts
       - name: Type-check youtube-maintenance-worker
