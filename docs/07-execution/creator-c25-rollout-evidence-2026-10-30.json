@@ -1,0 +1,33 @@
+{
+  "schema": "CINERELAY_C25_ROLLOUT_EVIDENCE_V1",
+  "observedAt": "2026-10-30",
+  "projectId": "dnqaejljfzwhsainpdxb",
+  "snapshotOnly": true,
+  "providerCallsMade": false,
+  "productionMutationsMade": false,
+  "verified": {
+    "productionProjectHealthy": true,
+    "productionCreatorMigrationsDeployed": false,
+    "productionCreatorMigrationCount": 0,
+    "hostedDevelopmentBranches": 0,
+    "historicalC11BranchStillAccessible": true,
+    "historicalC11PrStillOpen": true,
+    "currentTipRemovedC2C10Json": true,
+    "actualGoogleCloudQuotaVerified": false,
+    "hostedBackupPitrLogDeletionVerified": false,
+    "independentStagingAuthorized": false,
+    "operatorReviewedSingleCandidate": false,
+    "realProviderPilotAuthorized": false,
+    "creatorMonitoringAuthorized": false,
+    "derivedComparisonsAuthorized": false
+  },
+  "evidenceLinks": {
+    "historicalPr": "https://github.com/rayadinaveen98-ship-it/cinerelay/pull/109",
+    "cleanCodePr": "https://github.com/rayadinaveen98-ship-it/cinerelay/pull/117",
+    "dbProofPr": "https://github.com/rayadinaveen98-ship-it/cinerelay/pull/122",
+    "ownerSupabase": "https://supabase.com/dashboard/project/dnqaejljfzwhsainpdxb",
+    "cloudQuota": "https://console.cloud.google.com/apis/api/youtube.googleapis.com/quotas",
+    "backups": "https://supabase.com/dashboard/project/dnqaejljfzwhsainpdxb/database/backups/scheduled"
+  },
+  "caveat": "This is a dated read-only operator audit snapshot, not a live Supabase/Google query, proof of provider quota, or authorization to deploy. Never flip flags based on this JSON."
+}
