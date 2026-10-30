@@ -116,30 +116,10 @@ fun CreatorIntelligenceBetaV21(onBack: () -> Unit, modifier: Modifier = Modifier
             }
             if (section == "Verified") {
                 item {
-                    Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp)
-                        .background(CiCard, RoundedCornerShape(18.dp)).padding(22.dp)) {
-                        Icon(Icons.Default.Shield, contentDescription = null, tint = CiGreen)
-                        Spacer(Modifier.height(17.dp))
-                        Text("Awaiting fresh verification", color = CiWhite,
-                            fontSize = 22.sp, fontWeight = FontWeight.SemiBold)
-                        Spacer(Modifier.height(9.dp))
-                        Text("The protected identity-verification backend is not deployed to " +
-                            "this Android beta. Historical YouTube API snapshots will not be " +
-                            "shown as current verified channels.",
-                            color = CiSoft, fontSize = 13.sp, lineHeight = 20.sp)
-                        Spacer(Modifier.height(13.dp))
-                        Text("MONITORING OFF   ·   METRICS OFF   ·   COMPARISONS OFF",
-                            color = CiWarm, fontSize = 11.sp)
-                        Spacer(Modifier.height(14.dp))
-                        HorizontalDivider(color = CiBorder)
-                        Spacer(Modifier.height(12.dp))
-                        Text("Use Discover to browse research leads. A separately reviewed, " +
-                            "quota-safe process is required for fresh official verification.",
-                            color = CiSoft, fontSize = 12.sp, lineHeight = 19.sp)
-                        TextButton(onClick = { section = "Discover" }) {
-                            Text("Explore research", color = CiCoral)
-                        }
-                    }
+                    CreatorVerifiedPanelV22(
+                        leads = leads,
+                        onDiscover = { section = "Discover" },
+                    )
                 }
             } else {
                 item {
