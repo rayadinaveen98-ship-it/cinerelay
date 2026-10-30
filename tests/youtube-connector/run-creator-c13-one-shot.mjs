@@ -70,7 +70,8 @@ await test('Edge function must fail closed, require operator and quota before pr
  assert.ok(flow.includes("ONE_SHOT_PUBLIC_ACTIVITY"));
  assert.ok(flow.indexOf("await deps.claim(")<flow.indexOf("deps.provider('channels'"));
  assert.ok(flow.includes("C14_CHANNEL_ALREADY_CLAIMED_OR_RECENT"));
- assert.ok(code.includes(".upsert(row,{onConflict:'channel_id'})"));
+ assert.ok(code.includes("creator_c27_commit_public_activity"));
+ assert.ok(!code.includes(".upsert(row,{onConflict:'channel_id'})"));
  assert.ok(flow.includes("cache-control':'no-store"));
  assert.ok(!code.includes('console.log('));
  assert.ok(!code.includes('console.error('));
