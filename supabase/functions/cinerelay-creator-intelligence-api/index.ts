@@ -181,6 +181,33 @@ async function comparePair(body:Record<string,unknown>):Promise<Response>{
   });
 }
 
+/** C12: operator-only, fresh TTL-bounded public activity evidence.
+ * Not an analytics, comparison, quota-spending or creator-enrollment endpoint.
+ * Query source is service-only security-invoker view returning decimal counters as text.
+ */
+async function pilotPublicActivity():Promise<Response>{
+  const now=new Date().toISOString();
+  const rows=await admin.from('creator_intelligence_activity_text')
+    .select('channel_id,observed_at,expires_at,subscriber_count,subscribers_hidden,public_video_count,recent_public_uploads')
+    .gte('expires_at',now).order('observed_at',{ascending:false}).limit(21);
+  if(rows.error)return unavailable(rows.error);
+  if((rows.data??[]).length>20)return json(409,{error:'C12_REVIEW_WINDOW_TRUNCATED'});
+  const channels=(rows.data??[]).map(item=>({
+    channelId:item.channel_id,observedAt:item.observed_at,expiresAt:item.expires_at,
+    subscriberCountApprox:item.subscribers_hidden?null:item.subscriber_count,
+    subscriberHidden:item.subscribers_hidden,
+    videoCountPublic:item.public_video_count,
+    latestPublicVideos:item.recent_public_uploads,
+  }));
+  return json(200,{
+    generatedAt:now,
+    status:channels.length?'READ_ONLY_OBSERVATIONS':'NO_FRESH_ACTIVITY_DATA',
+    channels,
+    monitoringAuthorized:false,
+    comparisonsAuthorized:false,
+  });
+}
+
 Deno.serve(async(request:Request):Promise<Response>=>{
   if(request.method==='OPTIONS')return new Response(null,{status:204,headers:cors});
   if(request.method!=='POST')return json(405,{error:'METHOD_NOT_ALLOWED'});
@@ -192,6 +219,7 @@ Deno.serve(async(request:Request):Promise<Response>=>{
     const body=payload as Record<string,unknown>;
     if(body.action==='overview')return await overview();
     if(body.action==='channel'&&typeof body.channelId==='string')return await detail(body.channelId);
+    if(body.action==='pilotActivity')return await pilotPublicActivity();
     if(body.action==='comparisonStatus')return json(200,{
       enabled:crossChannelApproved,policy:'YouTube cross-channel analytics must be explicitly approved',
     });
