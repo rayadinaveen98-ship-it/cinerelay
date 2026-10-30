@@ -1,0 +1,41 @@
+{
+  "observedAt": "2026-10-28",
+  "method": "FIRST_PARTY_PUBLIC_YOUTUBE_CHANNEL_PAGE",
+  "apiVerified": false,
+  "reviewApproved": false,
+  "trackingEnabled": false,
+  "expiresAfter": "2026-11-27",
+  "notes": "Independent YouTube-owned channel page shows canonical /channel/UC… URL and matching @handle; these are preliminary first-party identity matches. Official channels.list remains a separate future gate, as does final operator review and fresh production stable-ID dedupe.",
+  "matches": [
+    {
+      "name": "Chandoo Tech in Telugu",
+      "listedHandle": "@data_with_chandoo",
+      "officialChannelId": "UCuaf89M0Lt5pmXzaUssXHvw",
+      "firstPartyChannelPage": "https://www.youtube.com/channel/UCuaf89M0Lt5pmXzaUssXHvw",
+      "locale": "te",
+      "alreadyInExistingSnapshot": false,
+      "stage": "YOUTUBE_PAGE_ID_FOUND_API_PENDING",
+      "approved": false
+    },
+    {
+      "name": "Ruchi Paakashaale",
+      "listedHandle": "@CookwithShubhaSharon",
+      "officialChannelId": "UCcEXr6ZzppFU1jEbX42QP1A",
+      "firstPartyChannelPage": "https://www.youtube.com/channel/UCcEXr6ZzppFU1jEbX42QP1A",
+      "locale": "kn",
+      "alreadyInExistingSnapshot": false,
+      "stage": "YOUTUBE_PAGE_ID_FOUND_API_PENDING",
+      "approved": false
+    },
+    {
+      "name": "CA Rachana Ranade Marathi",
+      "listedHandle": "@carachanaranademarathi",
+      "officialChannelId": "UChnK-EoSW6er1qtWkwnJDRw",
+      "firstPartyChannelPage": "https://www.youtube.com/channel/UChnK-EoSW6er1qtWkwnJDRw",
+      "locale": "mr",
+      "alreadyInExistingSnapshot": false,
+      "stage": "YOUTUBE_PAGE_ID_FOUND_API_PENDING",
+      "approved": false
+    }
+  ]
+}
