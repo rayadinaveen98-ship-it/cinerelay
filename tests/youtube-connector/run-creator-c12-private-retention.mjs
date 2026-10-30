@@ -54,8 +54,8 @@ await test('protected React screen renders absence without falling back to Git-s
  const client=await file('apps/web/src/lib/creator-intelligence-api.ts');
  assert.ok(page.includes('fetchCreatorPilotActivity'));
  assert.ok(page.includes('enabled:guard.isSuccess'));
- assert.ok(page.includes('No protected activity report is available'));
- assert.ok(page.includes('Date.parse(freshItem.expiresAt)>Date.now()'));
+ assert.ok(page.includes('No unexpired private activity evidence'));
+ assert.ok(page.includes('Date.parse(source.expiresAt)>clock'));
  assert.ok(!page.includes("from '../data/creator-public-activity-2026-10-30.json'"));
  assert.ok(client.includes("return invokeCreator({action:'pilotActivity'},PilotActivity)"));
  assert.ok(client.includes("comparisonsAuthorized:z.literal(false)"));
