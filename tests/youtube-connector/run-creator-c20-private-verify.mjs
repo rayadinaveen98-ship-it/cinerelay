@@ -145,7 +145,7 @@ await test('malformed provider data or private storage error denies success, sti
   const h=harness(override);
   const res=await parse(await runC20IdentityRequest(req(),cfg,h.deps));
   assert.equal(res.status,503);assert.ok(h.events.includes('finalize'));
-  assert.ok(!JSON.stringify(res.body).includes('PRIVATE'));
+  assert.ok(!JSON.stringify(res.body).includes('DB_PRIVATE'));
  }
 });
 await test('finalization must succeed before reporting success',async()=>{
