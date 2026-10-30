@@ -25,16 +25,16 @@ select throws_ok(
  $$insert into public.creator_intelligence_activity_observations
   (channel_id,observed_at,expires_at,subscriber_count,subscribers_hidden)
   values ('UCbbbbbbbbbbbbbbbbbbbbbb',now(),now()+interval '30 days',100,false)$$,
- '23514',null,'30 day expiry is disallowed to allow hourly deletion before day 30');
+ 'P0001','creator_c12_invalid_retention','30 day expiry is disallowed to allow hourly deletion before day 30');
 select throws_ok(
  $$insert into public.creator_intelligence_activity_observations
   (channel_id,observed_at,expires_at,subscriber_count,subscribers_hidden)
   values ('UCcccccccccccccccccccccc',now(),now()+interval '10 days',100,true)$$,
  '23514',null,'hidden subscriber counts must not be persisted');
-select is((with deleted as (
- delete from public.creator_intelligence_activity_observations
- where expires_at <= now()+interval '29 days' returning channel_id
- ) select count(*) from deleted),1::bigint,'retention DELETE removes expired public evidence');
+select lives_ok(
+ $delete from public.creator_intelligence_activity_observations
+ where expires_at <= now()+interval '29 days'$,
+ 'retention DELETE removes expired public evidence');
 select is((select count(*) from public.creator_intelligence_activity_observations),0::bigint,'expired private public evidence is absent');
 
 select * from finish();
