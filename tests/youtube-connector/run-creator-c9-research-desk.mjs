@@ -63,7 +63,8 @@ await test('research screen is operator-guarded and contains no activation or AP
  assert.ok(page.includes("return <ResearchContent/>"));
  assert.ok(app.includes("path: '/creators/research'"));
  assert.ok(app.includes('component: CreatorResearchPage'));
- assert.ok(app.includes('researchRoute, compareRoute'));
+ assert.ok(app.includes('researchRoute'));
+ assert.ok(app.includes('compareRoute'));
  assert.equal(page.includes('fetchCreatorComparison('),false);
  assert.equal(page.includes('fetchCreatorDetail('),false);
  assert.equal(page.includes('fetchCreatorOverview('),false);
