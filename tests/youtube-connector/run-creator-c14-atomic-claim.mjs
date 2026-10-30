@@ -4,6 +4,7 @@ import {readFile} from 'node:fs/promises';
 const read=path=>readFile(path,'utf8');
 const sql=await read('supabase/migrations/20261030170000_creator_intelligence_c14_atomic_claim.sql');
 const edge=await read('supabase/functions/cinerelay-creator-activity-ingest/index.ts');
+const flow=await read('supabase/functions/cinerelay-creator-activity-ingest/flow.mjs');
 const c13=await read('supabase/migrations/20261030163000_creator_intelligence_c13_manual_quota.sql');
 const c12=await read('supabase/migrations/20261030110000_creator_intelligence_c12_activity_retention.sql');
 let checks=0;
@@ -15,8 +16,7 @@ test('one database RPC atomically locks identity and reserves quota before fetch
  const claim=sql.indexOf("insert into public.creator_intelligence_activity_claims");
  assert.ok(reserve>0&&claim>reserve);
  assert.ok(sql.includes("return jsonb_build_object('state','CLAIMED'"));
- assert.ok(edge.indexOf("admin.rpc('creator_c14_claim_and_reserve_activity'")<
-   edge.indexOf("provider('channels'"));
+ assert.ok(flow.indexOf("await deps.claim(")<flow.indexOf("deps.provider('channels'"));
  assert.ok(!edge.includes("admin.rpc('creator_c13_reserve_public_activity_quota'"));
 });
 test('same channel duplicate and successful recent observation block extra charges',()=>{
@@ -26,14 +26,14 @@ test('same channel duplicate and successful recent observation block extra charg
  assert.ok(sql.includes("'BLOCKED_RECENT_PUBLIC_OBSERVATION'"));
  assert.ok(sql.indexOf("v_claim.retry_after>v_now")<sql.indexOf("insert into public.connector_quota_usage"));
  assert.ok(sql.indexOf("observed_at>v_now-interval '24 hours'")<sql.indexOf("insert into public.connector_quota_usage"));
- assert.ok(edge.includes("C14_CHANNEL_ALREADY_CLAIMED_OR_RECENT"));
+ assert.ok(flow.includes("C14_CHANNEL_ALREADY_CLAIMED_OR_RECENT"));
 });
 test('both config gates default off, requiring deliberate server approval',()=>{
  assert.ok(edge.includes("CINERELAY_C13_ACTIVITY_INGEST_ENABLED')==='true'"));
- assert.ok(edge.includes("CINERELAY_C14_ATOMIC_CLAIM_ENABLED')!=='true'"));
- assert.ok(edge.includes('activeOperator(request)'));
- assert.ok(edge.includes('authorizedTarget(channelId,allowlist'));
- assert.ok(edge.includes("ONE_SHOT_PUBLIC_ACTIVITY"));
+ assert.ok(edge.includes("CINERELAY_C14_ATOMIC_CLAIM_ENABLED')==='true'"));
+ assert.ok(flow.includes('deps.activeOperator(request)'));
+ assert.ok(flow.includes('authorizedTarget(channelId,config.allowlist'));
+ assert.ok(flow.includes("ONE_SHOT_PUBLIC_ACTIVITY"));
 });
 test('success and failure have separate cooldowns and cannot finalize a stolen receipt',()=>{
  assert.ok(sql.includes("claim_token=p_claim_token"));
@@ -41,7 +41,7 @@ test('success and failure have separate cooldowns and cannot finalize a stolen r
  assert.ok(sql.includes("interval '24 hours' else interval '15 minutes'"));
  assert.ok(sql.includes("if v_row_count<>1 then return false; end if;"));
  assert.ok(edge.includes("creator_c14_finalize_activity_claim"));
- assert.ok(edge.includes("if(finalized.error||finalized.data!==true)"));
+ assert.ok(flow.includes("if(!finalized)"));
 });
 test('claims and API observations both expire before 30-day limit',()=>{
  assert.ok(sql.includes("claimed_at + interval '28 days'"));
@@ -58,7 +58,7 @@ test('service only access, no Git writes, no keys in response',()=>{
  assert.ok(!edge.includes("console.log(")&&!edge.includes("console.error("));
  assert.ok(!edge.includes("return json(200,{ok:true,...row"));
  assert.ok(!edge.includes("apiKey:youtubeKey"));
- assert.ok(edge.includes("providerRequestsReserved:2"));
- assert.ok(edge.includes("monitoringEnabled:false,comparisonsEnabled:false"));
+ assert.ok(flow.includes("providerRequestsReserved:2"));
+ assert.ok(flow.includes("monitoringEnabled:false,comparisonsEnabled:false"));
 });
 console.log('PASS C14: '+checks+' concurrency and retention safeguard contracts');
