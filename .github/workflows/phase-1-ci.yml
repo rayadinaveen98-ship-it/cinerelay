@@ -241,6 +241,12 @@ jobs:
         run: supabase db start
       - name: Run pgTAP database tests
         run: supabase test db
+      - name: C15 multi-connection atomic claim and quota race proof
+        env:
+          CINERELAY_C15_EPHEMERAL_TEST: "true"
+          PGHOST: "127.0.0.1"
+          PGPORT: "54322"
+        run: python3 tests/database/run-creator-c15-concurrency.py
       - name: Lint database functions
         run: supabase db lint --level error
       - name: Stop local Supabase
