@@ -40,7 +40,7 @@ export function unsafeNewPath(path){
  if(has(KNOWN_API_DATA_PATHS,path)||has(PUBLIC_PAGE_REVIEW_PATHS,path))return false;
  if(path==='research/creator-intelligence/c11-public-activity-results.json')return true;
  if(/^apps\/web\/src\/data\/creator-(?:public-activity|subscribers|metrics|stats|channel-statistics)(?:-|\.)(?:.*)\.(?:json|jsonl|ndjson)$/i.test(path))return true;
- if(/^research\/creator-intelligence\/(?:c\d+-)?(?:public-activity|channel-statistics|creator-metrics|youtube-api-response).*\.(:?json|jsonl|ndjson)$/i.test(path))return true;
+ if(/^research\/creator-intelligence\/(?:c\d+-)?(?:public-activity|channel-statistics|creator-metrics|youtube-api-response).*\.(?:json|jsonl|ndjson)$/i.test(path))return true;
  if(/^research\/creator-intelligence\/c\d+-(?:public|official)-.*(?:results|snapshots)\.(?:json|jsonl|ndjson)$/i.test(path))return true;
  if(/(?:^|\/)(?:youtube-api-key|youtube-provider-response|creator-public-activity-dump)\.(?:json|jsonl|ndjson)$/i.test(path))return true;
  return false;
