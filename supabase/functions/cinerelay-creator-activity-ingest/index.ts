@@ -50,7 +50,12 @@ Deno.serve(async(request:Request):Promise<Response>=>{
   return fail(400,'EXPLICIT_ONE_SHOT_INTENT_REQUIRED');
  if(Number(request.headers.get('content-length')??0)>512)return fail(413,'REQUEST_TOO_LARGE');
  let body:unknown;
- try{body=await request.json();}catch{return fail(400,'INVALID_JSON');}
+ try{
+  // Body-limit enforcement is independent of Content-Length (chunked uploads).
+  const raw=await request.text();
+  if(new TextEncoder().encode(raw).length>512)return fail(413,'REQUEST_TOO_LARGE');
+  body=JSON.parse(raw);
+ }catch{return fail(400,'INVALID_JSON');}
  if(!body||typeof body!=='object'||Array.isArray(body)||
     Object.keys(body).length!==1)return fail(400,'CHANNEL_ID_ONLY');
  const channelId=(body as Record<string,unknown>).channelId;
