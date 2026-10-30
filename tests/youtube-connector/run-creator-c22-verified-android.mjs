@@ -10,7 +10,7 @@ await test('Android Verified uses real protected server action with only the exi
  assert.ok(client.includes('"cinerelay-creator-intelligence-api"'));
  assert.ok(client.includes('JSONObject().put("action", "pilotIdentities")'));
  assert.ok(client.includes('invokeAuthenticated('));
- assert.ok(parser.includes('CreatorIdentityParserV22.parse'));
+ assert.ok(client.includes('CreatorIdentityParserV22.parse'));
  const api=await read('supabase/functions/cinerelay-creator-intelligence-api/index.ts');
  assert.ok(api.includes("if(!(await operator(request)))"));
  assert.ok(api.includes("if(body.action==='pilotIdentities')return await pilotIdentities()"));
