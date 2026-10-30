@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {auditC7Pilot} from '../../scripts/creator-intelligence/audit-c7-pilot.mjs';
+import {runC2Verification} from '../../scripts/creator-intelligence/verify-c2-channels.mjs';
 
 const A='UCaaaaaaaaaaaaaaaaaaaaaa',B='UCbbbbbbbbbbbbbbbbbbbbbb';
 const C='UCcccccccccccccccccccccc',D='UCdddddddddddddddddddddd';
@@ -74,9 +75,14 @@ test('invalid request budget, forged report or future observation cannot unlock'
 });
 
 const read=async path=>JSON.parse(await readFile('research/creator-intelligence/'+path,'utf8'));
-const [realPool,realExisting,realVerification]=await Promise.all([
-  read('c2-verification-input-20.json'),read('c2-existing-youtube-ids-2026-10-28.json'),read('c2-official-id-results.json')]);
-test('checked-in genuine C2 report stays explicitly blocked without real API access',()=>{
+const [realPool,realExisting]=await Promise.all([
+  read('c2-verification-input-20.json'),read('c2-existing-youtube-ids-2026-10-28.json')]);
+// Offline blocked report generated without provider credentials or real API data.
+const realVerification=await runC2Verification({
+ pool:realPool,existing:realExisting,apiKey:'',at:observedAt,
+ fetcher:()=>{throw Error('No YouTube API call permitted in C19');},
+});
+test('synthetic C2 missing-key report stays blocked without real API access',()=>{
   const out=auditC7Pilot({pool:realPool,existing:realExisting,verification:realVerification,at:time});
   assert.equal(out.status,'BLOCKED_MISSING_API_KEY');
   assert.equal(out.counts.attempted,0);
