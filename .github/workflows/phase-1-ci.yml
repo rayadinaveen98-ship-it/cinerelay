@@ -258,6 +258,14 @@ jobs:
           PGHOST: "127.0.0.1"
           PGPORT: "54322"
         run: node tests/database/run-creator-c17-private-flow.mjs
+      - name: C24 real Postgres-backed official identity verification and stale-claim defense
+        env:
+          CINERELAY_C24_EPHEMERAL_TEST: "true"
+          PGHOST: "127.0.0.1"
+          PGPORT: "54322"
+          PGDATABASE: "postgres"
+          PGUSER: "postgres"
+        run: node tests/database/run-creator-c24-identity-db-flow.mjs
       - name: Lint database functions
         run: supabase db lint --level error
       - name: Stop local Supabase
