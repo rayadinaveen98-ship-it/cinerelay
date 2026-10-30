@@ -40,3 +40,17 @@ pnpm-debug.log*
 *.keystore
 service-account*.json
 firebase-admin*.json
+
+# Public YouTube API observations are temporary private data, NEVER source artifacts.
+# .gitignore prevents accidental adds; C18 CI catches forced adds.
+# These entries do not untrack or purge historical C2/C10/C11 commits.
+/research/creator-intelligence/*public-activity*.json
+/research/creator-intelligence/*public-activity*.jsonl
+/research/creator-intelligence/*public-activity*.ndjson
+/research/creator-intelligence/*channel-statistics*.json
+/research/creator-intelligence/*creator-metrics*.json
+/research/creator-intelligence/*youtube-api-response*.json*
+/apps/web/src/data/creator-public-activity*.json
+/apps/web/src/data/creator-subscribers*.json
+/apps/web/src/data/creator-metrics*.json
+/apps/web/src/data/creator-stats*.json
