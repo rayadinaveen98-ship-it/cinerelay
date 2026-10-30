@@ -29,6 +29,7 @@ import com.cinerelay.app.push.CineRelayMessagingService
 import com.cinerelay.app.ui.AppTab
 import com.cinerelay.app.ui.ArchiveV058
 import com.cinerelay.app.ui.ArchiveViewModelV058
+import com.cinerelay.app.ui.CreatorIntelligenceBetaV21
 import com.cinerelay.app.ui.CineRelayHomeV058
 import com.cinerelay.app.ui.CineRelayRootV049
 import com.cinerelay.app.ui.CineRelaySetupLoadingV050
@@ -84,6 +85,7 @@ class MainActivity : ComponentActivity() {
             val pendingNotificationRoute by notificationRoute.collectAsStateWithLifecycle()
             val context = LocalContext.current
             var settingsVisible by remember { mutableStateOf(false) }
+            var creatorBetaVisible by remember { mutableStateOf(false) }
             var personalizationEditorVisible by remember { mutableStateOf(false) }
             var ottVisible by remember { mutableStateOf(false) }
             var historyVisible by remember { mutableStateOf(false) }
@@ -116,6 +118,7 @@ class MainActivity : ComponentActivity() {
                     sourcesViewModel.reset()
                     archiveViewModel.reset()
                     settingsVisible = false
+                    creatorBetaVisible = false
                     personalizationEditorVisible = false
                     ottVisible = false
                     historyVisible = false
@@ -137,6 +140,7 @@ class MainActivity : ComponentActivity() {
                 val route = pendingNotificationRoute ?: return@LaunchedEffect
                 if (!state.authenticated) return@LaunchedEffect
                 settingsVisible = false
+                creatorBetaVisible = false
                 personalizationEditorVisible = false
                 ottVisible = false
                 historyVisible = false
@@ -227,6 +231,13 @@ class MainActivity : ComponentActivity() {
                                 else onboardingViewModel.completeSetup(enableNotifications = true)
                             },
                             onFinishWithoutNotifications = { onboardingViewModel.completeSetup(enableNotifications = false) },
+                            modifier = Modifier.fillMaxSize(),
+                        )
+                    }
+
+                    creatorBetaVisible -> {
+                        CreatorIntelligenceBetaV21(
+                            onBack = { creatorBetaVisible = false },
                             modifier = Modifier.fillMaxSize(),
                         )
                     }
@@ -394,6 +405,10 @@ class MainActivity : ComponentActivity() {
                                     settingsVisible = false
                                     personalizationEditorVisible = true
                                 },
+                                onOpenCreatorIntelligence = {
+                                    settingsVisible = false
+                                    creatorBetaVisible = true
+                                },
                                 onOpenSources = {
                                     settingsVisible = false
                                     ottVisible = false
@@ -411,6 +426,7 @@ class MainActivity : ComponentActivity() {
                                 },
                                 onSignOut = {
                                     settingsVisible = false
+                                    creatorBetaVisible = false
                                     personalizationEditorVisible = false
                                     ottVisible = false
                                     historyVisible = false
