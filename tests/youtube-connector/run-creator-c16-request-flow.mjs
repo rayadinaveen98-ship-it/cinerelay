@@ -194,7 +194,7 @@ await test('channel spoofing or invalid playlist items fail closed before commit
   const {status,body}=await parse(await runC16ManualActivityRequest(request(),config,h.deps));
   assert.equal(status,503);assert.equal(body.error,'PUBLIC_AUDIT_FAILED');
   assert.ok(!h.events.includes('commit'));
-  assert.ok(h.events.includes('commit'));
+  assert.ok(h.events.includes('finalize'));
  }
 });
 await test('private transaction rejection or thrown error never reports success',async()=>{
