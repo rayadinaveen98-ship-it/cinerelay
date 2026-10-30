@@ -63,14 +63,15 @@ await test('database row expires at 28 days, no view/like/comment metrics',()=>{
 await test('Edge function must fail closed, require operator and quota before provider calls',async()=>{
  const code=await readFile('supabase/functions/cinerelay-creator-activity-ingest/index.ts','utf8');
  const sql=await readFile('supabase/migrations/20261030163000_creator_intelligence_c13_manual_quota.sql','utf8');
+ const flow=await readFile('supabase/functions/cinerelay-creator-activity-ingest/flow.mjs','utf8');
  assert.ok(code.includes("CINERELAY_C13_ACTIVITY_INGEST_ENABLED')==='true'"));
- assert.ok(code.includes("if(!(await activeOperator(request)))"));
- assert.ok(code.includes('authorizedTarget('));
- assert.ok(code.includes("ONE_SHOT_PUBLIC_ACTIVITY"));
- assert.ok(code.indexOf("admin.rpc('creator_c14_claim_and_reserve_activity'")<code.indexOf("provider('channels'"));
- assert.ok(code.includes("C14_CHANNEL_ALREADY_CLAIMED_OR_RECENT"));
+ assert.ok(flow.includes("await deps.activeOperator(request)"));
+ assert.ok(flow.includes('authorizedTarget('));
+ assert.ok(flow.includes("ONE_SHOT_PUBLIC_ACTIVITY"));
+ assert.ok(flow.indexOf("await deps.claim(")<flow.indexOf("deps.provider('channels'"));
+ assert.ok(flow.includes("C14_CHANNEL_ALREADY_CLAIMED_OR_RECENT"));
  assert.ok(code.includes(".upsert(row,{onConflict:'channel_id'})"));
- assert.ok(code.includes("cache-control':'no-store"));
+ assert.ok(flow.includes("cache-control':'no-store"));
  assert.ok(!code.includes('console.log('));
  assert.ok(!code.includes('console.error('));
  assert.ok(sql.includes('pg_advisory_xact_lock'));
