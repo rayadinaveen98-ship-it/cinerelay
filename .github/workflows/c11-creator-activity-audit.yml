@@ -1,0 +1,18 @@
+name: CineRelay C11 Activity Audit (Disabled Pending Private Retention)
+
+# This historical job deliberately cannot run. C11's first public API
+# observation was committed to Git, which is unsuitable for TTL-bound
+# non-authorized public YouTube data. C12 replaces the storage model.
+# DO NOT restore push/schedule/contents:write for activity snapshots.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  disabled-until-private-storage-reviewed:
+    if: false
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo 'C11 public activity audit disabled until C12 private storage and ingest receive approval'

@@ -65,7 +65,7 @@ const archived=await readFile('apps/web/src/pages/CreatorResearchPage.tsx','utf8
 const app=await readFile('apps/web/src/App.tsx','utf8');
 test('operator gated route is read only, archived matches are reconciled',()=>{
  assert.ok(page.includes('fetchConsoleOverview'));
- assert.ok(page.includes('if(auth.isError)'));
+ assert.ok(page.includes('if(guard.isError)') || page.includes('if(auth.isError)'));
  assert.ok(app.includes("path: '/creators/pilot'"));
  assert.ok(app.includes('component: CreatorPilotReviewPage'));
  assert.ok(archived.includes('newlyVerifiedIds.has(p.officialChannelId)'));

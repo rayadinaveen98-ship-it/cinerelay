@@ -78,3 +78,28 @@ export function fetchCreatorComparison(input:{
   return Promise.reject(new Error('Invalid two-creator video pair'));
  return invokeCreator({action:'comparison',...input},ComparisonResponse);
 }
+
+const PilotPublicUpload=z.object({
+ videoId:z.string().regex(/^[A-Za-z0-9_-]{11}$/),
+ publishedAt:z.string().datetime({offset:true}).nullable(),
+});
+const PilotActivityChannel=z.object({
+ channelId:z.string().regex(/^UC[A-Za-z0-9_-]{22}$/),
+ observedAt:z.string().datetime({offset:true}),
+ expiresAt:z.string().datetime({offset:true}),
+ subscriberCountApprox:z.string().regex(/^\d+$/).nullable(),
+ subscriberHidden:z.boolean().nullable(),
+ videoCountPublic:z.string().regex(/^\d+$/).nullable(),
+ latestPublicVideos:z.array(PilotPublicUpload).max(3),
+});
+const PilotActivity=z.object({
+ generatedAt:z.string().datetime({offset:true}),
+ status:z.enum(['READ_ONLY_OBSERVATIONS','NO_FRESH_ACTIVITY_DATA']),
+ channels:z.array(PilotActivityChannel).max(20),
+ monitoringAuthorized:z.literal(false),
+ comparisonsAuthorized:z.literal(false),
+});
+export type CreatorPilotActivity=z.infer<typeof PilotActivity>;
+export function fetchCreatorPilotActivity():Promise<CreatorPilotActivity>{
+ return invokeCreator({action:'pilotActivity'},PilotActivity);
+}
