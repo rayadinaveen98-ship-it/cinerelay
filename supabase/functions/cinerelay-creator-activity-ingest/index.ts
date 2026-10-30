@@ -63,22 +63,27 @@ Deno.serve(async(request:Request):Promise<Response>=>{
    !authorizedTarget(channelId,allowlist,new Date().toISOString(),allowUntil))
    return fail(403,'CHANNEL_NOT_IN_TIME_LIMITED_AUDIT_SCOPE');
 
- // A manual audit must not silently become a frequently repeating collector.
- const recent=await admin.from('creator_intelligence_activity_observations')
-   .select('observed_at').eq('channel_id',channelId).limit(1).maybeSingle();
- if(recent.error)return fail(503,'C13_PRIVATE_STORAGE_UNAVAILABLE');
- if(recent.data&&Number.isFinite(Date.parse(recent.data.observed_at))&&
-     Date.now()-Date.parse(recent.data.observed_at)<86400000)
-  return fail(409,'C13_ALREADY_AUDITED_IN_24_HOURS');
-
- // Atomic quota reservation is committed BEFORE either of the two YouTube
- // calls. This uses locally recorded usage and is NOT a Google quota guarantee.
- const reservation=await admin.rpc('creator_c13_reserve_public_activity_quota',{
-   p_daily_limit:dailyLimit,p_existing_reserve:existingReserve});
- if(reservation.error)return fail(503,'C13_QUOTA_RESERVATION_UNAVAILABLE');
- const quotaId=reservation.data===null?null:Number(reservation.data);
- if(quotaId===null)return fail(429,'C13_QUOTA_RESERVE_EXHAUSTED');
- if(!Number.isSafeInteger(quotaId)||quotaId<1)return fail(503,'C13_QUOTA_RECEIPT_INVALID');
+ // C14 atomically combines the channel lock, recent-activity guard and
+ // two-unit quota charge inside ONE database transaction. A local SELECT
+ // followed by a separate reservation is not safe under concurrency.
+ if(Deno.env.get('CINERELAY_C14_ATOMIC_CLAIM_ENABLED')!=='true')
+  return fail(503,'C14_ATOMIC_CLAIM_DISABLED');
+ const claim=await admin.rpc('creator_c14_claim_and_reserve_activity',{
+   p_channel_id:channelId,p_daily_limit:dailyLimit,
+   p_existing_reserve:existingReserve,
+ });
+ if(claim.error||!claim.data||typeof claim.data!=='object')
+  return fail(503,'C14_CLAIM_UNAVAILABLE');
+ const state=claim.data.state;
+ if(state==='BLOCKED_ACTIVE_OR_COOLDOWN'||state==='BLOCKED_RECENT_PUBLIC_OBSERVATION')
+  return fail(409,'C14_CHANNEL_ALREADY_CLAIMED_OR_RECENT');
+ if(state==='BLOCKED_QUOTA_RESERVE')return fail(429,'C14_QUOTA_RESERVE_EXHAUSTED');
+ const quotaId=claim.data.quotaReceiptId;
+ const claimToken=claim.data.claimToken;
+ if(state!=='CLAIMED'||!Number.isSafeInteger(quotaId)||quotaId<1||
+    typeof claimToken!=='string'||
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(claimToken))
+   return fail(503,'C14_INVALID_CLAIM_RECEIPT');
 
  let status=503,stage='PROVIDER_NOT_COMPLETE',observedAt:string|undefined;
  try{
@@ -111,10 +116,12 @@ Deno.serve(async(request:Request):Promise<Response>=>{
  }finally{
   // Non-sensitive quota audit only; even a failed provider attempt remains
   // charged. If this update fails, we intentionally do not refund quota.
-  await admin.from('connector_quota_usage').update({
-    response_status:status,
-    metadata:{purpose:'CINERELAY_C13',state:stage,noSensitiveApiData:true},
-  }).eq('id',quotaId).eq('quota_bucket','GENERAL_READ')
-     .eq('method','creatorC13.oneShotPublicActivity');
+  const finalized=await admin.rpc('creator_c14_finalize_activity_claim',{
+    p_channel_id:channelId,p_claim_token:claimToken,
+    p_quota_receipt_id:quotaId,p_succeeded:stage==='PRIVATE_TTL_STORED',
+    p_response_status:status,
+  });
+  if(finalized.error||finalized.data!==true)
+    return fail(503,'C14_CLAIM_FINALIZATION_FAILED');
  }
 });

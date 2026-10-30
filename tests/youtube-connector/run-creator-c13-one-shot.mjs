@@ -67,8 +67,8 @@ await test('Edge function must fail closed, require operator and quota before pr
  assert.ok(code.includes("if(!(await activeOperator(request)))"));
  assert.ok(code.includes('authorizedTarget('));
  assert.ok(code.includes("ONE_SHOT_PUBLIC_ACTIVITY"));
- assert.ok(code.indexOf("admin.rpc('creator_c13_reserve_public_activity_quota'")<code.indexOf("provider('channels'"));
- assert.ok(code.includes("C13_ALREADY_AUDITED_IN_24_HOURS"));
+ assert.ok(code.indexOf("admin.rpc('creator_c14_claim_and_reserve_activity'")<code.indexOf("provider('channels'"));
+ assert.ok(code.includes("C14_CHANNEL_ALREADY_CLAIMED_OR_RECENT"));
  assert.ok(code.includes(".upsert(row,{onConflict:'channel_id'})"));
  assert.ok(code.includes("cache-control':'no-store"));
  assert.ok(!code.includes('console.log('));
