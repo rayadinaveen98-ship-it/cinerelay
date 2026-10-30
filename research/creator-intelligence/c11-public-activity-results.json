@@ -1,0 +1,10 @@
+{
+  "kind": "CINERELAY_C11_PUBLIC_ACTIVITY_AUDIT",
+  "status": "NOT_RUN",
+  "usedRequests": 0,
+  "maxRequests": 21,
+  "monitoringEnabled": false,
+  "metricsEnabled": false,
+  "channelResults": [],
+  "notice": "Research-only one-shot audit. Replaced only by explicit bounded C11 workflow; this placeholder is not an observed video activity report."
+}
