@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { fetchConsoleOverview } from '../lib/console-api';
 import research from '../data/creator-research-2026-10-27.json';
 import pages from '../data/creator-preliminary-page-evidence-2026-10-28.json';
+import officialPilot from '../data/creator-official-pilot-2026-10-30.json';
 
 const TIER:Record<string,string>={
  NANO_LT10K:'Nano · under 10K',MICRO_10K_100K:'Micro · 10K–100K',
@@ -13,6 +14,7 @@ const LANGUAGE:Record<string,string>={
  'hi-en':'Hindi / English',en:'English / Global','multi-global':'Multilingual / Global'};
 const norm=(s:string)=>s.toLocaleLowerCase('en-US');
 const leadIds=new Set(research.leads.map(x=>x.id));
+const newlyVerifiedIds=new Set(officialPilot.channels.map(x=>x.channelId));
 function Panel({children}:{children:React.ReactNode}){
  return <section className="min-w-0 rounded-3xl border border-zinc-800 bg-zinc-900/55 p-5 sm:p-7">{children}</section>;
 }
@@ -68,14 +70,13 @@ function ResearchContent(){
   </div>
   {view==='pages'?<>
    <Panel>
-    <h2 className="text-lg font-semibold">First-party page matches · not API-verified</h2>
-    <p className="mt-3 text-sm leading-7 text-zinc-400">These page identities are preliminary. They expire after {pages.expiresAfter}.
-     An official channels.list result, current source-ID deduplication and human approval are still required.
-     None can activate tracking or comparisons.</p>
+    <h2 className="text-lg font-semibold">Historical first-party matches · 28 October</h2>
+    <p className="mt-3 text-sm leading-7 text-zinc-400">This archived 28 October page-evidence snapshot is not itself API verification. The 30 October pilot records official API identity confirmation for these same three UC IDs.
+     Current production-ID deduplication, channel activity review and human approval are still required before admission. None can activate tracking or comparisons.</p>
    </Panel>
    <div className="grid gap-4 lg:grid-cols-3">
     {pages.matches.map(p=><Panel key={p.officialChannelId}>
-      <p className="text-xs font-semibold uppercase tracking-wider text-amber-400">API pending</p>
+      <p className="text-xs font-semibold uppercase tracking-wider text-amber-400">{newlyVerifiedIds.has(p.officialChannelId)?'API verified in C10 · review pending':'API pending'}</p>
       <h2 className="mt-3 text-lg font-semibold">{p.name}</h2>
       <p className="mt-2 break-all text-sm text-zinc-400">{p.listedHandle}</p>
       <p className="mt-3 break-all font-mono text-xs text-zinc-500">{p.officialChannelId}</p>
