@@ -56,7 +56,7 @@ export function parseOfficialIdentity(body,handle,source,at){
  * @param {{now:()=>string,activeOperator:(req:Request)=>Promise<boolean>,
  * claim:(handle:string,limit:number,reserve:number)=>Promise<any>,
  * provider:(handle:string)=>Promise<{status:number,body:unknown}>,
- * save:(record:any)=>Promise<boolean>,
+ * commit:(handle:string,token:string,receiptId:number,record:any)=>Promise<boolean>,
  * finalize:(handle:string,token:string,receiptId:number,ok:boolean,status:number)=>Promise<boolean>}} deps
  */
 export async function runC20IdentityRequest(request,config,deps){
@@ -110,23 +110,37 @@ export async function runC20IdentityRequest(request,config,deps){
    stage='YOUTUBE_IDENTITY_PROVIDER_FAILED';status=provider.status;
   }else{
    record=parseOfficialIdentity(provider.body,candidate.handle,candidate,deps.now());
-   const saved=await deps.save(record);
-   if(saved===true){stage='PRIVATE_IDENTITY_STORED';status=200;}
-   else{stage='PRIVATE_IDENTITY_STORE_FAILED';status=503;}
+   // This single DB transaction verifies the *current* claim token and lease,
+   // writes the private identity, and finalizes the exact quota receipt.
+   // A stale late provider reply cannot overwrite another verification.
+   let committed=false;
+   try{
+    committed=(await deps.commit(key,claimToken,quotaReceiptId,record))===true;
+   }catch{
+    stage='C23_ATOMIC_IDENTITY_COMMIT_FAILED';status=503;
+   }
+   if(committed){
+    return reply(200,{ok:true,state:'PRIVATE_IDENTITY_STORED',
+     channelId:record.channel_id,observedAt:record.observed_at,
+     expiresAt:record.expires_at,reviewState:'REVIEW_PENDING',
+     providerRequestsReserved:1,monitoringEnabled:false,metricsEnabled:false,
+     comparisonsEnabled:false});
+   }
+   if(stage!=='C23_ATOMIC_IDENTITY_COMMIT_FAILED'){
+    // False means either lease replacement, invalid receipt or ID conflict.
+    // Do NOT finalize another claim; its exact token is deliberately required.
+    return fail(503,'C23_STALE_OR_REJECTED_IDENTITY_COMMIT');
+   }
   }
  }catch{
   stage='VERIFICATION_FAILED';status=503;
  }
+ // Failures still charge the already reserved unit. The older C20 finalize
+ // RPC is used ONLY on failures; successful writes never bypass C23 atomicity.
  let finalized=false;
  try{
-  finalized=(await deps.finalize(key,claimToken,quotaReceiptId,
-   stage==='PRIVATE_IDENTITY_STORED',status))===true;
+  finalized=(await deps.finalize(key,claimToken,quotaReceiptId,false,status))===true;
  }catch{}
  if(!finalized)return fail(503,'C20_QUOTA_FINALIZE_FAILED');
- if(stage!=='PRIVATE_IDENTITY_STORED')return fail(503,stage);
- return reply(200,{ok:true,state:'PRIVATE_IDENTITY_STORED',
-  channelId:record.channel_id,observedAt:record.observed_at,
-  expiresAt:record.expires_at,reviewState:'REVIEW_PENDING',
-  providerRequestsReserved:1,monitoringEnabled:false,metricsEnabled:false,
-  comparisonsEnabled:false});
+ return fail(503,stage);
 }
