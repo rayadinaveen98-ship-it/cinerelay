@@ -208,6 +208,31 @@ async function pilotPublicActivity():Promise<Response>{
   });
 }
 
+/** C19: source of truth for official identities is private, expiring evidence.
+ * Research browser never bundles C2/C10 API results; no monitoring or admissions.
+ */
+async function pilotIdentities():Promise<Response>{
+ const now=new Date().toISOString();
+ const rows=await admin.from('creator_intelligence_identity_evidence')
+  .select('channel_id,listed_name,listed_handle,official_channel_title,uploads_playlist_id,locale,category_provisional,size_tier_provisional,source_url,observed_at,expires_at')
+  .gt('expires_at',now).lte('observed_at',now)
+  .order('observed_at',{ascending:false}).limit(21);
+ if(rows.error)return unavailable(rows.error);
+ if((rows.data??[]).length>20)return json(409,{error:'C19_REVIEW_WINDOW_EXCEEDS_LIMIT'});
+ const channels=(rows.data??[]).map(x=>({
+  channelId:x.channel_id,listedName:x.listed_name,listedHandle:x.listed_handle,
+  officialChannelTitle:x.official_channel_title,uploadsPlaylistId:x.uploads_playlist_id,
+  locale:x.locale,categoryProvisional:x.category_provisional,
+  sizeTierProvisional:x.size_tier_provisional,sourceUrl:x.source_url,
+  observedAt:x.observed_at,expiresAt:x.expires_at,
+  reviewState:'REVIEW_PENDING',operatorApproved:false,
+  monitoringEnabled:false,metricsEnabled:false,
+ }));
+ return json(200,{generatedAt:now,
+  status:channels.length?'FRESH_IDENTITIES_REVIEW_PENDING':'NO_FRESH_IDENTITY_EVIDENCE',
+  channels,monitoringAuthorized:false,comparisonsAuthorized:false});
+}
+
 Deno.serve(async(request:Request):Promise<Response>=>{
   if(request.method==='OPTIONS')return new Response(null,{status:204,headers:cors});
   if(request.method!=='POST')return json(405,{error:'METHOD_NOT_ALLOWED'});
@@ -220,6 +245,7 @@ Deno.serve(async(request:Request):Promise<Response>=>{
     if(body.action==='overview')return await overview();
     if(body.action==='channel'&&typeof body.channelId==='string')return await detail(body.channelId);
     if(body.action==='pilotActivity')return await pilotPublicActivity();
+    if(body.action==='pilotIdentities')return await pilotIdentities();
     if(body.action==='comparisonStatus')return json(200,{
       enabled:crossChannelApproved,policy:'YouTube cross-channel analytics must be explicitly approved',
     });
