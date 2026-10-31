@@ -21,7 +21,7 @@ create temporary table c27_payload as select jsonb_build_object(
  'subscriber_count','12345','subscribers_hidden',false,
  'public_video_count','72',
  'recent_public_uploads',jsonb_build_array(jsonb_build_object(
-   'videoId','aaaaaaaaaaa','publishedAt','2026-10-29T09:00:00Z'))) record;
+   'videoId','aaaaaaaaaaa','publishedAt','2026-10-29T09:00:00.000Z'))) record;
 
 select is((select receipt->>'state' from c27_claim),'CLAIMED',
  'current channel has precharged two-unit claim');
