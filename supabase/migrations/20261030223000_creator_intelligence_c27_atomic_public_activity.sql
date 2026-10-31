@@ -44,8 +44,8 @@ begin
   raise exception 'creator_c27_invalid_activity_record';
  end if;
 
- -- C28: defend the private JSONB store against malformed nested upload data,
- -- even if a future service-role caller bypasses the C13 HTTP parser.
+ -- C28: validate the nested public-only upload shape before private storage,
+ -- even if future service-only code bypasses the C13 HTTP parser.
  if exists (
    select 1 from jsonb_array_elements(p_record->'recent_public_uploads') as u(item)
    where case
@@ -53,163 +53,11 @@ begin
      when (select count(*) from jsonb_object_keys(u.item))<>2 then true
      when not (u.item ?& array['videoId','publishedAt']) then true
      when jsonb_typeof(u.item->'videoId')<>'string' then true
-     when (u.item->>'videoId') !~ '^[A-Za-z0-9_-]{11}
- v_expires:=(p_record->>'expires_at')::timestamptz;
- v_subscribers:=(p_record->>'subscriber_count')::numeric;
- v_videos:=(p_record->>'public_video_count')::numeric;
-
- -- Lock exact C14 claim. Refresh time AFTER waiting for another DB transaction.
- select * into v_claim from public.creator_intelligence_activity_claims
-   where channel_id=p_channel_id for update;
- v_checked_at:=clock_timestamp();
-
- if not found or v_claim.claim_token<>p_claim_token
-    or v_claim.quota_receipt_id<>p_quota_receipt_id
-    or v_claim.state<>'IN_FLIGHT'
-    or v_claim.retry_after<=v_checked_at
-    or v_observed is null or v_expires is null
-    or v_observed>v_checked_at+interval '2 minutes'
-    or v_observed<v_checked_at-interval '10 minutes'
-    or v_expires<=v_checked_at
-    or v_expires>v_observed+interval '29 days' then
-  return false;
- end if;
-
- perform 1 from public.connector_quota_usage
-  where id=p_quota_receipt_id and provider='YOUTUBE_DATA_API'
-    and quota_bucket='GENERAL_READ' and method='creatorC14.oneShotPublicActivity'
-    and units=2 and response_status is null
-  for update;
- if not found then return false; end if;
-
- insert into public.creator_intelligence_activity_observations (
-   channel_id,observed_at,expires_at,subscriber_count,subscribers_hidden,
-   public_video_count,recent_public_uploads
- ) values (
-   p_channel_id,v_observed,v_expires,v_subscribers,
-   (p_record->>'subscribers_hidden')::boolean,v_videos,
-   p_record->'recent_public_uploads'
- )
- on conflict(channel_id) do update set
-   observed_at=excluded.observed_at,
-   expires_at=excluded.expires_at,
-   subscriber_count=excluded.subscriber_count,
-   subscribers_hidden=excluded.subscribers_hidden,
-   public_video_count=excluded.public_video_count,
-   recent_public_uploads=excluded.recent_public_uploads;
- get diagnostics v_row_count=row_count;
- if v_row_count<>1 then raise exception 'creator_c27_observation_commit_failed'; end if;
-
- update public.creator_intelligence_activity_claims set
-   state='SUCCEEDED',
-   retry_after=least(expires_at,v_checked_at+interval '24 hours'),
-   result_status=200
-  where channel_id=p_channel_id and claim_token=p_claim_token
-    and quota_receipt_id=p_quota_receipt_id and state='IN_FLIGHT';
- get diagnostics v_row_count=row_count;
- if v_row_count<>1 then raise exception 'creator_c27_claim_commit_failed'; end if;
-
- update public.connector_quota_usage set
-   response_status=200,
-   metadata=jsonb_build_object('purpose','CINERELAY_C14',
-     'state','PRIVATE_TTL_STORED','noSensitiveApiData',true)
-  where id=p_quota_receipt_id and provider='YOUTUBE_DATA_API'
-    and quota_bucket='GENERAL_READ' and method='creatorC14.oneShotPublicActivity'
-    and units=2 and response_status is null;
- get diagnostics v_receipt_count=row_count;
- if v_receipt_count<>1 then raise exception 'creator_c27_receipt_commit_failed'; end if;
- return true;
-end;
-$fn$;
-
-revoke all on function public.creator_c27_commit_public_activity(text,uuid,bigint,jsonb)
- from public,anon,authenticated;
-grant execute on function public.creator_c27_commit_public_activity(text,uuid,bigint,jsonb)
- to service_role;
-comment on function public.creator_c27_commit_public_activity(text,uuid,bigint,jsonb) is
- 'C27: service-role-only current C14 lease validated after row lock; C12 observation and quota claim success committed atomically. No monitoring permission.';
-commit;
- then true
+     when (u.item->>'videoId') !~ '^[A-Za-z0-9_-]{11}$' then true
      when jsonb_typeof(u.item->'publishedAt') not in ('null','string') then true
      when jsonb_typeof(u.item->'publishedAt')='string'
        and (u.item->>'publishedAt') !~
-       '^[0-9]{4}-(0[1-9]|1[0-2])-([0-2][0-9]|3[0-1])T([01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]\\.[0-9]{3}Z
- v_expires:=(p_record->>'expires_at')::timestamptz;
- v_subscribers:=(p_record->>'subscriber_count')::numeric;
- v_videos:=(p_record->>'public_video_count')::numeric;
-
- -- Lock exact C14 claim. Refresh time AFTER waiting for another DB transaction.
- select * into v_claim from public.creator_intelligence_activity_claims
-   where channel_id=p_channel_id for update;
- v_checked_at:=clock_timestamp();
-
- if not found or v_claim.claim_token<>p_claim_token
-    or v_claim.quota_receipt_id<>p_quota_receipt_id
-    or v_claim.state<>'IN_FLIGHT'
-    or v_claim.retry_after<=v_checked_at
-    or v_observed is null or v_expires is null
-    or v_observed>v_checked_at+interval '2 minutes'
-    or v_observed<v_checked_at-interval '10 minutes'
-    or v_expires<=v_checked_at
-    or v_expires>v_observed+interval '29 days' then
-  return false;
- end if;
-
- perform 1 from public.connector_quota_usage
-  where id=p_quota_receipt_id and provider='YOUTUBE_DATA_API'
-    and quota_bucket='GENERAL_READ' and method='creatorC14.oneShotPublicActivity'
-    and units=2 and response_status is null
-  for update;
- if not found then return false; end if;
-
- insert into public.creator_intelligence_activity_observations (
-   channel_id,observed_at,expires_at,subscriber_count,subscribers_hidden,
-   public_video_count,recent_public_uploads
- ) values (
-   p_channel_id,v_observed,v_expires,v_subscribers,
-   (p_record->>'subscribers_hidden')::boolean,v_videos,
-   p_record->'recent_public_uploads'
- )
- on conflict(channel_id) do update set
-   observed_at=excluded.observed_at,
-   expires_at=excluded.expires_at,
-   subscriber_count=excluded.subscriber_count,
-   subscribers_hidden=excluded.subscribers_hidden,
-   public_video_count=excluded.public_video_count,
-   recent_public_uploads=excluded.recent_public_uploads;
- get diagnostics v_row_count=row_count;
- if v_row_count<>1 then raise exception 'creator_c27_observation_commit_failed'; end if;
-
- update public.creator_intelligence_activity_claims set
-   state='SUCCEEDED',
-   retry_after=least(expires_at,v_checked_at+interval '24 hours'),
-   result_status=200
-  where channel_id=p_channel_id and claim_token=p_claim_token
-    and quota_receipt_id=p_quota_receipt_id and state='IN_FLIGHT';
- get diagnostics v_row_count=row_count;
- if v_row_count<>1 then raise exception 'creator_c27_claim_commit_failed'; end if;
-
- update public.connector_quota_usage set
-   response_status=200,
-   metadata=jsonb_build_object('purpose','CINERELAY_C14',
-     'state','PRIVATE_TTL_STORED','noSensitiveApiData',true)
-  where id=p_quota_receipt_id and provider='YOUTUBE_DATA_API'
-    and quota_bucket='GENERAL_READ' and method='creatorC14.oneShotPublicActivity'
-    and units=2 and response_status is null;
- get diagnostics v_receipt_count=row_count;
- if v_receipt_count<>1 then raise exception 'creator_c27_receipt_commit_failed'; end if;
- return true;
-end;
-$fn$;
-
-revoke all on function public.creator_c27_commit_public_activity(text,uuid,bigint,jsonb)
- from public,anon,authenticated;
-grant execute on function public.creator_c27_commit_public_activity(text,uuid,bigint,jsonb)
- to service_role;
-comment on function public.creator_c27_commit_public_activity(text,uuid,bigint,jsonb) is
- 'C27: service-role-only current C14 lease validated after row lock; C12 observation and quota claim success committed atomically. No monitoring permission.';
-commit;
- then true
+       '^[0-9]{4}-(0[1-9]|1[0-2])-([0-2][0-9]|3[0-1])T([01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]\.[0-9]{3}Z$' then true
      else false
    end
  ) or (
