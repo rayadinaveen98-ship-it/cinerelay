@@ -44,6 +44,31 @@ begin
   raise exception 'creator_c27_invalid_activity_record';
  end if;
 
+ -- C28: validate the nested public-only upload shape before private storage,
+ -- even if future service-only code bypasses the C13 HTTP parser.
+ if exists (
+   select 1 from jsonb_array_elements(p_record->'recent_public_uploads') as u(item)
+   where case
+     when jsonb_typeof(u.item)<>'object' then true
+     when (select count(*) from jsonb_object_keys(u.item))<>2 then true
+     when not (u.item ?& array['videoId','publishedAt']) then true
+     when jsonb_typeof(u.item->'videoId')<>'string' then true
+     when (u.item->>'videoId') !~ '^[A-Za-z0-9_-]{11}$' then true
+     when jsonb_typeof(u.item->'publishedAt') not in ('null','string') then true
+     when jsonb_typeof(u.item->'publishedAt')='string'
+       and (u.item->>'publishedAt') !~
+       '^[0-9]{4}-(0[1-9]|1[0-2])-([0-2][0-9]|3[0-1])T([01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]\.[0-9]{3}Z$' then true
+     else false
+   end
+ ) or (
+    select count(*) from jsonb_array_elements(p_record->'recent_public_uploads')
+ ) <> (
+    select count(distinct u.item->>'videoId')
+      from jsonb_array_elements(p_record->'recent_public_uploads') as u(item)
+ ) then
+   raise exception 'creator_c27_invalid_public_uploads';
+ end if;
+
  v_observed:=(p_record->>'observed_at')::timestamptz;
  v_expires:=(p_record->>'expires_at')::timestamptz;
  v_subscribers:=(p_record->>'subscriber_count')::numeric;

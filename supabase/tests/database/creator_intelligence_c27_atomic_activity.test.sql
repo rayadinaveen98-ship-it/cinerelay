@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(21);
+select plan(27);
 select ok(to_regprocedure('public.creator_c27_commit_public_activity(text,uuid,bigint,jsonb)') is not null,
  'atomic public observation function exists');
 select ok(not has_function_privilege('anon',
@@ -21,7 +21,7 @@ create temporary table c27_payload as select jsonb_build_object(
  'subscriber_count','12345','subscribers_hidden',false,
  'public_video_count','72',
  'recent_public_uploads',jsonb_build_array(jsonb_build_object(
-   'videoId','aaaaaaaaaaa','publishedAt','2026-10-29T09:00:00Z'))) record;
+   'videoId','aaaaaaaaaaa','publishedAt','2026-10-29T09:00:00.000Z'))) record;
 
 select is((select receipt->>'state' from c27_claim),'CLAIMED',
  'current channel has precharged two-unit claim');
@@ -88,6 +88,46 @@ select throws_ok(
    '{monitoring_enabled}','true') from c27_payload))$$,
  'P0001','creator_c27_unexpected_activity_columns',
  'provider payload cannot smuggle monitoring fields into private store');
+-- C28: a service-only caller cannot bypass C13's public upload shape validation.
+select throws_ok(
+ $$select public.creator_c27_commit_public_activity(
+  'UCgggggggggggggggggggggg',
+  (select (receipt->>'claimToken')::uuid from c27_second),
+  (select (receipt->>'quotaReceiptId')::bigint from c27_second),
+  jsonb_set(jsonb_set((select record from c27_payload),'{channel_id}', '"UCgggggggggggggggggggggg"'::jsonb),'{recent_public_uploads}','[{"videoId":"not-valid","publishedAt":null}]'::jsonb))$$,
+ 'P0001','creator_c27_invalid_public_uploads',
+ 'C28 rejects invalid videoId before storage');
+select throws_ok(
+ $$select public.creator_c27_commit_public_activity(
+  'UCgggggggggggggggggggggg',
+  (select (receipt->>'claimToken')::uuid from c27_second),
+  (select (receipt->>'quotaReceiptId')::bigint from c27_second),
+  jsonb_set(jsonb_set((select record from c27_payload),'{channel_id}', '"UCgggggggggggggggggggggg"'::jsonb),'{recent_public_uploads}','[{"videoId":"aaaaaaaaaaa","publishedAt":null,"privateAnalytics":"FORBIDDEN"}]'::jsonb))$$,
+ 'P0001','creator_c27_invalid_public_uploads',
+ 'C28 rejects nested private field before storage');
+select throws_ok(
+ $$select public.creator_c27_commit_public_activity(
+  'UCgggggggggggggggggggggg',
+  (select (receipt->>'claimToken')::uuid from c27_second),
+  (select (receipt->>'quotaReceiptId')::bigint from c27_second),
+  jsonb_set(jsonb_set((select record from c27_payload),'{channel_id}', '"UCgggggggggggggggggggggg"'::jsonb),'{recent_public_uploads}','[{"videoId":"aaaaaaaaaaa","publishedAt":null},{"videoId":"aaaaaaaaaaa","publishedAt":null}]'::jsonb))$$,
+ 'P0001','creator_c27_invalid_public_uploads',
+ 'C28 rejects duplicate video IDs before storage');
+select throws_ok(
+ $$select public.creator_c27_commit_public_activity(
+  'UCgggggggggggggggggggggg',
+  (select (receipt->>'claimToken')::uuid from c27_second),
+  (select (receipt->>'quotaReceiptId')::bigint from c27_second),
+  jsonb_set(jsonb_set((select record from c27_payload),'{channel_id}', '"UCgggggggggggggggggggggg"'::jsonb),'{recent_public_uploads}','[{"videoId":"aaaaaaaaaaa","publishedAt":"not-a-date"}]'::jsonb))$$,
+ 'P0001','creator_c27_invalid_public_uploads',
+ 'C28 rejects non-UTC malformed publishedAt before storage');
+select is((select count(*) from public.creator_intelligence_activity_observations
+ where channel_id='UCgggggggggggggggggggggg'),0::bigint,
+ 'C28 rejected uploads did not write private activity');
+select is((select response_status from public.connector_quota_usage
+ where id=(select (receipt->>'quotaReceiptId')::bigint from c27_second)),
+ null::integer,'C28 rejected uploads did not finalize quota');
+
 update public.creator_intelligence_activity_claims
  set retry_after=clock_timestamp()-interval '1 second'
  where channel_id='UCgggggggggggggggggggggg';

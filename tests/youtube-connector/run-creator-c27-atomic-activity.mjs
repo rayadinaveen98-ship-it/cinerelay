@@ -5,6 +5,7 @@ const read=p=>readFile(p,'utf8');
 const sql=await read('supabase/migrations/20261030223000_creator_intelligence_c27_atomic_public_activity.sql');
 const index=await read('supabase/functions/cinerelay-creator-activity-ingest/index.ts');
 const flow=await read('supabase/functions/cinerelay-creator-activity-ingest/flow.mjs');
+const sqlTests=await read('supabase/tests/database/creator_intelligence_c27_atomic_activity.test.sql');
 let n=0;function test(label,fn){fn();n++;console.log('PASS C27: '+label);}
 test('claim row lock and fresh clock must precede any private activity write',()=>{
  const a=sql.indexOf('where channel_id=p_channel_id for update;');
@@ -39,6 +40,26 @@ test('production Edge has no direct C12 upsert and only atomic success path',()=
  assert.ok(flow.includes('await deps.commit(channelId,claimToken,receiptId,record)'));
  assert.ok(flow.includes('deps.finalize(channelId,claimToken,receiptId,false,status)'));
  assert.ok(flow.includes('C27_STALE_OR_REJECTED_ACTIVITY_COMMIT'));
+});
+test('C28 enforces nested public-only video shape and uniqueness in DB',()=>{
+ const start=sql.indexOf('-- C28: validate the nested public-only upload shape');
+ const end=sql.indexOf("v_observed:=(p_record->>'observed_at')",start);
+ const write=sql.indexOf('insert into public.creator_intelligence_activity_observations',end);
+ assert.ok(start>0&&end>start&&write>end);
+ const validation=sql.slice(start,end);
+ assert.ok(validation.includes("jsonb_array_elements(p_record->'recent_public_uploads')"));
+ assert.ok(validation.includes("jsonb_object_keys(u.item)"));
+ assert.ok(validation.includes("'videoId','publishedAt'"));
+ assert.ok(validation.includes("'^[A-Za-z0-9_-]{11}$'"));
+ assert.ok(validation.includes("jsonb_typeof(u.item->'publishedAt')"));
+ assert.ok(validation.includes("count(distinct u.item->>'videoId')"));
+ assert.ok(validation.includes("creator_c27_invalid_public_uploads"));
+ const dbTests=sqlTests;
+ assert.ok(dbTests.includes('select plan(27)'));
+ for(const phrase of ['C28 rejects invalid videoId','C28 rejects nested private field',
+   'C28 rejects duplicate video IDs','C28 rejects non-UTC malformed publishedAt',
+   'C28 rejected uploads did not write private activity'])
+   assert.ok(dbTests.includes(phrase));
 });
 const id='UC'+'k'.repeat(22),token='12345678-1234-4234-a234-123456789abc';
 const config={
