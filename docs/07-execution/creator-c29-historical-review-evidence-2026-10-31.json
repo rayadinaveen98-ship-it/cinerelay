@@ -1,0 +1,63 @@
+{
+  "schema": "CINERELAY_C29_GIT_HISTORY_METADATA_V1",
+  "observedAt": "2026-10-31",
+  "source": "Read-only connected GitHub PR and branch metadata; connected Supabase list_migrations/list_branches",
+  "snapshotOnly": true,
+  "inspectedFileContents": false,
+  "providerCallsMade": false,
+  "productionMutationsMade": false,
+  "repository": "rayadinaveen98-ship-it/cinerelay",
+  "historical": [
+    {
+      "key": "C2",
+      "pr": 100,
+      "prState": "open",
+      "branch": "feature/creator-intelligence-c2-verify-20261028",
+      "branchVisibility": "not-rechecked",
+      "knownRiskPaths": [
+        "research/creator-intelligence/c2-official-id-results.json"
+      ],
+      "historicalObjectsPurged": false
+    },
+    {
+      "key": "C10",
+      "pr": 108,
+      "prState": "open",
+      "branch": "feature/creator-intelligence-c10-verified-review-20261030",
+      "branchVisibility": "not-rechecked",
+      "knownRiskPaths": [
+        "apps/web/src/data/creator-official-pilot-2026-10-30.json"
+      ],
+      "historicalObjectsPurged": false
+    },
+    {
+      "key": "C11",
+      "pr": 109,
+      "prState": "open",
+      "branch": "feature/creator-intelligence-c11-activity-audit-20261030",
+      "branchVisibility": "accessible",
+      "knownRiskPaths": [
+        "research/creator-intelligence/c11-public-activity-results.json"
+      ],
+      "historicalObjectsPurged": false
+    }
+  ],
+  "c11LatestReportedObservationExpiry": "2026-11-29T09:53:37.748Z",
+  "c11ExpiryScope": "Only the latest expiry stated in PR #109; NOT a general deadline for all C2/C10 records or proof of permitted retention",
+  "production": {
+    "project": "CineRelay",
+    "status": "ACTIVE_HEALTHY",
+    "creatorMigrationCount": 0,
+    "deployedMigrationCount": 123,
+    "stagingBranches": 0
+  },
+  "externalGates": {
+    "actualCloudQuotaVerified": false,
+    "supabaseBackupPitrLogsVerified": false,
+    "ownerApprovalForHistoryRewrite": false,
+    "editorialPilotApproved": false,
+    "costOfStagingApproved": false
+  },
+  "releaseAuthorized": false,
+  "caveat": "PR/branch closure, git garbage collection, local file removal or a passing code audit does not independently prove GitHub caches, forks, clones, or backup retention. No history mutations authorized."
+}
