@@ -27,7 +27,7 @@ const ACTIONS=Object.freeze([
 ]);
 export function evaluateC29(evidence){
  if(!evidence||evidence.schema!=='CINERELAY_C29_GIT_HISTORY_METADATA_V1'||
-   !/^\\d{4}-\\d{2}-\\d{2}$/.test(evidence.observedAt??'')||
+   !/^\d{4}-\d{2}-\d{2}$/.test(evidence.observedAt??'')||
    evidence.snapshotOnly!==true||evidence.inspectedFileContents!==false||
    evidence.providerCallsMade!==false||evidence.productionMutationsMade!==false||
    evidence.releaseAuthorized!==false||
