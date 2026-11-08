@@ -143,6 +143,53 @@ class BaselineTests(unittest.TestCase):
             with self.assertRaises(BaselineError):
                 download_baseline(Path(tmp)/NAME, opener=opener, pause=lambda _: None)
 
+    def test_transient_metadata_503_recovered_without_skipping_asset_checks(self):
+        class FlakyMetadataOpener(Opener):
+            def __init__(self):
+                super().__init__()
+                self.failures = 0
+
+            def open(self, request, timeout=45):
+                if request.full_url == RELEASE_API and self.failures < 2:
+                    self.failures += 1
+                    self.calls.append(RELEASE_API)
+                    raise HTTPError(RELEASE_API, 503, "Service Unavailable", {}, None)
+                return super().open(request, timeout=timeout)
+
+        opener = FlakyMetadataOpener()
+        with tempfile.TemporaryDirectory() as tmp:
+            file = Path(tmp) / NAME
+            result = download_baseline(file, opener=opener, pause=lambda _: None)
+            self.assertEqual(file.read_bytes(), FIXTURE)
+            self.assertFalse(result["distribution_approved"])
+        self.assertEqual(opener.calls, [RELEASE_API] * 3 + [DIRECT_URL])
+
+    def test_persistent_metadata_503_blocks_before_apk_download(self):
+        class AlwaysUnavailable(Opener):
+            def open(self, request, timeout=45):
+                self.calls.append(request.full_url)
+                raise HTTPError(request.full_url, 503, "Service Unavailable", {}, None)
+
+        opener = AlwaysUnavailable()
+        with tempfile.TemporaryDirectory() as tmp:
+            file = Path(tmp) / NAME
+            with self.assertRaisesRegex(BaselineError, "metadata unavailable after bounded retries"):
+                download_baseline(file, opener=opener, pause=lambda _: None)
+            self.assertFalse(file.exists())
+        self.assertEqual(opener.calls, [RELEASE_API] * 4)
+
+    def test_metadata_403_never_retried(self):
+        class AccessDenied(Opener):
+            def open(self, request, timeout=45):
+                self.calls.append(request.full_url)
+                raise HTTPError(request.full_url, 403, "Forbidden", {}, None)
+
+        opener = AccessDenied()
+        with tempfile.TemporaryDirectory() as tmp:
+            with self.assertRaisesRegex(BaselineError, "metadata denied"):
+                download_baseline(Path(tmp) / NAME, opener=opener, pause=lambda _: None)
+        self.assertEqual(opener.calls, [RELEASE_API])
+
     def test_asset_id_and_signature_metadata_must_match(self):
         doc = metadata()
         doc["assets"][0]["id"] = 123
