@@ -24,5 +24,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
+      - name: Validate upgrade script is one parseable Bash program
+        run: bash -n apps/android/qa/run_s4_upgrade.sh
       - name: Run immutable APK baseline regression tests with Python standard library
         run: python3 -m unittest discover -s apps/android/qa/tests -v
