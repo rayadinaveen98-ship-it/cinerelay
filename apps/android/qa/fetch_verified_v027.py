@@ -129,7 +129,7 @@ def download_baseline(output: Path, *, opener=None, attempts_per_route: int = 2,
     release_asset(opener=opener)  # exact original ID, URL, size, digest
     output.parent.mkdir(parents=True, exist_ok=True)
     errors = []
-    with tempfile.TemporaryDirectory(prefix="cinerelay-v027-") as tmp:
+    with tempfile.TemporaryDirectory(prefix="cinerelay-v027-", dir=output.parent) as tmp:
         candidate = Path(tmp) / NAME
         for route_name, route in (("published URL", DIRECT_URL),
                                   ("official GitHub asset API", ASSET_API)):
