@@ -139,7 +139,7 @@ jobs:
           retention-days: 14
 
   emulator-startup-smoke:
-    name: Upgrade signed RC1 to S4 stable candidate on emulator
+    name: Upgrade verified public v0.2.7 to S4 signed candidate on emulator
     needs: minified-signed-release
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -149,13 +149,10 @@ jobs:
         with:
           name: cinerelay-v029-s4-stable-candidate
           path: s4-release-results
-      - name: Download signed S3 RC1 to test in-place upgrade
-        uses: actions/download-artifact@v4
-        with:
-          name: cinerelay-v25-s3-minified-release-rc1
-          run-id: 39275984882
-          github-token: ${{ github.token }}
-          path: previous-s3-rc1
+      - name: Test immutable published APK downloader without network
+        run: python3 -m unittest discover -s apps/android/qa/tests -v
+      - name: Fetch byte-for-byte verified v0.2.7 published GitHub APK
+        run: python3 apps/android/qa/fetch_verified_v027.py --output previous-v027/CineRelay-v0.2.7.apk
       - name: Enable VM acceleration
         run: |
           if [[ -e /dev/kvm ]]; then sudo chmod 666 /dev/kvm; fi
@@ -169,8 +166,23 @@ jobs:
           script: |
             set -eu
             adb wait-for-device
-            adb install -r previous-s3-rc1/CineRelay-v0.2.9-rc1-release.apk
-            adb shell dumpsys package com.cinerelay.app | grep 'versionCode=221000'
+            BASELINE=previous-v027/CineRelay-v0.2.7.apk
+            test -s "$BASELINE"
+            AAPT="$(find "$ANDROID_HOME/build-tools" -type f -name aapt | sort -V | tail -n 1)"
+            SIGNER="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -n 1)"
+            test -x "$AAPT"
+            test -x "$SIGNER"
+            "$AAPT" dump badging "$BASELINE" | grep -q "package: name='com.cinerelay.app' versionCode='210007' versionName='0.2.7'"
+            "$SIGNER" verify --print-certs "$BASELINE" > /tmp/cinerelay-v027-certificate.txt
+            EXPECTED="$(tr -d '[:space:]' < apps/android/signing/cinerelay-update-cert.sha256 | tr '[:lower:]' '[:upper:]')"
+            ACTUAL="$(awk -F': ' '/certificate SHA-256 digest/{print toupper($NF); exit}' /tmp/cinerelay-v027-certificate.txt | tr -d ':[:space:]')"
+            test -n "$ACTUAL"
+            if [[ "$ACTUAL" != "$EXPECTED" ]]; then
+              echo "::error::Published v0.2.7 APK has unexpected update signing certificate"
+              exit 1
+            fi
+            adb install -r "$BASELINE"
+            adb shell dumpsys package com.cinerelay.app | grep 'versionCode=210007'
             adb install -r s4-release-results/CineRelay-v0.2.9-stable-candidate.apk
             adb shell dumpsys package com.cinerelay.app | grep 'versionCode=221001'
             adb logcat -c
@@ -182,7 +194,7 @@ jobs:
             adb exec-out screencap -p > s4-emulator-evidence/first-launch.png
             adb logcat -d -v brief > s4-emulator-evidence/startup-logcat.txt
             ! grep -q -E 'FATAL EXCEPTION|ANR in com.cinerelay.app' s4-emulator-evidence/startup-logcat.txt
-            echo 'S4 stable candidate upgraded in-place from S3 RC1, launched and remained alive on emulator.'
+            echo 'S4 signed candidate upgraded in-place from verified published v0.2.7; launched on emulator. This is not an S3 RC1 comparison.'
       - name: Upload emulator startup evidence
         if: always()
         uses: actions/upload-artifact@v4
