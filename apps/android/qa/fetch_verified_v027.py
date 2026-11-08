@@ -126,7 +126,19 @@ def download_baseline(output: Path, *, opener=None, attempts_per_route: int = 2,
         raise ValueError("Retry count outside supported bounded range")
     opener = opener or build_opener(GitHubOnlyRedirects())
     pause = pause or time.sleep
-    release_asset(opener=opener)  # exact original ID, URL, size, digest
+    # GitHub sometimes serves 503/504 for *metadata* before the asset
+    # download starts. Retry the exact metadata GET, never bypass identity
+    # checks or substitute an unverified binary.
+    for attempt in range(4):
+        try:
+            release_asset(opener=opener)  # exact original ID, URL, size, digest
+            break
+        except (HTTPError, URLError, TimeoutError) as exc:
+            if not is_transient(exc):
+                raise BaselineError("Published release metadata denied or unavailable") from exc
+            if attempt == 3:
+                raise BaselineError("Published release metadata unavailable after bounded retries") from exc
+            pause(2 ** attempt)
     output.parent.mkdir(parents=True, exist_ok=True)
     errors = []
     with tempfile.TemporaryDirectory(prefix="cinerelay-v027-", dir=output.parent) as tmp:
