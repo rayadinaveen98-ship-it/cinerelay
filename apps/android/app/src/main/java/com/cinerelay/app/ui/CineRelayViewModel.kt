@@ -67,7 +67,11 @@ class CineRelayViewModel(application: Application) : AndroidViewModel(applicatio
         backend.currentSession()?.userId?.takeIf { it.isNotBlank() }
 
     private fun isCurrentAccount(accountId: String): Boolean =
-        _state.value.authenticated && activeAccountId() == accountId
+        accountCallbackValidV26(
+            expectedAccountId = accountId,
+            currentAccountId = activeAccountId(),
+            authenticated = _state.value.authenticated,
+        )
 
     private val existingSession = backend.currentSession()
     private val _state = MutableStateFlow(
@@ -225,6 +229,9 @@ class CineRelayViewModel(application: Application) : AndroidViewModel(applicatio
 
     fun refresh() {
         if (!_state.value.authenticated || _state.value.loading) return
+        // Capture the owner of this request before scheduling any async work.
+        // A different account using the same tab must never receive its result.
+        val requestAccountId = activeAccountId() ?: return
         val requestedTab = _state.value.tab
         refreshJob?.cancel()
         refreshJob = viewModelScope.launch {
@@ -240,7 +247,7 @@ class CineRelayViewModel(application: Application) : AndroidViewModel(applicatio
                                 val youtubeUpdates = youtube.await()
                                 // Don't make YouTube wait for the slower independent Web service.
                                 withContext(Dispatchers.Main) {
-                                    if (_state.value.authenticated && _state.value.tab == AppTab.LIVE) {
+                                    if (isCurrentAccount(requestAccountId) && _state.value.tab == AppTab.LIVE) {
                                         val existingWeb = _state.value.homeSignals.filter {
                                             it.source.platform.equals("WEB", ignoreCase = true) ||
                                                 it.source.platform.equals("RSS", ignoreCase = true)
@@ -279,7 +286,7 @@ class CineRelayViewModel(application: Application) : AndroidViewModel(applicatio
                     }
                 }
             }.onSuccess { result ->
-                if (!_state.value.authenticated || _state.value.tab != requestedTab) return@onSuccess
+                if (!isCurrentAccount(requestAccountId) || _state.value.tab != requestedTab) return@onSuccess
                 lastLoadedElapsed[requestedTab] = SystemClock.elapsedRealtime()
                 _state.value = when (result) {
                     is LoadResult.Home -> {
@@ -292,11 +299,13 @@ class CineRelayViewModel(application: Application) : AndroidViewModel(applicatio
                         }
                         latestNewsroomSignals = selectedLane
                         // JSON serialization of full news records belongs on IO, not UI.
-                        val cacheUserId = backend.currentSession()?.userId.orEmpty()
                         cacheWriteJob?.cancel()
                         cacheWriteJob = viewModelScope.launch(Dispatchers.IO) {
+                            // Cache remains account-keyed, even if the user switches
+                            // accounts before this delayed disk write begins.
+                            if (!isCurrentAccount(requestAccountId)) return@launch
                             app.homeCache.write(
-                                userId = cacheUserId,
+                                userId = requestAccountId,
                                 youtube = result.youtube,
                                 web = result.web,
                             )
@@ -329,7 +338,10 @@ class CineRelayViewModel(application: Application) : AndroidViewModel(applicatio
                     )
                 }
             }.onFailure { error ->
-                if (error !is CancellationException && _state.value.tab == requestedTab) {
+                if (error !is CancellationException &&
+                    isCurrentAccount(requestAccountId) &&
+                    _state.value.tab == requestedTab
+                ) {
                     handleFailure(error)
                 }
             }
@@ -342,10 +354,15 @@ class CineRelayViewModel(application: Application) : AndroidViewModel(applicatio
             return
         }
         if (card.entityId.isBlank()) return
+        val requestAccountId = activeAccountId() ?: return
         viewModelScope.launch {
+            if (!isCurrentAccount(requestAccountId)) return@launch
             val desired = !card.followed
             runCatching { withContext(Dispatchers.IO) { backend.setFollow(card.entityId, desired) } }
                 .onSuccess {
+                    // An old user's follow response must never update a new
+                    // user's Home, Radar, Following, or follow-count state.
+                    if (!isCurrentAccount(requestAccountId)) return@onSuccess
                     latestNewsroomSignals = latestNewsroomSignals.map { signal ->
                         val event = signal.canonicalEvent
                         if (event?.entityId == card.entityId) signal.copy(canonicalEvent = event.copy(followed = desired)) else signal
@@ -373,7 +390,9 @@ class CineRelayViewModel(application: Application) : AndroidViewModel(applicatio
                     )
                     if (_state.value.tab == AppTab.FOLLOWING && !desired) refresh()
                 }
-                .onFailure(::handleFailure)
+                .onFailure { error ->
+                    if (isCurrentAccount(requestAccountId)) handleFailure(error)
+                }
         }
     }
 
@@ -383,11 +402,19 @@ class CineRelayViewModel(application: Application) : AndroidViewModel(applicatio
             return
         }
         if (_state.value.loading) return
+        val requestAccountId = activeAccountId() ?: return
         viewModelScope.launch {
+            if (!isCurrentAccount(requestAccountId)) return@launch
             _state.value = _state.value.copy(loading = true, error = null)
             runCatching { withContext(Dispatchers.IO) { pushManager.registerCurrentDevice() } }
-                .onSuccess { push -> _state.value = _state.value.copy(loading = false, pushState = push) }
-                .onFailure(::handleFailure)
+                .onSuccess { push ->
+                    if (isCurrentAccount(requestAccountId)) {
+                        _state.value = _state.value.copy(loading = false, pushState = push)
+                    }
+                }
+                .onFailure { error ->
+                    if (isCurrentAccount(requestAccountId)) handleFailure(error)
+                }
         }
     }
 
